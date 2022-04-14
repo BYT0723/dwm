@@ -1,7 +1,9 @@
 #!/bin/bash
-/bin/bash ./dwm-status.sh &
+
+/bin/bash ~/.dwm/dwm-status.sh &
 /bin/bash ~/.fehbg &
-picom -i 0.8 -b &
+/bin/bash ~/.dwm/autolock.sh &
 fcitx5 -d
+
+picom -i 0.8 -b &
 nm-applet &
-/bin/bash ./autolock.sh &

@@ -241,7 +241,7 @@ print_speed(){
 }
 
 # xsetroot -name "$(print_mpd)$(print_temp)$vel_recv $vel_trans$(print_net)$(print_wlan)$(print_cpu)$(print_mem)$(print_vol)$(print_bat)$(print_date)"
-xsetroot -name "$(print_note) [$(print_speed)][ $(print_temp),$(print_mem) ]{ $(print_vol),$(print_bright) } {$(print_bat)} $(print_date)"
+xsetroot -name "[ $(print_temp),$(print_mem) ] $(print_date);$(print_note);[$(print_speed)] { $(print_vol),$(print_bright) } {$(print_bat)}"
 # Update old values to perform new calculation
 old_received_bytes=$received_bytes
 old_transmitted_bytes=$transmitted_bytes

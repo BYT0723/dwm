@@ -1,5 +1,49 @@
---- dwm.c
-+++ dwm.c
+diff --git a/config.def.h b/config.def.h
+index 1c0b587..bb8f3f7 100644
+--- a/config.def.h
++++ b/config.def.h
+@@ -16,6 +16,7 @@ static const char *colors[][3]      = {
+ 	/*               fg         bg         border   */
+ 	[SchemeNorm] = { col_gray3, col_gray1, col_gray2 },
+ 	[SchemeSel]  = { col_gray4, col_cyan,  col_cyan  },
++	[SchemeHid]  = { col_cyan,  col_gray1, col_cyan  },
+ };
+ 
+ /* tagging */
+@@ -64,8 +65,10 @@ static Key keys[] = {
+ 	{ MODKEY,                       XK_p,      spawn,          {.v = dmenucmd } },
+ 	{ MODKEY|ShiftMask,             XK_Return, spawn,          {.v = termcmd } },
+ 	{ MODKEY,                       XK_b,      togglebar,      {0} },
+-	{ MODKEY,                       XK_j,      focusstack,     {.i = +1 } },
+-	{ MODKEY,                       XK_k,      focusstack,     {.i = -1 } },
++	{ MODKEY,                       XK_j,      focusstackvis,  {.i = +1 } },
++	{ MODKEY,                       XK_k,      focusstackvis,  {.i = -1 } },
++	{ MODKEY|ShiftMask,             XK_j,      focusstackhid,  {.i = +1 } },
++	{ MODKEY|ShiftMask,             XK_k,      focusstackhid,  {.i = -1 } },
+ 	{ MODKEY,                       XK_i,      incnmaster,     {.i = +1 } },
+ 	{ MODKEY,                       XK_d,      incnmaster,     {.i = -1 } },
+ 	{ MODKEY,                       XK_h,      setmfact,       {.f = -0.05} },
+@@ -84,6 +87,8 @@ static Key keys[] = {
+ 	{ MODKEY,                       XK_period, focusmon,       {.i = +1 } },
+ 	{ MODKEY|ShiftMask,             XK_comma,  tagmon,         {.i = -1 } },
+ 	{ MODKEY|ShiftMask,             XK_period, tagmon,         {.i = +1 } },
++	{ MODKEY,                       XK_s,      show,           {0} },
++	{ MODKEY,                       XK_h,      hide,           {0} },
+ 	TAGKEYS(                        XK_1,                      0)
+ 	TAGKEYS(                        XK_2,                      1)
+ 	TAGKEYS(                        XK_3,                      2)
+@@ -102,6 +107,7 @@ static Button buttons[] = {
+ 	/* click                event mask      button          function        argument */
+ 	{ ClkLtSymbol,          0,              Button1,        setlayout,      {0} },
+ 	{ ClkLtSymbol,          0,              Button3,        setlayout,      {.v = &layouts[2]} },
++	{ ClkWinTitle,          0,              Button1,        togglewin,      {0} },
+ 	{ ClkWinTitle,          0,              Button2,        zoom,           {0} },
+ 	{ ClkStatusText,        0,              Button2,        spawn,          {.v = termcmd } },
+ 	{ ClkClientWin,         MODKEY,         Button1,        movemouse,      {0} },
+diff --git a/dwm.c b/dwm.c
+index 4465af1..e780189 100644
+--- a/dwm.c
++++ b/dwm.c
 @@ -50,6 +50,7 @@
  #define INTERSECT(x,y,w,h,m)    (MAX(0, MIN((x)+(w),(m)->wx+(m)->ww) - MAX((x),(m)->wx)) \
                                 * MAX(0, MIN((y)+(h),(m)->wy+(m)->wh) - MAX((y),(m)->wy)))
@@ -52,7 +96,24 @@
  static void incnmaster(const Arg *arg);
  static void keypress(XEvent *e);
  static void killclient(const Arg *arg);
-@@ -442,10 +453,25 @@ buttonpress(XEvent *e)
+@@ -203,6 +211,8 @@ static void setlayout(const Arg *arg);
+ static void setmfact(const Arg *arg);
+ static void setup(void);
+ static void seturgent(Client *c, int urg);
++static void show(const Arg *arg);
++static void showwin(Client *c);
+ static void showhide(Client *c);
+ static void sigchld(int unused);
+ static void spawn(const Arg *arg);
+@@ -213,6 +223,7 @@ static void togglebar(const Arg *arg);
+ static void togglefloating(const Arg *arg);
+ static void toggletag(const Arg *arg);
+ static void toggleview(const Arg *arg);
++static void togglewin(const Arg *arg);
+ static void unfocus(Client *c, int setfocus);
+ static void unmanage(Client *c, int destroyed);
+ static void unmapnotify(XEvent *e);
+@@ -439,10 +450,25 @@ buttonpress(XEvent *e)
  			arg.ui = 1 << i;
  		} else if (ev->x < x + blw)
  			click = ClkLtSymbol;
@@ -81,7 +142,7 @@
  	} else if ((c = wintoclient(ev->window))) {
  		focus(c);
  		restack(selmon);
-@@ -455,7 +481,7 @@ buttonpress(XEvent *e)
+@@ -452,7 +478,7 @@ buttonpress(XEvent *e)
  	for (i = 0; i < LENGTH(buttons); i++)
  		if (click == buttons[i].click && buttons[i].func && buttons[i].button == ev->button
  		&& CLEANMASK(buttons[i].mask) == CLEANMASK(ev->state))
@@ -90,7 +151,7 @@
  }
  
  void
-@@ -698,7 +724,7 @@ dirtomon(int dir)
+@@ -695,7 +721,7 @@ dirtomon(int dir)
  void
  drawbar(Monitor *m)
  {
@@ -99,7 +160,7 @@
  	int boxs = drw->fonts->h / 9;
  	int boxw = drw->fonts->h / 6 + 2;
  	unsigned int i, occ = 0, urg = 0;
-@@ -712,6 +738,8 @@ drawbar(Monitor *m)
+@@ -709,6 +735,8 @@ drawbar(Monitor *m)
  	}
  
  	for (c = m->clients; c; c = c->next) {
@@ -108,7 +169,7 @@
  		occ |= c->tags;
  		if (c->isurgent)
  			urg |= c->tags;
-@@ -732,16 +760,37 @@ drawbar(Monitor *m)
+@@ -729,16 +757,37 @@ drawbar(Monitor *m)
  	x = drw_text(drw, x, 0, w, bh, lrpad / 2, m->ltsymbol, 0);
  
  	if ((w = m->ww - sw - x) > bh) {
@@ -151,7 +212,7 @@
  	drw_map(drw, m->barwin, 0, 0, m->ww, bh);
  }
  
-@@ -787,9 +836,17 @@ void
+@@ -784,9 +833,17 @@ void
  focus(Client *c)
  {
  	if (!c || !ISVISIBLE(c))
@@ -171,7 +232,7 @@
  	if (c) {
  		if (c->mon != selmon)
  			selmon = c->mon;
-@@ -833,28 +890,57 @@ focusmon(const Arg *arg)
+@@ -830,28 +887,57 @@ focusmon(const Arg *arg)
  }
  
  void
@@ -238,7 +299,7 @@
  	}
  }
  
-@@ -966,6 +1052,36 @@ grabkeys(void)
+@@ -963,6 +1049,36 @@ grabkeys(void)
  	}
  }
  
@@ -275,7 +336,7 @@
  void
  incnmaster(const Arg *arg)
  {
-@@ -1070,12 +1186,14 @@ manage(Window w, XWindowAttributes *wa)
+@@ -1067,12 +1183,14 @@ manage(Window w, XWindowAttributes *wa)
  	XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend,
  		(unsigned char *) &(c->win), 1);
  	XMoveResizeWindow(dpy, c->win, c->x + 2 * sw, c->y, c->w, c->h); /* some windows require this */
@@ -292,7 +353,7 @@
  	focus(NULL);
  }
  
-@@ -1198,7 +1316,7 @@ movemouse(const Arg *arg)
+@@ -1195,7 +1313,7 @@ movemouse(const Arg *arg)
  Client *
  nexttiled(Client *c)
  {
@@ -301,7 +362,7 @@
  	return c;
  }
  
-@@ -1251,6 +1369,16 @@ propertynotify(XEvent *e)
+@@ -1248,6 +1366,16 @@ propertynotify(XEvent *e)
  void
  quit(const Arg *arg)
  {
@@ -318,7 +379,7 @@
  	running = 0;
  }
  
-@@ -1613,6 +1741,25 @@ seturgent(Client *c, int urg)
+@@ -1610,6 +1738,25 @@ seturgent(Client *c, int urg)
  	XFree(wmh);
  }
  
@@ -344,7 +405,7 @@
  void
  showhide(Client *c)
  {
-@@ -1749,6 +1896,23 @@ toggleview(const Arg *arg)
+@@ -1746,6 +1893,23 @@ toggleview(const Arg *arg)
  	}
  }
  
