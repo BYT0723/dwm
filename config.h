@@ -2,7 +2,7 @@
 
 #include <X11/XF86keysym.h>
 /* appearance */
-static const unsigned int borderpx  = 1;        /* border pixel of windows */
+static const unsigned int borderpx  = 0;        /* border pixel of windows */
 static const Gap default_gap        = {.isgap = 1, .realgap = 5, .gappx = 3};
 static const unsigned int snap      = 32;       /* snap pixel */
 static const int showbar            = 1;        /* 0 means no standard bar */
@@ -10,23 +10,44 @@ static const int topbar             = 1;        /* 0 means standard bar at botto
 static const int extrabar           = 1;        /* 0 means no extra bar */
 static const char statussep         = ';';      /* separator between statuses */
 static const char *fonts[]          = {
-    "Source Code Pro:style=Medium Italic:size=12",
-    "NotoSansMono Nerd Font:style=Medium Italic:size=11"
+    "Source Code Pro:style=Semibold Italic:size=12",
+    "NotoSansMono Nerd Font:style=Medium Italic:size=13"
 };
-static const char dmenufont[]       = "Source Code Pro:style=Medium Italic:size=12";
+static const char dmenufont[]       = "Source Code Pro:style=Semibold Italic:size=12";
 static const char col_gray1[]       = "#222222";
 static const char col_gray2[]       = "#444444";
 static const char col_gray3[]       = "#bbbbbb";
 static const char col_gray4[]       = "#ffffff";
-static const char col_cyan[]        = "#37474F";
 static const char col_border[]      = "#42A5F5";
+
+// solarized theme
+static const char col_black[]       ="#073642";  /*  0: black    */
+static const char col_red[]         ="#dc322f";  /*  1: red      */
+static const char col_green[]       ="#859900";  /*  2: green    */
+static const char col_yellow[]      ="#b58900";  /*  3: yellow   */
+static const char col_blue[]        ="#268bd2";  /*  4: blue     */
+static const char col_magenta[]     ="#d33682";  /*  5: magenta  */
+static const char col_cyan[]        ="#2aa198";  /*  6: cyan     */
+static const char col_white[]       ="#eee8d5";  /*  7: white    */
+static const char col_brblack[]     ="#002b36";  /*  8: brblack  */
+static const char col_brred[]       ="#cb4b16";  /*  9: brred    */
+static const char col_brgreen[]     ="#586e75";  /* 10: brgreen  */
+static const char col_bryellow[]    ="#657b83";  /* 11: bryellow */
+static const char col_brblue[]      ="#839496";  /* 12: brblue   */
+static const char col_brmagenta[]   ="#6c71c4";  /* 13: brmagenta*/
+static const char col_brcyan[]      ="#93a1a1";  /* 14: brcyan   */
+static const char col_brwhite[]     ="#fdf6e3";  /* 15: brwhite  */
+
+
 static const unsigned int baralpha = 0xd0;
 static const unsigned int borderalpha = OPAQUE;
 static const char *colors[][3]      = {
 	/*               fg         bg         border   */
-	[SchemeNorm] = { col_gray3, col_gray1, col_gray2 },
-	[SchemeSel]  = { col_gray4, col_cyan,  col_cyan  },
-	[SchemeHid]  = { col_cyan,  col_gray1, col_cyan  },
+	[SchemeNorm] = { col_blue, col_black, col_black },
+	[SchemeSel]  = { col_black, col_cyan,  col_cyan  },
+	[SchemeHid]  = { col_cyan,  col_black, col_cyan  },   // hidden
+	[SchemeWarn] =	 { col_black, col_yellow, col_red },  // warn
+	[SchemeUrgent]=	 { col_black, col_red,    col_red },  //urgent
 };
 static const unsigned int alphas[][3]      = {
 	/*               fg      bg        border     */
@@ -54,6 +75,7 @@ static const Rule rules[] = {
     { "feh",                    NULL,               NULL,           0,              1,              -1 },
     { "wemeet",                 NULL,               NULL,           0,              1,              -1 },
     { "dbeaver",                NULL,               NULL,           0,              1,              -1 },
+    { "wps",                    NULL,               NULL,           0,              1,              -1 },
 };
 
 /* layout(s) */
@@ -89,10 +111,10 @@ static const char *dmenucmd[] = {
     "-p",">>> ",
     "-m", dmenumon,
     "-fn", dmenufont,
-    "-nb", col_gray1,
-    "-nf", col_gray3,
+    "-nb", col_black,
+    "-nf", col_blue,
     "-sb", col_cyan,
-    "-sf", col_gray4, NULL
+    "-sf", col_black, NULL
 };
 static const char *termcmd[]  = { "st", NULL };
 static const char *lockcmd[] = { "slock", NULL };
@@ -107,23 +129,26 @@ static const char *mutevol[] = {"./.dwm/vol-toggle.sh",NULL};
 static const char *upbright[] = {"./.dwm/backlight-up.sh",NULL};
 static const char *downbright[] = {"./.dwm/backlight-down.sh",NULL};
 
+static const char *toggleTouchpad[] = {"./.dwm/touchpad-toggle.sh",NULL};
+
 static const char *flameshot[] = {"flameshot", "gui", NULL};
 
 static Key keys[] = {
 	/* modifier                     key        function        argument */
-	{ MODKEY,                       XK_d,      spawn,          {.v = dmenucmd } },
-	{ MODKEY,                       XK_Return, spawn,          {.v = termcmd } },
+	{ MODKEY,                       XK_d,      spawn,          {.v = dmenucmd} },
+	{ MODKEY,                       XK_Return, spawn,          {.v = termcmd} },
 	{ MODKEY,                       XK_b,      togglebar,      {0} },
+	{ MODKEY|ShiftMask,             XK_b,      toggleextrabar, {0} },
+  { MODKEY,                       XK_p,      spawn,          {.v = trayer} },
+  { MODKEY,                       XK_n,      spawn,          {.v = floatcmd} },
+  { MODKEY,                       XK_a,      spawn,          {.v = flameshot} },
   { MODKEY|ShiftMask,             XK_l,      spawn,          {.v = lockcmd} },
-  { MODKEY,                       XK_p,      spawn,          {.v = trayer } },
-  { MODKEY,                       XK_n,      spawn,          {.v = floatcmd } },
-  { MODKEY,                       XK_a,      spawn,          {.v = flameshot } },
+  { MODKEY,                       XK_space,  spawn,          {.v = toggleTouchpad} },
 	{ 0,                            XF86XK_AudioRaiseVolume,    spawn,          {.v = upvol   } },
   { 0,                            XF86XK_AudioLowerVolume,    spawn,          {.v = downvol } },
 	{ 0,                            XF86XK_AudioMute,           spawn,          {.v = mutevol } },
 	{ 0,                            XF86XK_MonBrightnessUp,     spawn,          {.v = upbright } },
 	{ 0,                            XF86XK_MonBrightnessDown,   spawn,          {.v = downbright } },
-	{ MODKEY|ShiftMask,             XK_b,      toggleextrabar, {0} },
 	{ MODKEY,                       XK_j,      focusstackvis,  {.i = +1 } },
 	{ MODKEY,                       XK_k,      focusstackvis,  {.i = -1 } },
 	{ MODKEY|ShiftMask,             XK_j,      focusstackhid,  {.i = +1 } },
@@ -141,8 +166,8 @@ static Key keys[] = {
 	{ MODKEY,                       XK_f,      setlayout,      {.v = &layouts[1]} },
 	{ MODKEY,                       XK_m,      setlayout,      {.v = &layouts[2]} },
 	{ MODKEY|ShiftMask,             XK_f,      fullscreen,     {0} },
-	{ MODKEY,                       XK_space,  setlayout,      {0} },
-	{ MODKEY|ShiftMask,             XK_space,  togglefloating, {0} },
+	// { MODKEY,                       XK_space,  setlayout,      {0} },
+	{ MODKEY|ControlMask,           XK_space,  togglefloating, {0} },
 	{ MODKEY,                       XK_0,      view,           {.ui = ~0 } },
 	{ MODKEY|ShiftMask,             XK_0,      tag,            {.ui = ~0 } },
 	{ MODKEY,                       XK_comma,  focusmon,       {.i = -1 } },

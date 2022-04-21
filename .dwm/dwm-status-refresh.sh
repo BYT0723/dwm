@@ -8,6 +8,13 @@
 # 
 splitChar="  "
 
+# status colors
+c1=`printf "%x" 1`
+c2=`printf "%x" 2`
+c3=`printf "%x" 3`
+c4=`printf "%x" 4`
+c5=`printf "%x" 5`
+
 # This function parses /proc/net/dev file searching for a line containing $interface data.
 # Within that line, the first and ninth numbers after ':' are respectively the received and transmited bytes.
 function get_bytes {
@@ -48,14 +55,14 @@ old_time=$now
 print_net(){
     lan=$(ip addr | grep 'enp0s20f0u4u3'| grep 'inet'| awk '{print $2}')
     if [[ "$lan" != "" ]]; then 
-        echo -e "${lan}"
+        echo -e "\x$c1${lan} "
     fi
 }
 
 print_wlan(){
     wlan=$(ip addr | grep 'wlp2s0'| grep 'inet'| awk '{print $2}')
     if [[ "$wlan" != "" ]]; then
-        echo -e "直${wlan}"
+        echo -e "\x$c1直${wlan} "
     fi
 }
 
@@ -71,20 +78,20 @@ print_mem(){
         # echo -e "$mem.${memdec}G"
 
         mem=$( echo "scale=1;${mem}/1024" | bc )
-        echo -e "${mem}G"
+        echo -e "\x$c2 ${mem}G"
     else
-        echo -e "${mem}M"
+        echo -e "\x$c2 ${mem}M"
     fi
 }
 
 # CPU
 print_cpu(){
     a=(`cat /proc/stat | grep -E "cpu\b" | awk -v total=0 '{$1="";for(i=2;i<=NF;i++){total+=$i};used=$2+$3+$4+$7+$8 }END{print total,used}'`)
-    sleep 4
+    sleep 1
     b=(`cat /proc/stat | grep -E "cpu\b" | awk -v total=0 '{$1="";for(i=2;i<=NF;i++){total+=$i};used=$2+$3+$4+$7+$8 }END{print total,used}'`)
     cpuload=(`cat /proc/loadavg | awk '{print $1}'`)
     cpu_usage=$(((${b[1]}-${a[1]})*100/(${b[0]}-${a[0]})))
-    echo -e "${cpu_usage}% $cpuload $(print_temp)"
+    echo -e "${cpu_usage}%, $cpuload, $(print_temp)"
 }
 
 print_temp(){
@@ -95,8 +102,7 @@ print_temp(){
 
     index=$(( temp / 20 ))
     icon=${icons[$index]}
-
-    echo -e "${icon}${temp}°C"
+    echo -e "\x$c4 ${icon}${temp}°C"
 }
 
 print_mpd() {
@@ -175,9 +181,9 @@ print_bat(){
 
     index=$(( $remain / 10 ))
 	if $(acpi -b | grep "Battery 0"| grep --quiet Charging);then
-        echo -e "${chargIcons[$index]}${remain}"
+        echo -e "\x$c4 ${chargIcons[$index]}${remain} "
     else
-        echo -e "${icons[$index]}${remain}($(get_time_until_charged))"
+        echo -e "\x$c4 ${icons[$index]}${remain}($(get_time_until_charged)) "
     fi
 }
 
@@ -189,7 +195,7 @@ print_bright(){
     percent=$(( (now * 100) / maxBright))
     index=$(( percent / 34 ))
     icon=${icons[$index]}
-    echo "${icon}${percent}"
+    echo -e "\x$c2 ${icon}${percent} "
 }
 
 print_vol(){
@@ -203,11 +209,12 @@ print_vol(){
     then
         icon="ﱝ"
     fi
-    echo -e "${icon}${volume}"
+    echo -e "\x$c1 ${icon}${volume} "
 }
 
 print_date(){
-    date '+%m/%d(%a)%H:%M'
+  printf "\\x$c1"
+   date '+ %m-%d(%a) %H:%M'
     # date '+%m/%d %H:%M'
     # date '+[%B.%d %H:%M]'
     # date '+%H:%M'
@@ -215,7 +222,7 @@ print_date(){
 
 print_note(){
     top=$(cat ~/.note | grep \# | head -n 1 | awk '{ print $2 }')
-    echo -e "${top}"
+    echo -e "\x$c3${top}"
 }
 
 LOC=$(readlink -f "$0")
@@ -237,11 +244,11 @@ print_speed(){
     if [ $transmitted_bytes -ne $old_transmitted_bytes ]; then
         transIcon=""
     fi
-    echo -e "龍${recvIcon}$vel_recv ${transIcon}$vel_trans"
+    echo -e "\x$c2 龍${recvIcon}$vel_recv ${transIcon}$vel_trans "
 }
 
 # xsetroot -name "$(print_mpd)$(print_temp)$vel_recv $vel_trans$(print_net)$(print_wlan)$(print_cpu)$(print_mem)$(print_vol)$(print_bat)$(print_date)"
-xsetroot -name "[ $(print_temp),$(print_mem) ] $(print_date);$(print_note);[$(print_speed)] { $(print_vol),$(print_bright) } {$(print_bat)}"
+xsetroot -name "$(print_temp) $(print_mem) $(print_date);$(print_note);$(print_wlan)$(print_net)$(print_speed)$(print_vol)$(print_bright)$(print_bat)"
 # Update old values to perform new calculation
 old_received_bytes=$received_bytes
 old_transmitted_bytes=$transmitted_bytes

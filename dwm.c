@@ -70,7 +70,13 @@
 
 /* enums */
 enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
-enum { SchemeNorm, SchemeSel, SchemeHid };       /* color schemes */
+enum {
+  SchemeNorm,
+  SchemeSel,
+  SchemeHid,
+  SchemeWarn,
+  SchemeUrgent
+}; /* color schemes */
 enum {
   NetSupported,
   NetWMName,
@@ -814,6 +820,16 @@ void drawbar(Monitor *m) {
   int boxs = drw->fonts->h / 9;
   int boxw = drw->fonts->h / 6 + 2;
   unsigned int i, occ = 0, urg = 0;
+  char *ts = stext;
+  char *tp = stext;
+  int tx = 0;
+  char *elts = estextl;
+  char *eltp = estextl;
+  int eltx = 0;
+  char *erts = estextr;
+  char *ertp = estextr;
+  int ertx = 0;
+  char ctmp;
   Client *c;
 
   if (!m->showbar)
@@ -823,7 +839,23 @@ void drawbar(Monitor *m) {
   if (m == selmon) { /* status is only drawn on selected monitor */
     drw_setscheme(drw, scheme[SchemeNorm]);
     tw = TEXTW(stext) - lrpad + 2; /* 2px right padding */
-    drw_text(drw, m->ww - tw, 0, tw, bh, 0, stext, 0);
+    //  drw_text(drw, m->ww - tw, 0, tw, bh, 0, stext, 0);
+    while (1) {
+      if ((unsigned int)*ts > LENGTH(colors)) {
+        ts++;
+        continue;
+      }
+      ctmp = *ts;
+      *ts = '\0';
+      drw_text(drw, m->ww - tw + tx, 0, tw - tx, bh, 0, tp, 0);
+      tx += TEXTW(tp) - lrpad;
+      if (ctmp == '\0') {
+        break;
+      }
+      drw_setscheme(drw, scheme[(unsigned int)(ctmp - 1)]);
+      *ts = ctmp;
+      tp = ++ts;
+    }
   }
 
   for (c = m->clients; c; c = c->next) {
@@ -889,17 +921,49 @@ void drawbar(Monitor *m) {
   m->btw = w;
   drw_map(drw, m->barwin, 0, 0, m->ww, bh);
 
-  if (m == selmon &&
-      selmon->extrabar) { /* extra status is only drawn on selected monitor */
+  /* extra status is only drawn on selected monitor */
+  if (m == selmon && selmon->extrabar) {
     drw_setscheme(drw, scheme[SchemeNorm]);
     /* clear default bar draw buffer by drawing a blank rectangle */
     drw_rect(drw, 0, 0, m->ww, bh, 1, 1);
     // draw right text
     etwr = TEXTW(estextr) - lrpad + 2; /* 2px right padding */
-    drw_text(drw, m->ww - etwr, 0, etwr, bh, 0, estextr, 0);
+    //  drw_text(drw, m->ww - etwr, 0, etwr, bh, 0, estextr, 0);
+    while (1) {
+      if ((unsigned int)*erts > LENGTH(colors)) {
+        erts++;
+        continue;
+      }
+      ctmp = *erts;
+      *erts = '\0';
+      drw_text(drw, m->ww - etwr + ertx, 0, etwr - ertx, bh, 0, ertp, 0);
+      ertx += TEXTW(ertp) - lrpad;
+      if (ctmp == '\0') {
+        break;
+      }
+      drw_setscheme(drw, scheme[(unsigned int)(ctmp - 1)]);
+      *erts = ctmp;
+      ertp = ++erts;
+    }
     // draw left text
     etwl = TEXTW(estextl);
-    drw_text(drw, 0, 0, etwl, bh, 0, estextl, 0);
+    //  drw_text(drw, 0, 0, etwl, bh, 0, estextl, 0);
+    while (1) {
+      if ((unsigned int)*elts > LENGTH(colors)) {
+        elts++;
+        continue;
+      }
+      ctmp = *elts;
+      *elts = '\0';
+      drw_text(drw, eltx, 0, etwl + eltx, bh, 0, eltp, 0);
+      eltx += TEXTW(eltp) - lrpad;
+      if (ctmp == '\0') {
+        break;
+      }
+      drw_setscheme(drw, scheme[(unsigned int)(ctmp - 1)]);
+      *elts = ctmp;
+      eltp = ++elts;
+    }
 
     drw_map(drw, m->extrabarwin, 0, 0, m->ww, bh);
   }
@@ -1472,6 +1536,14 @@ void resizeclient(Client *c, int x, int y, int w, int h) {
   c->oldh = c->h;
   c->h = wc.height = h;
   wc.border_width = c->bw;
+  if (((nexttiled(c->mon->clients) == c && !nexttiled(c->next)) ||
+       &monocle == c->mon->lt[c->mon->sellt]->arrange) &&
+      !c->isfullscreen && !c->isfloating &&
+      NULL != c->mon->lt[c->mon->sellt]->arrange) {
+    c->w = wc.width += c->bw * 2;
+    c->h = wc.height += c->bw * 2;
+    wc.border_width = 0;
+  }
   XConfigureWindow(dpy, c->win, CWX | CWY | CWWidth | CWHeight | CWBorderWidth,
                    &wc);
   configure(c);
