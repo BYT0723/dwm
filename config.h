@@ -10,8 +10,11 @@ static const int topbar             = 1;        /* 0 means standard bar at botto
 static const int extrabar           = 1;        /* 0 means no extra bar */
 static const char statussep         = ';';      /* separator between statuses */
 static const char *fonts[]          = {
-    "Source Code Pro:style=Semibold Italic:size=12",
-    "NotoSansMono Nerd Font:style=Medium Italic:size=13"
+  // "Source Code Pro:style=Semibold Italic:size=12"
+  // "NotoSansMono Nerd Font:style=Medium Italic:size=12"
+  "Source Code Pro:style=Semibold:size=12",
+  "NotoSansMono Nerd Font:style=Medium:size=12",
+  "文泉驿等宽微米黑:style=Regular:size=12"
 };
 static const char dmenufont[]       = "Source Code Pro:style=Semibold Italic:size=12";
 static const char col_gray1[]       = "#222222";

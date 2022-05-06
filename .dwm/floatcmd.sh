@@ -1,7 +1,7 @@
 #!/bin/bash
 cols=80     #width
 rows=25     #height
-font="Source Code Pro:style=Medium Italic:size=14"
+font="Source Code Pro:style=Medium:size=14"
 x=+550
 y=+150
 
