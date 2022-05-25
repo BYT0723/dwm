@@ -1,13 +1,13 @@
-/* See LICENSE file for copyright and license details. */
-
 #include <X11/XF86keysym.h>
+
 /* appearance */
 static const unsigned int borderpx  = 0;        /* border pixel of windows */
-static const Gap default_gap        = {.isgap = 1, .realgap = 5, .gappx = 3};
+static const Gap default_gap        = {.isgap = 1, .realgap = 10, .gappx = 10};
 static const unsigned int snap      = 32;       /* snap pixel */
 static const int showbar            = 1;        /* 0 means no standard bar */
 static const int topbar             = 1;        /* 0 means standard bar at bottom */
 static const int extrabar           = 1;        /* 0 means no extra bar */
+static const Bool viewontag         = True;     /* Switch view on tag switch */
 static const char statussep         = ';';      /* separator between statuses */
 static const char *fonts[]          = {
   // "Source Code Pro:style=Semibold Italic:size=12"
@@ -16,7 +16,7 @@ static const char *fonts[]          = {
   "NotoSansMono Nerd Font:style=Medium:size=12",
   "文泉驿等宽微米黑:style=Regular:size=12"
 };
-static const char dmenufont[]       = "Source Code Pro:style=Semibold Italic:size=12";
+static const char dmenufont[]       = "Source Code Pro:style=Semibold:size=12";
 static const char col_gray1[]       = "#222222";
 static const char col_gray2[]       = "#444444";
 static const char col_gray3[]       = "#bbbbbb";
@@ -42,8 +42,8 @@ static const char col_brcyan[]      ="#93a1a1";  /* 14: brcyan   */
 static const char col_brwhite[]     ="#fdf6e3";  /* 15: brwhite  */
 
 
-static const unsigned int baralpha = 0xd0;
-static const unsigned int borderalpha = OPAQUE;
+static const unsigned int baralpha = 0xff;
+static const unsigned int borderalpha = 0xd0;
 static const char *colors[][3]      = {
 	/*               fg         bg         border   */
 	[SchemeNorm] = { col_blue, col_black, col_black },
@@ -68,17 +68,21 @@ static const Rule rules[] = {
 	 *	WM_NAME(STRING) = title
 	 */
 	/* class                    instance            title           tags mask     isfloating    monitor */
-    { "chrome",                 NULL,               NULL,           1<<1,           0,              -1 },
+    { "firefox",                NULL,               NULL,           1<<1,           0,              -1 },
+    { "google-chrome-stable",   NULL,               NULL,           1<<1,           0,              -1 },
     { "obs",                    NULL,               NULL,           1<<4,           0,              -1 },
     { "qbittorrent",            NULL,               NULL,           1<<5,           0,              -1 },
 
     // float 
     { "qqmusic",                NULL,               NULL,           1<<3,           1,              -1 },
+    { "netease-cloud-music",    NULL,               NULL,           1<<3,           1,              -1 },
     { "vlc",                    NULL,               NULL,           0,              1,              -1 },
     { "feh",                    NULL,               NULL,           0,              1,              -1 },
     { "wemeet",                 NULL,               NULL,           0,              1,              -1 },
     { "dbeaver",                NULL,               NULL,           0,              1,              -1 },
     { "wps",                    NULL,               NULL,           0,              1,              -1 },
+    { "wpp",                    NULL,               NULL,           0,              1,              -1 },
+    { "et",                     NULL,               NULL,           0,              1,              -1 },
 };
 
 /* layout(s) */
@@ -124,16 +128,16 @@ static const char *lockcmd[] = { "slock", NULL };
 
 static const char *trayer[] = { "./.dwm/sys_panel.sh", NULL };
 static const char *floatcmd[] = { "./.dwm/floatcmd.sh", NULL };
-
+// 调节音量
 static const char *upvol[] = {"./.dwm/vol-up.sh", NULL};
 static const char *downvol[] = {"./.dwm/vol-down.sh",NULL};
 static const char *mutevol[] = {"./.dwm/vol-toggle.sh",NULL};
-
+// 调节亮度
 static const char *upbright[] = {"./.dwm/backlight-up.sh",NULL};
 static const char *downbright[] = {"./.dwm/backlight-down.sh",NULL};
-
+// 打开关闭触摸板
 static const char *toggleTouchpad[] = {"./.dwm/touchpad-toggle.sh",NULL};
-
+// 截图
 static const char *flameshot[] = {"flameshot", "gui", NULL};
 
 static Key keys[] = {
