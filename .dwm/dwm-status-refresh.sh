@@ -148,8 +148,7 @@ songName() {
 
 print_disk(){
   disk_root=$(df -h | grep /dev/sda2 |awk '{print $4}');
-  disk_home=$(df -h | grep /dev/sda4 |awk '{print $4}');
-  echo -e "$disk_root $disk_home"
+  echo -e "\x$c1 $disk_root "
 }
 
 
@@ -249,7 +248,7 @@ print_speed(){
 }
 
 # xsetroot -name "$(print_mpd)$(print_temp)$vel_recv $vel_trans$(print_net)$(print_wlan)$(print_cpu)$(print_mem)$(print_vol)$(print_bat)$(print_date)"
-xsetroot -name "$(print_temp) $(print_mem) $(print_date);$(print_note);$(print_wlan)$(print_net)$(print_speed)$(print_vol)$(print_bright)$(print_bat)"
+xsetroot -name "$(print_temp) $(print_disk) $(print_mem) $(print_date);$(print_note);$(print_wlan)$(print_net)$(print_speed)$(print_vol)$(print_bright)$(print_bat)"
 # Update old values to perform new calculation
 old_received_bytes=$received_bytes
 old_transmitted_bytes=$transmitted_bytes
