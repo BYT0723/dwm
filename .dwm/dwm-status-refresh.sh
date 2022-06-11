@@ -2,18 +2,7 @@
 # Screenshot: http://s.natalian.org/2013-08-17/dwm_status.png
 # Network speed stuff stolen from http://linuxclues.blogspot.sg/2009/11/shell-script-show-network-speed.html
 
-# 
-# 
-#  
-# 
-splitChar="  "
-
-# status colors
-c1=`printf "%x" 1`
-c2=`printf "%x" 2`
-c3=`printf "%x" 3`
-c4=`printf "%x" 4`
-c5=`printf "%x" 5`
+status=""
 
 # This function parses /proc/net/dev file searching for a line containing $interface data.
 # Within that line, the first and ninth numbers after ':' are respectively the received and transmited bytes.
@@ -55,14 +44,14 @@ old_time=$now
 print_net(){
   lan=$(ip addr | grep 'enp0s20f0u4u3'| grep 'inet'| awk '{print $2}')
   if [[ "$lan" != "" ]]; then 
-    echo -e "\x$c1${lan} "
+    echo -e "\x01${lan} "
   fi
 }
 
 print_wlan(){
   wlan=$(ip addr | grep 'wlp2s0'| grep 'inet'| awk '{print $2}')
   if [[ "$wlan" != "" ]]; then
-    echo -e "\x$c1直${wlan} "
+    echo -e "\x01直${wlan} "
   fi
 }
 
@@ -78,9 +67,9 @@ print_mem(){
     # echo -e "$mem.${memdec}G"
 
     mem=$( echo "scale=1;${mem}/1024" | bc )
-    echo -e "\x$c2 ${mem}G"
+    echo -e "\x02 ${mem}G"
   else
-    echo -e "\x$c2 ${mem}M"
+    echo -e "\x02 ${mem}M"
   fi
 }
 
@@ -102,7 +91,7 @@ print_temp(){
 
   index=$(( temp / 20 ))
   icon=${icons[$index]}
-  echo -e "\x$c4 ${icon}${temp}°C"
+  echo -e "\x04 ${icon}${temp}°C"
 }
 
 print_mpd() {
@@ -148,7 +137,7 @@ songName() {
 
 print_disk(){
   disk_root=$(df -h | grep /dev/sda2 |awk '{print $4}');
-  echo -e "\x$c1 $disk_root "
+  echo -e "\x01 $disk_root "
 }
 
 
@@ -180,9 +169,9 @@ print_bat(){
 
   index=$(( $remain / 10 ))
 	if $(acpi -b | grep "Battery 0"| grep --quiet Charging);then
-    echo -e "\x$c4 ${chargIcons[$index]}${remain} "
+    echo -e "\x04 ${chargIcons[$index]}${remain} "
   else
-    echo -e "\x$c4 ${icons[$index]}${remain}($(get_time_until_charged)) "
+    echo -e "\x04 ${icons[$index]}${remain}($(get_time_until_charged)) "
   fi
 }
 
@@ -194,7 +183,7 @@ print_bright(){
   percent=$(( (now * 100) / maxBright))
   index=$(( percent / 34 ))
   icon=${icons[$index]}
-  echo -e "\x$c2 ${icon}${percent} "
+  echo -e "\x02 ${icon}${percent} "
 }
 
 print_vol(){
@@ -208,11 +197,11 @@ print_vol(){
   then
     icon="ﱝ"
   fi
-  echo -e "\x$c1 ${icon}${volume} "
+  echo -e "\x01 ${icon}${volume} "
 }
 
 print_date(){
-  printf "\\x$c1"
+  printf "\\x01"
   date '+ %m-%d(%a) %H:%M'
   # date '+%m/%d %H:%M'
   # date '+[%B.%d %H:%M]'
@@ -222,7 +211,7 @@ print_date(){
 print_note(){
   # top=$(cat ~/.note | grep \# | head -n 1 | awk '{ print $2 }')
   top=$(cat ~/.note | grep \# | awk '{ print $2 }' | tr "\n" "|")
-  echo -e "\x$c5${top}"
+  echo -e "\x05${top}"
 }
 
 LOC=$(readlink -f "$0")
@@ -244,7 +233,7 @@ print_speed(){
   if [ $transmitted_bytes -ne $old_transmitted_bytes ]; then
     transIcon=""
   fi
-  echo -e "\x$c2 龍${recvIcon}$vel_recv ${transIcon}$vel_trans "
+  echo -e "\x02 龍${recvIcon}$vel_recv ${transIcon}$vel_trans "
 }
 
 # xsetroot -name "$(print_mpd)$(print_temp)$vel_recv $vel_trans$(print_net)$(print_wlan)$(print_cpu)$(print_mem)$(print_vol)$(print_bat)$(print_date)"

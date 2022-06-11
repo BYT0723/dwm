@@ -2,8 +2,9 @@
 
 /bin/bash ~/.dwm/dwm-status.sh &
 /bin/bash ~/.fehbg &
-/bin/bash ~/.dwm/autolock.sh &
-fcitx5 -d
-
+xautolock -time 30 -locker slock &
 picom -i 0.95 -b --corner-radius 10 &
+
 nm-applet &
+fcitx5 -d
+qv2ray

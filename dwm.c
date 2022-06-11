@@ -1829,6 +1829,7 @@ void fullscreen(const Arg *arg) {
     setlayout(&((Arg){.v = last_layout}));
   }
   togglebar(arg);
+  toggleextrabar(arg);
 }
 
 void gap_copy(Gap *to, const Gap *from) {
