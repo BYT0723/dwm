@@ -1,12 +1,12 @@
-#include <X11/XF86keysym.h>
+// #include <X11/XF86keysym.h>
 
 /* appearance */
-static const unsigned int borderpx  = 1;        /* border pixel of windows */
+static const unsigned int borderpx  = 0;        /* border pixel of windows */
 static const Gap default_gap        = {.isgap = 1, .realgap = 10, .gappx = 10};
 static const unsigned int snap      = 32;       /* snap pixel */
 static const unsigned int systraypinning = 0;   /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
 static const unsigned int systrayonleft = 0;   	/* 0: systray in the right corner, >0: systray on left of status text */
-static const unsigned int systrayspacing = 2;   /* systray spacing */
+static const unsigned int systrayspacing = 5;   /* systray spacing */
 static const int systraypinningfailfirst = 1;   /* 1: if pinning fails, display systray on the first monitor, False: display systray on the last monitor*/
 static const int showsystray        = 1;     /* 0 means no systray */
 static const int showbar            = 1;     /* 0 means no bar */
@@ -131,15 +131,14 @@ static const char *dmenucmd[] = {
 static const char *termcmd[]  = { "st", NULL };
 static const char *lockcmd[] = { "slock", NULL };
 
-static const char *trayer[] = { "./.dwm/sys_panel.sh", NULL };
 static const char *floatcmd[] = { "./.dwm/floatcmd.sh", NULL };
 // 调节音量
-static const char *upvol[] = {"./.dwm/vol-up.sh", NULL};
-static const char *downvol[] = {"./.dwm/vol-down.sh",NULL};
-static const char *mutevol[] = {"./.dwm/vol-toggle.sh",NULL};
+// static const char *upvol[] = {"./.dwm/vol-up.sh", NULL};
+// static const char *downvol[] = {"./.dwm/vol-down.sh",NULL};
+// static const char *mutevol[] = {"./.dwm/vol-toggle.sh",NULL};
 // 调节亮度
-static const char *upbright[] = {"./.dwm/backlight-up.sh",NULL};
-static const char *downbright[] = {"./.dwm/backlight-down.sh",NULL};
+// static const char *upbright[] = {"./.dwm/backlight-up.sh",NULL};
+// static const char *downbright[] = {"./.dwm/backlight-down.sh",NULL};
 // 打开关闭触摸板
 static const char *toggleTouchpad[] = {"./.dwm/touchpad-toggle.sh",NULL};
 // 截图
@@ -151,16 +150,15 @@ static Key keys[] = {
 	{ MODKEY,                       XK_Return, spawn,          {.v = termcmd} },
 	{ MODKEY,                       XK_b,      togglebar,      {0} },
 	{ MODKEY|ShiftMask,             XK_b,      toggleextrabar, {0} },
-  { MODKEY,                       XK_p,      spawn,          {.v = trayer} },
   { MODKEY,                       XK_n,      spawn,          {.v = floatcmd} },
   { MODKEY,                       XK_a,      spawn,          {.v = flameshot} },
   { MODKEY|ShiftMask,             XK_l,      spawn,          {.v = lockcmd} },
   { MODKEY,                       XK_space,  spawn,          {.v = toggleTouchpad} },
-	{ 0,                            XF86XK_AudioRaiseVolume,    spawn,          {.v = upvol   } },
-  { 0,                            XF86XK_AudioLowerVolume,    spawn,          {.v = downvol } },
-	{ 0,                            XF86XK_AudioMute,           spawn,          {.v = mutevol } },
-	{ 0,                            XF86XK_MonBrightnessUp,     spawn,          {.v = upbright } },
-	{ 0,                            XF86XK_MonBrightnessDown,   spawn,          {.v = downbright } },
+	// { 0,                            XF86XK_AudioRaiseVolume,    spawn,          {.v = upvol   } },
+ //  { 0,                            XF86XK_AudioLowerVolume,    spawn,          {.v = downvol } },
+	// { 0,                            XF86XK_AudioMute,           spawn,          {.v = mutevol } },
+	// { 0,                            XF86XK_MonBrightnessUp,     spawn,          {.v = upbright } },
+	// { 0,                            XF86XK_MonBrightnessDown,   spawn,          {.v = downbright } },
 	{ MODKEY,                       XK_j,      focusstackvis,  {.i = +1 } },
 	{ MODKEY,                       XK_k,      focusstackvis,  {.i = -1 } },
 	{ MODKEY|ShiftMask,             XK_j,      focusstackhid,  {.i = +1 } },

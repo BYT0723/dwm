@@ -2,8 +2,6 @@
 # Screenshot: http://s.natalian.org/2013-08-17/dwm_status.png
 # Network speed stuff stolen from http://linuxclues.blogspot.sg/2009/11/shell-script-show-network-speed.html
 
-status=""
-
 # This function parses /proc/net/dev file searching for a line containing $interface data.
 # Within that line, the first and ninth numbers after ':' are respectively the received and transmited bytes.
 function get_bytes {
@@ -237,7 +235,8 @@ print_speed(){
 }
 
 # xsetroot -name "$(print_mpd)$(print_temp)$vel_recv $vel_trans$(print_net)$(print_wlan)$(print_cpu)$(print_mem)$(print_vol)$(print_bat)$(print_date)"
-xsetroot -name "$(print_temp) $(print_disk) $(print_mem) $(print_date);$(print_note);$(print_wlan)$(print_net)$(print_speed)$(print_vol)$(print_bright)$(print_bat)"
+# xsetroot -name "$(print_temp) $(print_disk) $(print_mem) $(print_date);$(print_note);$(print_wlan)$(print_net)$(print_speed)$(print_vol)$(print_bright)$(print_bat)"
+xsetroot -name "$(print_temp)$(print_mem)$(print_disk);$(print_note);$(print_speed)$(print_date)"
 # Update old values to perform new calculation
 old_received_bytes=$received_bytes
 old_transmitted_bytes=$transmitted_bytes
