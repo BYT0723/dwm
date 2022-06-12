@@ -1,6 +1,6 @@
 #!/bin/bash
 
-/bin/bash ~/.dwm/go-status &
+~/.dwm/go-status &
 /bin/bash ~/.fehbg &
 xautolock -time 30 -locker slock &
 picom -i 0.95 -b --corner-radius 10
