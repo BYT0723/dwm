@@ -15,8 +15,6 @@ static const int extrabar           = 1;        /* 0 means no extra bar */
 static const Bool viewontag         = True;     /* Switch view on tag switch */
 static const char statussep         = ';';      /* separator between statuses */
 static const char *fonts[]          = {
-  // "Source Code Pro:style=Semibold Italic:size=12"
-  // "NotoSansMono Nerd Font:style=Medium Italic:size=12"
   "Source Code Pro:style=Semibold:size=12",
   "NotoSansMono Nerd Font:style=Medium:size=12",
   "文泉驿等宽微米黑:style=Regular:size=12"
@@ -46,9 +44,6 @@ static const char col_brmagenta[]   ="#6c71c4";  /* 13: brmagenta*/
 static const char col_brcyan[]      ="#93a1a1";  /* 14: brcyan   */
 static const char col_brwhite[]     ="#fdf6e3";  /* 15: brwhite  */
 
-
-// static const unsigned int baralpha = 0xff;
-// static const unsigned int borderalpha = 0xd0;
 static const char *colors[][3]      = {
 	/*               fg         bg         border   */
 	[SchemeNorm] = { col_blue, col_black, col_black },
@@ -57,11 +52,6 @@ static const char *colors[][3]      = {
 	[SchemeWarn] =	 { col_black, col_yellow, col_red },  // warn
 	[SchemeUrgent]=	 { col_black, col_red,    col_red },  //urgent
 };
-// static const unsigned int alphas[][3]      = {
-// 	/*               fg      bg        border     */
-// 	[SchemeNorm] = { OPAQUE, baralpha, borderalpha },
-// 	[SchemeSel]  = { OPAQUE, baralpha, borderalpha },
-// };
 
 /* tagging */
 // static const char *tags[] = { "1", "2", "3", "4", "5", "6", "7", "8", "9" };
@@ -74,17 +64,17 @@ static const Rule rules[] = {
 	 */
 	/* class                    instance            title           tags mask     isfloating    monitor */
     { "firefox",                NULL,               NULL,           1<<1,           0,              -1 },
-    { "google-chrome-stable",   NULL,               NULL,           1<<1,           0,              -1 },
     { "obs",                    NULL,               NULL,           1<<4,           0,              -1 },
-    { "qbittorrent",            NULL,               NULL,           1<<5,           0,              -1 },
 
     // float 
     { "qqmusic",                NULL,               NULL,           1<<3,           1,              -1 },
     { "netease-cloud-music",    NULL,               NULL,           1<<3,           1,              -1 },
+    { "xunlei",                 NULL,               NULL,           1<<5,           1,              -1 },
     { "vlc",                    NULL,               NULL,           0,              1,              -1 },
     { "feh",                    NULL,               NULL,           0,              1,              -1 },
     { "wemeet",                 NULL,               NULL,           0,              1,              -1 },
     { "dbeaver",                NULL,               NULL,           0,              1,              -1 },
+    //wps
     { "wps",                    NULL,               NULL,           0,              1,              -1 },
     { "wpp",                    NULL,               NULL,           0,              1,              -1 },
     { "et",                     NULL,               NULL,           0,              1,              -1 },
@@ -129,16 +119,19 @@ static const char *dmenucmd[] = {
     "-sf", col_black, NULL
 };
 static const char *termcmd[]  = { "st", NULL };
+static const char *floatcmd[]  = { "st", "-i", "-g", "80x25+550+150", NULL};
 static const char *lockcmd[] = { "slock", NULL };
+static const char *roficmd[] = { "rofi", "-combi-modi", "drun,run,ssh", "-show", "combi", "-show-icons", "-theme", "onedark", "-font", "hack 14", NULL };
 
-static const char *floatcmd[] = { "./.dwm/floatcmd.sh", NULL };
 // 调节音量
 // static const char *upvol[] = {"./.dwm/vol-up.sh", NULL};
 // static const char *downvol[] = {"./.dwm/vol-down.sh",NULL};
 // static const char *mutevol[] = {"./.dwm/vol-toggle.sh",NULL};
+
 // 调节亮度
 // static const char *upbright[] = {"./.dwm/backlight-up.sh",NULL};
 // static const char *downbright[] = {"./.dwm/backlight-down.sh",NULL};
+
 // 打开关闭触摸板
 static const char *toggleTouchpad[] = {"./.dwm/touchpad-toggle.sh",NULL};
 // 截图
@@ -146,7 +139,7 @@ static const char *flameshot[] = {"flameshot", "gui", NULL};
 
 static Key keys[] = {
 	/* modifier                     key        function        argument */
-	{ MODKEY,                       XK_d,      spawn,          {.v = dmenucmd} },
+	{ MODKEY,                       XK_d,      spawn,          {.v = roficmd} },
 	{ MODKEY,                       XK_Return, spawn,          {.v = termcmd} },
 	{ MODKEY,                       XK_b,      togglebar,      {0} },
 	{ MODKEY|ShiftMask,             XK_b,      toggleextrabar, {0} },
