@@ -1,18 +1,18 @@
 #!/bin/bash
 
-~/.dwm/go-status &
+nohup go-status &
 /bin/bash ~/.fehbg &
 xautolock -time 30 -locker slock &
-picom -i 0.95 -b --corner-radius 10
+picom -i 0.95 -b --corner-radius 5
 
 mate-power-manager &
+fcitx5 -d &
 
-sleep 0.5
+sleep 1
 
 nm-applet &
 volumeicon &
 
-sleep 0.5
+sleep 1
 
-fcitx5 -d
 qv2ray &
