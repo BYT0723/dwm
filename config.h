@@ -1,8 +1,8 @@
 // #include <X11/XF86keysym.h>
 
 /* appearance */
-static const unsigned int borderpx  = 0;        /* border pixel of windows */
-static const Gap default_gap        = {.isgap = 1, .realgap = 10, .gappx = 10};
+static const unsigned int borderpx  = 2;        /* border pixel of windows */
+static const Gap default_gap        = {.isgap = 1, .realgap = 1, .gappx = 10};
 static const unsigned int snap      = 32;       /* snap pixel */
 static const unsigned int systraypinning = 0;   /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
 static const unsigned int systrayonleft = 0;   	/* 0: systray in the right corner, >0: systray on left of status text */
@@ -65,6 +65,7 @@ static const Rule rules[] = {
 	/* class                    instance            title           tags mask     isfloating    monitor */
     { "firefox",                NULL,               NULL,           1<<1,           0,              -1 },
     { "obs",                    NULL,               NULL,           1<<4,           0,              -1 },
+    { "qBittorrent",            NULL,               NULL,           1<<5,           0,              -1 },
 
     // float 
     { "qqmusic",                NULL,               NULL,           1<<3,           1,              -1 },
