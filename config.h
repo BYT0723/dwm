@@ -20,7 +20,7 @@ static const int showbar            = 1;     /* 0 means no bar */
 static const int topbar             = 1;     /* 0 means bottom bar */
 static const Bool viewontag         = True;     /* Switch view on tag switch */
 static const char *fonts[]          = {
-  "Source Code Pro:style=Semibold:size=10",
+  "Source Code Pro:style=Medium:size=10",
   "NotoSansMono Nerd Font:style=Medium:size=10",
   "文泉驿等宽微米黑:style=Regular:size=10"
 };
@@ -180,10 +180,10 @@ static Key keys[] = {
 	{ MODKEY|ShiftMask,             XK_h,      hide,           {0} },
 	{ MODKEY,                       XK_v,      incnmaster,     {.i = +1 } },
 	{ MODKEY,                       XK_s,      incnmaster,     {.i = -1 } },
-	{ MODKEY,                       XK_h,      setmfact,       {.f = -0.05} },
-	{ MODKEY,                       XK_l,      setmfact,       {.f = +0.05} },
-	{ MODKEY|ControlMask,           XK_h,      setcfact,       {.f = +0.25} },
-	{ MODKEY|ControlMask,           XK_l,      setcfact,       {.f = -0.25} },
+	{ MODKEY,                       XK_h,      setmfact,       {.f = -0.01} },
+	{ MODKEY,                       XK_l,      setmfact,       {.f = +0.01} },
+	{ MODKEY|ControlMask,           XK_h,      setcfact,       {.f = +0.05} },
+	{ MODKEY|ControlMask,           XK_l,      setcfact,       {.f = -0.05} },
 	{ MODKEY|ControlMask,           XK_o,      setcfact,       {.f =  0.00} },
 	{ MODKEY|Mod4Mask,              XK_u,      incrgaps,       {.i = +1 } },
 	{ MODKEY|Mod4Mask|ShiftMask,    XK_u,      incrgaps,       {.i = -1 } },
