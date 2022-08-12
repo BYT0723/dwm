@@ -76,9 +76,6 @@
 #define VERSION_MINOR               0
 #define XEMBED_EMBEDDED_VERSION (VERSION_MAJOR << 16) | VERSION_MINOR
 
-#define GAP_TOGGLE 100
-#define GAP_RESET 0
-
 /* enums */
 enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
 enum { SchemeNorm, SchemeSel, SchemeHid, SchemeWarn, SchemeUrgent }; /* color schemes */
@@ -149,12 +146,6 @@ typedef struct {
   void (*arrange)(Monitor *);
 } Layout;
 
-typedef struct {
-  int isgap;
-  int realgap;
-  int gappx;
-} Gap;
-
 typedef struct Pertag Pertag;
 struct Monitor {
   char ltsymbol[16];
@@ -166,7 +157,6 @@ struct Monitor {
   int bt;             /* number of tasks */
   int mx, my, mw, mh; /* screen size */
   int wx, wy, ww, wh; /* window area  */
-  Gap *gap;
   unsigned int seltags;
   unsigned int sellt;
   unsigned int tagset[2];
@@ -228,7 +218,6 @@ static void focusmon(const Arg *arg);
 static void focusstackvis(const Arg *arg);
 static void focusstackhid(const Arg *arg);
 static void focusstack(int inc, int vis);
-static void gap_copy(Gap *to, const Gap *from);
 static Atom getatomprop(Client *c, Atom prop);
 static int getrootptr(int *x, int *y);
 static long getstate(Window w);
@@ -267,7 +256,6 @@ static void sendmon(Client *c, Monitor *m);
 static void setclientstate(Client *c, long state);
 static void setfocus(Client *c);
 static void setfullscreen(Client *c, int fullscreen);
-static void setgaps(const Arg *arg);
 static void fullscreen(const Arg *arg);
 static void setlayout(const Arg *arg);
 static void setmfact(const Arg *arg);
@@ -795,8 +783,6 @@ Monitor *createmon(void) {
   m->nmaster = nmaster;
   m->showbar = showbar;
   m->topbar = topbar;
-  m->gap = malloc(sizeof(Gap));
-  gap_copy(m->gap, &default_gap);
   m->lt[0] = &layouts[0];
   m->lt[1] = &layouts[1 % LENGTH(layouts)];
   strncpy(m->ltsymbol, layouts[0].symbol, sizeof m->ltsymbol);
@@ -1917,30 +1903,6 @@ void fullscreen(const Arg *arg) {
   togglebar(arg);
 }
 
-void gap_copy(Gap *to, const Gap *from) {
-  to->isgap = from->isgap;
-  to->realgap = from->realgap;
-  to->gappx = from->gappx;
-}
-
-void setgaps(const Arg *arg) {
-  Gap *p = selmon->gap;
-  switch (arg->i) {
-  case GAP_TOGGLE:
-    p->isgap = 1 - p->isgap;
-    break;
-  case GAP_RESET:
-    gap_copy(p, &default_gap);
-    break;
-  default:
-    p->realgap += arg->i;
-    p->isgap = 1;
-  }
-  p->realgap = MAX(p->realgap, 0);
-  p->gappx = p->realgap * p->isgap;
-  arrange(selmon);
-}
-
 void setlayout(const Arg *arg) {
   if (!arg || !arg->v || arg->v != selmon->lt[selmon->sellt])
     selmon->sellt = selmon->pertag->sellts[selmon->pertag->curtag] ^= 1;
@@ -2140,21 +2102,18 @@ void tile(Monitor *m) {
   if (n > m->nmaster)
     mw = m->nmaster ? m->ww * m->mfact : 0;
   else
-    mw = m->ww - m->gap->gappx;
-  for (i = 0, my = ty = m->gap->gappx, c = nexttiled(m->clients); c;
-       c = nexttiled(c->next), i++)
+    mw = m->ww;
+  for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
     if (i < m->nmaster) {
-      h = (m->wh - my) / (MIN(n, m->nmaster) - i) - m->gap->gappx;
-      resize(c, m->wx + m->gap->gappx, m->wy + my,
-             mw - (2 * c->bw) - m->gap->gappx, h - (2 * c->bw), 0);
-      if (my + HEIGHT(c) + m->gap->gappx < m->wh)
-        my += HEIGHT(c) + m->gap->gappx;
+        h = (m->wh - my) / (MIN(n, m->nmaster) - i);
+        resize(c, m->wx, m->wy + my, mw - (2*c->bw), h - (2*c->bw), 0);
+        if (my + HEIGHT(c) < m->wh)
+            my += HEIGHT(c);
     } else {
-      h = (m->wh - ty) / (n - i) - m->gap->gappx;
-      resize(c, m->wx + mw + m->gap->gappx, m->wy + ty,
-             m->ww - mw - (2 * c->bw) - 2 * m->gap->gappx, h - (2 * c->bw), 0);
-      if (ty + HEIGHT(c) + m->gap->gappx < m->wh)
-        ty += HEIGHT(c) + m->gap->gappx;
+        h = (m->wh - ty) / (n - i);
+        resize(c, m->wx + mw, m->wy + ty, m->ww - mw - (2*c->bw), h - (2*c->bw), 0);
+        if (ty + HEIGHT(c) < m->wh)
+            ty += HEIGHT(c);
     }
 }
 
