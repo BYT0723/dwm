@@ -2,7 +2,7 @@
 
 /* appearance */
 static const unsigned int borderpx  = 2;        /* border pixel of windows */
-static const Gap default_gap        = {.isgap = 1, .realgap = 1, .gappx = 10};
+static const Gap default_gap        = {.isgap = 0, .realgap = 1, .gappx = 10};
 static const unsigned int snap      = 32;       /* snap pixel */
 static const unsigned int systraypinning = 0;   /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
 static const unsigned int systrayonleft = 0;   	/* 0: systray in the right corner, >0: systray on left of status text */
@@ -11,13 +11,11 @@ static const int systraypinningfailfirst = 1;   /* 1: if pinning fails, display 
 static const int showsystray        = 1;     /* 0 means no systray */
 static const int showbar            = 1;     /* 0 means no bar */
 static const int topbar             = 1;     /* 0 means bottom bar */
-static const int extrabar           = 1;        /* 0 means no extra bar */
 static const Bool viewontag         = True;     /* Switch view on tag switch */
-static const char statussep         = ';';      /* separator between statuses */
 static const char *fonts[]          = {
-  "Source Code Pro:style=Semibold:size=12",
-  "NotoSansMono Nerd Font:style=Medium:size=12",
-  "文泉驿等宽微米黑:style=Regular:size=12"
+  "Source Code Pro:style=Semibold:size=10",
+  "NotoSansMono Nerd Font:style=Medium:size=10",
+  "文泉驿等宽微米黑:style=Regular:size=10"
 };
 static const char dmenufont[]       = "Source Code Pro:style=Semibold:size=12";
 static const char col_gray1[]       = "#222222";
@@ -143,13 +141,12 @@ static Key keys[] = {
 	{ MODKEY,                       XK_d,      spawn,          {.v = roficmd} },
 	{ MODKEY,                       XK_Return, spawn,          {.v = termcmd} },
 	{ MODKEY,                       XK_b,      togglebar,      {0} },
-	{ MODKEY|ShiftMask,             XK_b,      toggleextrabar, {0} },
-  { MODKEY,                       XK_n,      spawn,          {.v = floatcmd} },
-  { MODKEY,                       XK_a,      spawn,          {.v = flameshot} },
-  { MODKEY|ShiftMask,             XK_l,      spawn,          {.v = lockcmd} },
-  { MODKEY,                       XK_space,  spawn,          {.v = toggleTouchpad} },
+    { MODKEY,                       XK_n,      spawn,          {.v = floatcmd} },
+    { MODKEY,                       XK_a,      spawn,          {.v = flameshot} },
+    { MODKEY|ShiftMask,             XK_l,      spawn,          {.v = lockcmd} },
+    { MODKEY,                       XK_space,  spawn,          {.v = toggleTouchpad} },
 	// { 0,                            XF86XK_AudioRaiseVolume,    spawn,          {.v = upvol   } },
- //  { 0,                            XF86XK_AudioLowerVolume,    spawn,          {.v = downvol } },
+    // { 0,                            XF86XK_AudioLowerVolume,    spawn,          {.v = downvol } },
 	// { 0,                            XF86XK_AudioMute,           spawn,          {.v = mutevol } },
 	// { 0,                            XF86XK_MonBrightnessUp,     spawn,          {.v = upbright } },
 	// { 0,                            XF86XK_MonBrightnessDown,   spawn,          {.v = downbright } },
@@ -203,9 +200,6 @@ static Button buttons[] = {
 	{ ClkWinTitle,          0,              Button1,        togglewin,      {0} },
 	{ ClkWinTitle,          0,              Button2,        zoom,           {0} },
 	{ ClkStatusText,        0,              Button2,        spawn,          {.v = termcmd } },
-	{ ClkExBarLeftStatus,   0,              Button2,        spawn,          {.v = termcmd } },
-	{ ClkExBarMiddle,       0,              Button2,        spawn,          {.v = termcmd } },
-	{ ClkExBarRightStatus,  0,              Button2,        spawn,          {.v = termcmd } },
 	{ ClkClientWin,         MODKEY,         Button1,        movemouse,      {0} },
 	{ ClkClientWin,         MODKEY,         Button2,        togglefloating, {0} },
 	{ ClkClientWin,         MODKEY,         Button3,        resizemouse,    {0} },

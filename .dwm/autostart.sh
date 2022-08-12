@@ -17,5 +17,5 @@ volumeicon &
 sleep 1
 
 # 其他工具
-qv2ray &
+# qv2ray &
 fcitx5 -d &
