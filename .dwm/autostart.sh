@@ -1,7 +1,7 @@
 #!/bin/bash
 
 nohup go-status &
-/bin/bash ~/.fehbg &
+/bin/bash ~/.dwm/background.sh &
 xautolock -time 30 -locker slock &
 picom -i 0.95 -b --corner-radius 5
 
