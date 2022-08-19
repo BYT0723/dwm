@@ -1,11 +1,11 @@
 // #include <X11/XF86keysym.h>
 
 /* appearance */
-static const unsigned int borderpx  = 2;        /* border pixel of windows */
+static const unsigned int borderpx  = 0;        /* border pixel of windows */
 static const unsigned int snap      = 32;       /* snap pixel */
 
-static const unsigned int gappih    = 0;       /* horiz inner gap between windows */
-static const unsigned int gappiv    = 0;       /* vert inner gap between windows */
+static const unsigned int gappih    = 5;       /* horiz inner gap between windows */
+static const unsigned int gappiv    = 5;       /* vert inner gap between windows */
 static const unsigned int gappoh    = 5;       /* horiz outer gap between windows and screen edge */
 static const unsigned int gappov    = 5;       /* vert outer gap between windows and screen edge */
 static       int smartgaps          = 0;        /* 1 means no outer gap when there is only one window */
@@ -25,37 +25,17 @@ static const char *fonts[]          = {
   "文泉驿等宽微米黑:style=Regular:size=10"
 };
 static const char dmenufont[]       = "Source Code Pro:style=Semibold:size=12";
-static const char col_gray1[]       = "#222222";
-static const char col_gray2[]       = "#444444";
-static const char col_gray3[]       = "#bbbbbb";
-static const char col_gray4[]       = "#ffffff";
-static const char col_border[]      = "#42A5F5";
-
-// solarized theme
-static const char col_black[]       ="#073642";  /*  0: black    */
-static const char col_red[]         ="#dc322f";  /*  1: red      */
-static const char col_green[]       ="#859900";  /*  2: green    */
-static const char col_yellow[]      ="#b58900";  /*  3: yellow   */
-static const char col_blue[]        ="#268bd2";  /*  4: blue     */
-static const char col_magenta[]     ="#d33682";  /*  5: magenta  */
-static const char col_cyan[]        ="#2aa198";  /*  6: cyan     */
-static const char col_white[]       ="#eee8d5";  /*  7: white    */
-static const char col_brblack[]     ="#002b36";  /*  8: brblack  */
-static const char col_brred[]       ="#cb4b16";  /*  9: brred    */
-static const char col_brgreen[]     ="#586e75";  /* 10: brgreen  */
-static const char col_bryellow[]    ="#657b83";  /* 11: bryellow */
-static const char col_brblue[]      ="#839496";  /* 12: brblue   */
-static const char col_brmagenta[]   ="#6c71c4";  /* 13: brmagenta*/
-static const char col_brcyan[]      ="#93a1a1";  /* 14: brcyan   */
-static const char col_brwhite[]     ="#fdf6e3";  /* 15: brwhite  */
+static const char col_gray1[]       = "#eeeeee";
+static const char col_gray2[]       = "#bbbbbb";
+static const char col_gray3[]       = "#999999";
+static const char col_gray4[]       = "#444444";
+static const char col_gray5[]       = "#222222";
+static const char col_cyan[]        = "#005577";
 
 static const char *colors[][3]      = {
 	/*               fg         bg         border   */
-	[SchemeNorm] = { col_blue, col_black, col_black },
-	[SchemeSel]  = { col_black, col_cyan,  col_cyan  },
-	[SchemeHid]  = { col_cyan,  col_black, col_cyan  },   // hidden
-	[SchemeWarn] =	 { col_black, col_yellow, col_red },  // warn
-	[SchemeUrgent]=	 { col_black, col_red,    col_red },  //urgent
+	[SchemeNorm] = { col_gray5, col_gray1, col_gray2 },
+	[SchemeSel]  = { col_gray5, col_gray3, col_gray2 },
 };
 
 /* tagging */
@@ -77,6 +57,7 @@ static const Rule rules[] = {
     { "netease-cloud-music",    NULL,               NULL,           1<<3,           1,              -1 },
     { "xunlei",                 NULL,               NULL,           1<<5,           1,              -1 },
     { "vlc",                    NULL,               NULL,           0,              1,              -1 },
+    { "mpv",                    NULL,               NULL,           0,              1,              -1 },
     { "feh",                    NULL,               NULL,           0,              1,              -1 },
     { "wemeet",                 NULL,               NULL,           0,              1,              -1 },
     { "dbeaver",                NULL,               NULL,           0,              1,              -1 },
@@ -98,6 +79,7 @@ static const int lockfullscreen = 1; /* 1 will force focus on the fullscreen win
 static const Layout layouts[] = {
     /* symbol     arrange function */
 	{ "﬿ ",      tile },    /* first entry is default */
+	{ "禎",      NULL },    /* no layout function means floating behavior */
 	{ " ",      monocle },
 	{ "[@]",     spiral },
 	{ "[\\]",    dwindle },
@@ -110,7 +92,6 @@ static const Layout layouts[] = {
 	{ ":::",     gaplessgrid },
 	{ "|M|",     centeredmaster },
 	{ ">M>",     centeredfloatingmaster },
-	{ "禎",      NULL },    /* no layout function means floating behavior */
 	{ NULL,      NULL },
 };
 
@@ -133,11 +114,7 @@ static const char *dmenucmd[] = {
     // "-l","10",
     "-p",">>> ",
     "-m", dmenumon,
-    "-fn", dmenufont,
-    "-nb", col_black,
-    "-nf", col_blue,
-    "-sb", col_cyan,
-    "-sf", col_black, NULL
+    "-fn", dmenufont, NULL
 };
 static const char *termcmd[]  = { "st", NULL };
 static const char *floatcmd[]  = { "st", "-i", "-g", "80x25+550+150", NULL};
