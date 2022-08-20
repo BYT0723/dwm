@@ -118,17 +118,9 @@ static const char *dmenucmd[] = {
 };
 static const char *termcmd[]  = { "st", NULL };
 static const char *floatcmd[]  = { "st", "-i", "-g", "80x25+550+150", NULL};
-static const char *lockcmd[] = { "slock", NULL };
 static const char *roficmd[] = { "./.dwm/rofi.sh", NULL };
-
-// 调节音量
-// static const char *upvol[] = {"./.dwm/vol-up.sh", NULL};
-// static const char *downvol[] = {"./.dwm/vol-down.sh",NULL};
-// static const char *mutevol[] = {"./.dwm/vol-toggle.sh",NULL};
-
-// 调节亮度
-// static const char *upbright[] = {"./.dwm/backlight-up.sh",NULL};
-// static const char *downbright[] = {"./.dwm/backlight-down.sh",NULL};
+static const char *powermenu[] = { "./.dwm/powermenu.sh", NULL };
+static const char *mpdcmd[] = { "./.dwm/mpd.sh", NULL };
 
 // 打开关闭触摸板
 static const char *toggleTouchpad[] = {"./.dwm/touchpad-toggle.sh",NULL};
@@ -142,13 +134,9 @@ static Key keys[] = {
 	{ MODKEY,                       XK_b,      togglebar,      {0} },
     { MODKEY,                       XK_n,      spawn,          {.v = floatcmd} },
     { MODKEY,                       XK_a,      spawn,          {.v = flameshot} },
-    { MODKEY|ShiftMask,             XK_l,      spawn,          {.v = lockcmd} },
+    { MODKEY|ShiftMask,             XK_m,      spawn,          {.v = mpdcmd} },
+	{ MODKEY|ControlMask,           XK_q,      spawn,          {.v = powermenu} },
     { MODKEY,                       XK_space,  spawn,          {.v = toggleTouchpad} },
-	// { 0,                            XF86XK_AudioRaiseVolume,    spawn,          {.v = upvol   } },
-    // { 0,                            XF86XK_AudioLowerVolume,    spawn,          {.v = downvol } },
-	// { 0,                            XF86XK_AudioMute,           spawn,          {.v = mutevol } },
-	// { 0,                            XF86XK_MonBrightnessUp,     spawn,          {.v = upbright } },
-	// { 0,                            XF86XK_MonBrightnessDown,   spawn,          {.v = downbright } },
 	{ MODKEY,                       XK_j,      focusstackvis,  {.i = +1 } },
 	{ MODKEY,                       XK_k,      focusstackvis,  {.i = -1 } },
 	{ MODKEY|ShiftMask,             XK_j,      focusstackhid,  {.i = +1 } },
@@ -202,7 +190,7 @@ static Key keys[] = {
 	TAGKEYS(                        XK_7,                      6)
 	TAGKEYS(                        XK_8,                      7)
 	TAGKEYS(                        XK_9,                      8)
-	{ MODKEY|ControlMask,           XK_q,      quit,           {0} },
+	// { MODKEY|ControlMask,           XK_q,      quit,           {0} },
 };
 
 /* button definitions */
