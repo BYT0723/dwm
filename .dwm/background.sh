@@ -1,1 +1,1 @@
-xwinwrap -ov -g 1920x1080+0+0 -- mpv -wid WID /home/tao/Desktop/Wallpapers/video/彼端.mp4 --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --input-conf=/home/tao/.dwm/wallpaperKeyMap.conf --hwdec
+feh --no-fehbg --bg-scale /home/tao/Desktop/Wallpapers/common/wallhaven-3z32j3_1920x1080.png

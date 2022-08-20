@@ -119,7 +119,7 @@ static const char *dmenucmd[] = {
 static const char *termcmd[]  = { "st", NULL };
 static const char *floatcmd[]  = { "st", "-i", "-g", "80x25+550+150", NULL};
 static const char *lockcmd[] = { "slock", NULL };
-static const char *roficmd[] = { "rofi", "-combi-modi", "drun,run,ssh", "-show", "combi", "-show-icons", "-theme", "onedark", "-font", "hack 14", NULL };
+static const char *roficmd[] = { "./.dwm/rofi.sh", NULL };
 
 // 调节音量
 // static const char *upvol[] = {"./.dwm/vol-up.sh", NULL};
