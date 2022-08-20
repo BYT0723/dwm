@@ -1,7 +1,7 @@
 // #include <X11/XF86keysym.h>
 
 /* appearance */
-static const unsigned int borderpx  = 0;        /* border pixel of windows */
+static const unsigned int borderpx  = 2;        /* border pixel of windows */
 static const unsigned int snap      = 32;       /* snap pixel */
 
 static const unsigned int gappih    = 5;       /* horiz inner gap between windows */
@@ -25,17 +25,17 @@ static const char *fonts[]          = {
   "文泉驿等宽微米黑:style=Regular:size=10"
 };
 static const char dmenufont[]       = "Source Code Pro:style=Semibold:size=12";
+
 static const char col_gray1[]       = "#eeeeee";
 static const char col_gray2[]       = "#bbbbbb";
 static const char col_gray3[]       = "#999999";
 static const char col_gray4[]       = "#444444";
 static const char col_gray5[]       = "#222222";
 static const char col_cyan[]        = "#005577";
-
 static const char *colors[][3]      = {
 	/*               fg         bg         border   */
-	[SchemeNorm] = { col_gray5, col_gray1, col_gray2 },
-	[SchemeSel]  = { col_gray5, col_gray3, col_gray2 },
+	[SchemeNorm] = { col_gray5, col_gray1, col_gray5 },
+	[SchemeSel]  = { col_gray5, col_gray3, col_cyan },
 };
 
 /* tagging */
