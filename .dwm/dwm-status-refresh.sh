@@ -26,10 +26,10 @@ function get_velocity {
 	if [ $velKB -gt 1000 ]
 	then
 		# echo $(echo "scale=2; $velKB/1024" | bc)M/s
-    printf "%.1fM/s" $(echo "scale=1; $velKB/1024" | bc)
+    printf "%.1f M/s" $(echo "scale=1; $velKB/1024" | bc)
 	else
 		# echo ${velKB}K/s
-    printf "%3dK/s" ${velKB}
+    printf "%3d K/s" ${velKB}
 	fi
 }
 
@@ -78,8 +78,8 @@ print_cpu(){
   b=(`cat /proc/stat | grep -E "cpu\b" | awk -v total=0 '{$1="";for(i=2;i<=NF;i++){total+=$i};used=$2+$3+$4+$7+$8 }END{print total,used}'`)
   # cpuload=(`cat /proc/loadavg | awk '{print $1}'`)
   cpu_usage=$(((${b[1]}-${a[1]})*100/(${b[0]}-${a[0]})))
-  # echo -e "${cpu_usage}%, $cpuload, $(print_temp)"
-  printf "%2d%% $(print_temp)" ${cpu_usage}
+  # echo -e "${cpu_usage}%, $cpuload, $(print_temp)"
+  printf "%2d%% $(print_temp)" ${cpu_usage}
 }
 
 print_temp(){
@@ -135,8 +135,12 @@ songName() {
 
 
 print_disk(){
-  disk_root=$(df -h | grep /dev/sda2 |awk '{print $4}');
-  echo -e "$disk_root "
+  disk_root=$(df -h | grep /dev/sda2 | awk '{print $4}');
+  icon="﫭"
+  if [[ $(echo $disk_root | awk -F 'G' '{print $0}') -le 10 ]]; then
+    icon=""
+  fi
+  echo -e "﫭$disk_root "
 }
 
 
@@ -231,7 +235,7 @@ print_speed(){
   if [ $transmitted_bytes -ne $old_transmitted_bytes ]; then
     transIcon=""
   fi
-  echo -e "龍${recvIcon}$vel_recv ${transIcon}$vel_trans "
+  echo -e "龍 ${recvIcon}$vel_recv ${transIcon}$vel_trans "
 }
 
 xsetroot -name " $(print_speed) $(print_cpu)  $(print_mem)  $(print_disk)$(print_date)"
