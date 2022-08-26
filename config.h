@@ -1,7 +1,7 @@
 // #include <X11/XF86keysym.h>
 
 /* appearance */
-static const unsigned int borderpx  = 2;        /* border pixel of windows */
+static const unsigned int borderpx  = 0;        /* border pixel of windows */
 static const unsigned int snap      = 32;       /* snap pixel */
 
 static const unsigned int gappih    = 5;       /* horiz inner gap between windows */
@@ -56,6 +56,7 @@ static const Rule rules[] = {
     { "qqmusic",                NULL,               NULL,           1<<3,           1,              -1 },
     { "netease-cloud-music",    NULL,               NULL,           1<<3,           1,              -1 },
     { "xunlei",                 NULL,               NULL,           1<<5,           1,              -1 },
+    { "PCManFM",                NULL,               NULL,           0,              1,              -1 },
     { "vlc",                    NULL,               NULL,           0,              1,              -1 },
     { "mpv",                    NULL,               NULL,           0,              1,              -1 },
     { "feh",                    NULL,               NULL,           0,              1,              -1 },

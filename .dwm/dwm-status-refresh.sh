@@ -42,14 +42,14 @@ old_time=$now
 print_net(){
   lan=$(ip addr | grep 'enp0s20f0u4u3'| grep 'inet'| awk '{print $2}')
   if [[ "$lan" != "" ]]; then 
-    echo -e "\x01${lan} "
+    echo -e "${lan} "
   fi
 }
 
 print_wlan(){
   wlan=$(ip addr | grep 'wlp2s0'| grep 'inet'| awk '{print $2}')
   if [[ "$wlan" != "" ]]; then
-    echo -e "\x01直${wlan} "
+    echo -e "直${wlan} "
   fi
 }
 
@@ -65,9 +65,9 @@ print_mem(){
     # echo -e "$mem.${memdec}G"
 
     mem=$( echo "scale=1;${mem}/1024" | bc )
-    echo -e "\x02 ${mem}G"
+    echo -e "${mem}G"
   else
-    echo -e "\x02 ${mem}M"
+    echo -e "${mem}M"
   fi
 }
 
@@ -76,9 +76,10 @@ print_cpu(){
   a=(`cat /proc/stat | grep -E "cpu\b" | awk -v total=0 '{$1="";for(i=2;i<=NF;i++){total+=$i};used=$2+$3+$4+$7+$8 }END{print total,used}'`)
   sleep 1
   b=(`cat /proc/stat | grep -E "cpu\b" | awk -v total=0 '{$1="";for(i=2;i<=NF;i++){total+=$i};used=$2+$3+$4+$7+$8 }END{print total,used}'`)
-  cpuload=(`cat /proc/loadavg | awk '{print $1}'`)
+  # cpuload=(`cat /proc/loadavg | awk '{print $1}'`)
   cpu_usage=$(((${b[1]}-${a[1]})*100/(${b[0]}-${a[0]})))
-  echo -e "${cpu_usage}%, $cpuload, $(print_temp)"
+  # echo -e "${cpu_usage}%, $cpuload, $(print_temp)"
+  printf "%2d%% $(print_temp)" ${cpu_usage}
 }
 
 print_temp(){
@@ -89,7 +90,7 @@ print_temp(){
 
   index=$(( temp / 20 ))
   icon=${icons[$index]}
-  echo -e "\x04 ${icon}${temp}°C"
+  echo -e "${icon}${temp}°C"
 }
 
 print_mpd() {
@@ -135,7 +136,7 @@ songName() {
 
 print_disk(){
   disk_root=$(df -h | grep /dev/sda2 |awk '{print $4}');
-  echo -e "\x01 $disk_root "
+  echo -e "$disk_root "
 }
 
 
@@ -147,7 +148,7 @@ get_time_until_charged() {
   battery_remaining_hour=$(acpi -b | grep 'remaining' | awk '{print $5}' | awk -F: '{print $1}')
   battery_remaining_minute=$(acpi -b | grep 'remaining' | awk '{print $5}' | awk -F: '{print $2}')
 
-  if [ $battery_remaining_hour -gt 0 ]; then
+  if [[ $battery_remaining_hour -gt 0 ]]; then
     printf "%.1fh" $(echo "scale=1; $battery_remaining_hour + $battery_remaining_minute / 60" | bc)
   else
     printf "%dm" ${battery_remaining_minute}
@@ -167,9 +168,9 @@ print_bat(){
 
   index=$(( $remain / 10 ))
 	if $(acpi -b | grep "Battery 0"| grep --quiet Charging);then
-    echo -e "\x04 ${chargIcons[$index]}${remain} "
+    echo -e "${chargIcons[$index]}${remain} "
   else
-    echo -e "\x04 ${icons[$index]}${remain}($(get_time_until_charged)) "
+    echo -e "${icons[$index]}${remain}($(get_time_until_charged)) "
   fi
 }
 
@@ -181,7 +182,7 @@ print_bright(){
   percent=$(( (now * 100) / maxBright))
   index=$(( percent / 34 ))
   icon=${icons[$index]}
-  echo -e "\x02 ${icon}${percent} "
+  echo -e "${icon}${percent} "
 }
 
 print_vol(){
@@ -195,11 +196,10 @@ print_vol(){
   then
     icon="ﱝ"
   fi
-  echo -e "\x01 ${icon}${volume} "
+  echo -e "${icon}${volume} "
 }
 
 print_date(){
-  printf "\\x01"
   date '+ %m-%d(%a) %H:%M'
   # date '+%m/%d %H:%M'
   # date '+[%B.%d %H:%M]'
@@ -209,7 +209,7 @@ print_date(){
 print_note(){
   # top=$(cat ~/.note | grep \# | head -n 1 | awk '{ print $2 }')
   top=$(cat ~/.note | grep \# | awk '{ print $2 }' | tr "\n" "|")
-  echo -e "\x05${top}"
+  echo -e "${top}"
 }
 
 LOC=$(readlink -f "$0")
@@ -231,12 +231,10 @@ print_speed(){
   if [ $transmitted_bytes -ne $old_transmitted_bytes ]; then
     transIcon=""
   fi
-  echo -e "\x02 龍${recvIcon}$vel_recv ${transIcon}$vel_trans "
+  echo -e "龍${recvIcon}$vel_recv ${transIcon}$vel_trans "
 }
 
-# xsetroot -name "$(print_mpd)$(print_temp)$vel_recv $vel_trans$(print_net)$(print_wlan)$(print_cpu)$(print_mem)$(print_vol)$(print_bat)$(print_date)"
-# xsetroot -name "$(print_temp) $(print_disk) $(print_mem) $(print_date);$(print_note);$(print_wlan)$(print_net)$(print_speed)$(print_vol)$(print_bright)$(print_bat)"
-xsetroot -name "$(print_temp)$(print_mem)$(print_disk);$(print_note);$(print_speed)$(print_date)"
+xsetroot -name " $(print_speed) $(print_cpu)  $(print_mem)  $(print_disk)$(print_date)"
 # Update old values to perform new calculation
 old_received_bytes=$received_bytes
 old_transmitted_bytes=$transmitted_bytes
