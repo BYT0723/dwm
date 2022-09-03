@@ -1,6 +1,6 @@
 #!/bin/bash
 
-nohup go-status &
+# nohup go-status &
 /bin/bash ~/.dwm/dwm-status.sh &
 /bin/bash ~/.dwm/background.sh &
 xautolock -time 30 -locker betterlockscreen &

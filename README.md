@@ -20,12 +20,10 @@ Installed patches are stored in the ```patches``` folder
 ```shell
 dwm-autostart-20210120-cb3f58a.diff
 dwm-awesomebar-20200907-6.2.diff
-dwm-extrabar-6.2-20210930-a786211.diff
-dwm-fullgaps-toggle-20200830.diff
+dwm-cfacts-vanitygaps-6.2_combo.diff
 dwm-fullscreen-6.2.diff
 dwm-hide_vacant_tags-6.3.diff
 dwm-pertag-20200914-61bb8b2.diff
-dwm-statuscolors-20220322-bece862.diff
 dwm-systray-6.3.diff
 dwm-viewontag-20210312-61bb8b2.diff
 ```

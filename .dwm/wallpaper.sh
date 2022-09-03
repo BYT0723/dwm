@@ -27,8 +27,8 @@ esac
 
 
 if [[ $Type == "video" ]]; then
-  nohup xwinwrap -ov -g 1920x1080+0+0 -- mpv -wid WID "$1" --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --input-conf=/home/tao/.dwm/wallpaperKeyMap.conf --hwdec&
-  echo "xwinwrap -ov -g 1920x1080+0+0 -- mpv -wid WID "$1" --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --input-conf=/home/tao/.dwm/wallpaperKeyMap.conf --hwdec" > ~/.dwm/background.sh
+  nohup xwinwrap -ov -g 1920x1080+0+0 -- mpv -wid WID "$1" --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --no-input-default-bindings --input-conf=/home/tao/.dwm/wallpaperKeyMap.conf --hwdec&
+  echo "xwinwrap -ov -g 1920x1080+0+0 -- mpv -wid WID "$1" --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --no-input-default-bindings --input-conf=/home/tao/.dwm/wallpaperKeyMap.conf --hwdec" > ~/.dwm/background.sh
 elif [[ $Type == "img" ]]; then
   feh --bg-scale "$1" 
   echo "feh --no-fehbg --bg-scale "$1 > ~/.dwm/background.sh
