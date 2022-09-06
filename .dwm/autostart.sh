@@ -6,17 +6,16 @@
 xautolock -time 30 -locker betterlockscreen &
 picom -i 0.95 -b --corner-radius 5
 
-# 电池管理
+# 系统操作
 mate-power-manager &
 
 sleep 1
 
-# 系统操作
 nm-applet &
 volumeicon &
 
 sleep 1
 
 # 其他工具
-fcitx5 -d &
+fcitx5 -d
 trojan -c ~/APP/config.json &

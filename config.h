@@ -1,7 +1,7 @@
 // #include <X11/XF86keysym.h>
 
 /* appearance */
-static const unsigned int borderpx  = 0;        /* border pixel of windows */
+static const unsigned int borderpx  = 2;        /* border pixel of windows */
 static const unsigned int snap      = 32;       /* snap pixel */
 
 static const unsigned int gappih    = 5;       /* horiz inner gap between windows */
@@ -20,22 +20,24 @@ static const int showbar            = 1;     /* 0 means no bar */
 static const int topbar             = 1;     /* 0 means bottom bar */
 static const Bool viewontag         = True;     /* Switch view on tag switch */
 static const char *fonts[]          = {
-  "Source Code Pro:style=Medium:size=10",
-  "NotoSansMono Nerd Font:style=Medium:size=10",
-  "文泉驿等宽微米黑:style=Regular:size=10"
+  "Source Code Pro:style=Medium:size=12",
+  "NotoSansMono Nerd Font:style=Medium:size=12",
+  "文泉驿等宽微米黑:style=Regular:size=12"
 };
 static const char dmenufont[]       = "Source Code Pro:style=Semibold:size=12";
 
 static const char col_gray1[]       = "#eeeeee";
-static const char col_gray2[]       = "#bbbbbb";
+static const char col_gray2[]       = "#aaaaaa";
 static const char col_gray3[]       = "#999999";
 static const char col_gray4[]       = "#444444";
 static const char col_gray5[]       = "#222222";
-static const char col_cyan[]        = "#005577";
+static const char col_black[]       = "#073642";
+static const char col_cyan[]        = "#2aa198";
 static const char *colors[][3]      = {
 	/*               fg         bg         border   */
-	[SchemeNorm] = { col_gray5, col_gray1, col_gray5 },
-	[SchemeSel]  = { col_gray5, col_gray3, col_cyan },
+	[SchemeNorm] = { col_gray5, col_gray1, col_black },
+	[SchemeSel]  = { col_gray5, col_gray2, col_cyan },
+	[SchemeHid]  = { col_gray2, col_gray5, col_cyan },
 };
 
 /* tagging */
@@ -128,6 +130,16 @@ static const char *toggleTouchpad[] = {"./.dwm/touchpad-toggle.sh",NULL};
 // 截图
 static const char *flameshot[] = {"flameshot", "gui", NULL};
 
+/* commands spawned when clicking statusbar, the mouse button pressed is exported as BUTTON */
+static const StatusCmd statuscmds[] = {
+	{ "/home/tao/.dwm/statuscmd.sh date $BUTTON", 1 },           // date
+	{ "/home/tao/.dwm/statuscmd.sh disk-root $BUTTON", 2 },           // disk
+	{ "/home/tao/.dwm/statuscmd.sh memory $BUTTON", 3 },            // memory
+	{ "/home/tao/.dwm/statuscmd.sh cpuInfo $BUTTON", 4 },            // cpu
+	{ "/home/tao/.dwm/statuscmd.sh netSpeed $BUTTON", 5 },          // speed
+};
+static const char *statuscmd[] = { "/bin/sh", "-c", NULL, NULL };
+
 static Key keys[] = {
 	/* modifier                     key        function        argument */
 	{ MODKEY,                       XK_d,      spawn,          {.v = roficmd} },
@@ -182,6 +194,8 @@ static Key keys[] = {
 	{ MODKEY,                       XK_period, focusmon,       {.i = +1 } },
 	{ MODKEY|ShiftMask,             XK_comma,  tagmon,         {.i = -1 } },
 	{ MODKEY|ShiftMask,             XK_period, tagmon,         {.i = +1 } },
+	{ MODKEY,                       XK_s,      show,           {0} },
+	{ MODKEY,                       XK_h,      hide,           {0} },
 	TAGKEYS(                        XK_1,                      0)
 	TAGKEYS(                        XK_2,                      1)
 	TAGKEYS(                        XK_3,                      2)
@@ -202,7 +216,9 @@ static Button buttons[] = {
 	{ ClkTagBar,            MODKEY,         Button3,        toggletag,      {0} },
 	{ ClkWinTitle,          0,              Button1,        togglewin,      {0} },
 	{ ClkWinTitle,          0,              Button2,        zoom,           {0} },
-	{ ClkStatusText,        0,              Button2,        spawn,          {.v = termcmd } },
+	{ ClkStatusText,        0,              Button1,        spawn,          {.v = statuscmd } },
+	{ ClkStatusText,        0,              Button2,        spawn,          {.v = statuscmd } },
+	{ ClkStatusText,        0,              Button3,        spawn,          {.v = statuscmd } },
 	{ ClkClientWin,         MODKEY,         Button1,        movemouse,      {0} },
 	{ ClkClientWin,         MODKEY,         Button2,        togglefloating, {0} },
 	{ ClkClientWin,         MODKEY,         Button3,        resizemouse,    {0} },
