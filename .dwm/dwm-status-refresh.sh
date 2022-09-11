@@ -115,7 +115,7 @@ print_date(){
     # '+ %x(%a) %H:%M'
     # '+%H:%M'
     if [[ $isExp -eq 1 ]]; then
-        date '+ %x(%a) %H:%M'
+        date '+%x(%a) %H:%M'
     else
         date '+%H:%M'
     fi

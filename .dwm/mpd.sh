@@ -11,19 +11,20 @@ theme="$type/$style"
 
 # Theme Elements
 status="`mpc status`"
+textboxPromptColon="  | "
 if [[ -z "$status" ]]; then
 	prompt='Offline'
 	mesg="MPD is Offline"
 else
 	prompt="`mpc -f "%artist%" current`"
-	mesg="`mpc -f "%title%" current` :: `mpc status | grep "#" | awk '{print $3}'`"
+	mesg="`mpc -f "%title%" current` :: `mpc status | grep "#" | awk '{print $3}'`  墳`mpc volume | awk -F ':' '{print $2}'`"
 fi
 
 if [[ ( "$theme" == *'type-1'* ) || ( "$theme" == *'type-3'* ) || ( "$theme" == *'type-5'* ) ]]; then
 	list_col='1'
-	list_row='6'
+	list_row='8'
 elif [[ ( "$theme" == *'type-2'* ) || ( "$theme" == *'type-4'* ) ]]; then
-	list_col='6'
+	list_col='8'
 	list_row='1'
 fi
 
@@ -38,8 +39,10 @@ if [[ "$layout" == 'NO' ]]; then
 	option_2=" Stop"
 	option_3=" Previous"
 	option_4=" Next"
-	option_5=" Repeat"
-	option_6=" Random"
+    option_5="ﱜ Down"
+    option_6="ﱛ Up"
+	option_7=" Repeat"
+	option_8=" Random"
 else
 	if [[ ${status} == *"[playing]"* ]]; then
 		option_1=""
@@ -49,8 +52,10 @@ else
 	option_2=""
 	option_3=""
 	option_4=""
-	option_5=""
-	option_6=""
+    option_5="ﱜ"
+    option_6="ﱛ"
+	option_7=""
+	option_8=""
 fi
 
 # Toggle Actions
@@ -58,19 +63,19 @@ active=''
 urgent=''
 # Repeat
 if [[ ${status} == *"repeat: on"* ]]; then
-    active="-a 4"
+    active="-a 6"
 elif [[ ${status} == *"repeat: off"* ]]; then
-    urgent="-u 4"
+    urgent="-u 6"
 else
-    option_5=" Parsing Error"
+    option_7=" Parsing Error"
 fi
 # Random
 if [[ ${status} == *"random: on"* ]]; then
-    [ -n "$active" ] && active+=",5" || active="-a 5"
+    [ -n "$active" ] && active+=",7" || active="-a 7"
 elif [[ ${status} == *"random: off"* ]]; then
-    [ -n "$urgent" ] && urgent+=",5" || urgent="-u 5"
+    [ -n "$urgent" ] && urgent+=",7" || urgent="-u 7"
 else
-    option_6=" Parsing Error"
+    option_8=" Parsing Error"
 fi
 
 # Rofi CMD
@@ -87,7 +92,7 @@ rofi_cmd() {
 
 # Pass variables to rofi dmenu
 run_rofi() {
-	echo -e "$option_1\n$option_2\n$option_3\n$option_4\n$option_5\n$option_6" | rofi_cmd
+	echo -e "$option_1\n$option_2\n$option_3\n$option_4\n$option_5\n$option_6\n$option_7\n$option_8" | rofi_cmd
 }
 
 # Execute Command
@@ -101,8 +106,12 @@ run_cmd() {
 	elif [[ "$1" == '--opt4' ]]; then
 		mpc -q next && notify-send -u low -t 500 " `mpc current`"
 	elif [[ "$1" == '--opt5' ]]; then
-		mpc -q repeat
+		mpc volume -20 && notify-send -u low -t 500 " `mpc volume`"
 	elif [[ "$1" == '--opt6' ]]; then
+		mpc volume +20 && notify-send -u low -t 500 " `mpc volume`"
+	elif [[ "$1" == '--opt7' ]]; then
+		mpc -q repeat
+	elif [[ "$1" == '--opt8' ]]; then
 		mpc -q random
 	fi
 }
@@ -126,6 +135,12 @@ case ${chosen} in
 		run_cmd --opt5
         ;;
     $option_6)
+		run_cmd --opt6
+        ;;
+    $option_7)
+		run_cmd --opt6
+        ;;
+    $option_8)
 		run_cmd --opt6
         ;;
 esac
