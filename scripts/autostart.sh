@@ -8,6 +8,8 @@ picom --config ~/.dwm/configs/picom.conf -b
 
 # 系统操作
 mate-power-manager &
+# usb mountion manager
+udiskie -t &
 
 sleep 1
 
@@ -18,4 +20,4 @@ sleep 1
 
 # 其他工具
 fcitx5 -d
-trojan -c ~/.dwm/configs/config.json &
+trojan -c ~/.dwm/configs/trojan-cli.json &

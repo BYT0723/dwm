@@ -127,9 +127,9 @@ static const char *dmenucmd[] = {"dmenu_run",
                                  "-p", ">>> ", "-m", dmenumon, "-fn", dmenufont,
                                  NULL};
 static const char *termcmd[] = {"st", NULL};
-static const char *roficmd[] = {"~/.dwm/rofi.sh", NULL};
-static const char *powermenu[] = {"~/.dwm/powermenu.sh", NULL};
-static const char *mpdcmd[] = {"~/.dwm/mpd.sh", NULL};
+static const char *roficmd[] = {"./.dwm/rofi.sh", NULL};
+static const char *powermenu[] = {"./.dwm/powermenu.sh", NULL};
+static const char *mpdcmd[] = {"./.dwm/mpd.sh", NULL};
 
 // 打开关闭触摸板
 static const char *toggleTouchpad[] = {"~/.dwm/touchpad-toggle.sh", NULL};
@@ -139,11 +139,11 @@ static const char *flameshot[] = {"flameshot", "gui", NULL};
 /* commands spawned when clicking statusbar, the mouse button pressed is
  * exported as BUTTON */
 static const StatusCmd statuscmds[] = {
-    {"~/.dwm/statuscmd.sh date $BUTTON", 1},      // date
-    {"~/.dwm/statuscmd.sh disk-root $BUTTON", 2}, // disk
-    {"~/.dwm/statuscmd.sh memory $BUTTON", 3},    // memory
-    {"~/.dwm/statuscmd.sh cpuInfo $BUTTON", 4},   // cpu
-    {"~/.dwm/statuscmd.sh netSpeed $BUTTON", 5},  // speed
+    {"./.dwm/statuscmd.sh date $BUTTON", 1},      // date
+    {"./.dwm/statuscmd.sh disk-root $BUTTON", 2}, // disk
+    {"./.dwm/statuscmd.sh memory $BUTTON", 3},    // memory
+    {"./.dwm/statuscmd.sh cpuInfo $BUTTON", 4},   // cpu
+    {"./.dwm/statuscmd.sh netSpeed $BUTTON", 5},  // speed
 };
 static const char *statuscmd[] = {"/bin/sh", "-c", NULL, NULL};
 
