@@ -15,7 +15,8 @@ sudo make clean install
 ```
 
 ## Patches
-Installed patches are stored in the ```patches``` folder
+
+Installed patches are stored in the `patches` folder
 
 ```shell
 dwm-autostart-20210120-cb3f58a.diff
@@ -29,15 +30,17 @@ dwm-viewontag-20210312-61bb8b2.diff
 ```
 
 ## Preview
-```neofetch``` show system information
-![dwm](./images/dwm-preview.png) 
-```tmux``` + ```mpd``` + ```ncmpcpp``` 
+
+`neofetch` show system information
+![dwm](./images/dwm-preview.png)
+`tmux` + `mpd` + `ncmpcpp`
 ![dwm-mpd](./images/dwm-preview-mpd.png)
 
 ### warn
+
 Please do not install the alpha patch, because the systray patch has already been installed, if you continue to install the alpha patch, it will cause it to fail to start
 
 If you have other issues, please read config.h carefully or go to [suckless](https://dwm.suckless.org)
 
 If you also want to create your own dwm, vim environment, I recommend [theniceboy](https://github.com/theniceboy) to you.
-and some teaching videos [TheCW](https://www.bilibili.com/video/BV11J411t7RY) 
+and some teaching videos [TheCW](https://www.bilibili.com/video/BV11J411t7RY)
