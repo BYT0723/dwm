@@ -118,7 +118,6 @@ static const Layout layouts[] = {
   }
 
 /* commands */
-static const char *floatcmd[] = {"st", "-i", "-g", "80x25+550+150", NULL};
 static char dmenumon[2] =
     "0"; /* component of dmenucmd, manipulated in spawn() */
 static const char *dmenucmd[] = {"dmenu_run",
@@ -127,6 +126,7 @@ static const char *dmenucmd[] = {"dmenu_run",
                                  "-p", ">>> ", "-m", dmenumon, "-fn", dmenufont,
                                  NULL};
 static const char *termcmd[] = {"st", NULL};
+static const char *floatcmd[] = {"st", "-i", "-g", "80x25+550+150", NULL};
 static const char *roficmd[] = {"./.dwm/rofi.sh", NULL};
 static const char *powermenu[] = {"./.dwm/powermenu.sh", NULL};
 static const char *mpdcmd[] = {"./.dwm/mpd.sh", NULL};
