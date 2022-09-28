@@ -19,6 +19,7 @@ sudo make clean install
 Installed patches are stored in the `patches` folder
 
 ```shell
+dwm-attachbottom-6.3.diff
 dwm-autostart-20210120-cb3f58a.diff
 dwm-awesomebar-20200907-6.2.diff
 dwm-cfacts-vanitygaps-6.2_combo.diff
