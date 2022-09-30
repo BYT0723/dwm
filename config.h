@@ -126,7 +126,9 @@ static const char *dmenucmd[] = {"dmenu_run",
                                  "-p", ">>> ", "-m", dmenumon, "-fn", dmenufont,
                                  NULL};
 static const char *termcmd[] = {"st", NULL};
-static const char *floatcmd[] = {"st", "-i", "-g", "80x25+550+150", NULL};
+static const char *floatcmd[] = {"st", "-i", "-g", "80x25+500+200", NULL};
+static const char *transcmd[] = {
+    "st", "-i", "-g", "80x20+500+200", "-e", "./.dwm/translate.sh"};
 static const char *roficmd[] = {"./.dwm/rofi.sh", NULL};
 static const char *powermenu[] = {"./.dwm/powermenu.sh", NULL};
 static const char *mpdcmd[] = {"./.dwm/mpd.sh", NULL};
@@ -148,10 +150,11 @@ static const StatusCmd statuscmds[] = {
 static const char *statuscmd[] = {"/bin/sh", "-c", NULL, NULL};
 
 static Key keys[] = {
-    {MODKEY, XK_n, spawn, {.v = floatcmd}},
     /* modifier                     key        function        argument */
     {MODKEY, XK_d, spawn, {.v = roficmd}},
     {MODKEY, XK_Return, spawn, {.v = termcmd}},
+    {MODKEY, XK_n, spawn, {.v = floatcmd}},
+    {MODKEY | ShiftMask, XK_n, spawn, {.v = transcmd}},
     {MODKEY, XK_a, spawn, {.v = flameshot}},
     {MODKEY | ShiftMask, XK_m, spawn, {.v = mpdcmd}},
     {MODKEY | ControlMask, XK_m, spawn, {.v = powermenu}},
