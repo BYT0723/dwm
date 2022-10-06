@@ -134,7 +134,7 @@ static const char *powermenu[] = {"./.dwm/powermenu.sh", NULL};
 static const char *mpdcmd[] = {"./.dwm/mpd.sh", NULL};
 
 // 打开关闭触摸板
-static const char *toggleTouchpad[] = {"~/.dwm/touchpad-toggle.sh", NULL};
+static const char *toggleTouchpad[] = {"./.dwm/touchpad-toggle.sh", NULL};
 // 截图
 static const char *flameshot[] = {"flameshot", "gui", NULL};
 
