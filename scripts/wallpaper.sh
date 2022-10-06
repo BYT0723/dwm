@@ -16,25 +16,26 @@ Type=$(echo "${1#*.}")
 
 case "$Type" in
 mp4 | mkv | avi)
-    Type="video"
-    ;;
+  Type="video"
+  ;;
 jpg | png)
-    Type="img"
-    ;;
+  Type="img"
+  ;;
 html | htm)
-    Type="page"
-    ;;
+  Type="page"
+  ;;
 *)
-    Type="video"
-    ;;
+  Type="video"
+  ;;
 esac
 
 if [[ $Type == "video" ]]; then
-    nohup xwinwrap -ov -g 1920x1080+0+0 -- mpv -wid WID "$1" --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --no-input-default-bindings --input-conf=~/.dwm/configs/wallpaperKeyMap.conf --hwdec &
-    echo "xwinwrap -ov -g 1920x1080+0+0 -- mpv -wid WID "$1" --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --no-input-default-bindings --input-conf=~/.dwm/configs/wallpaperKeyMap.conf --hwdec" >~/.dwm/background.sh
+  # nohup xwinwrap -ov -g 1920x1080+0+0 -- mpv -wid WID "$1" --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --no-input-default-bindings --input-conf=~/.dwm/configs/wallpaperKeyMap.conf --hwdec &
+  nohup xwinwrap -ov -fs -- mpv -wid WID "$1" --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --no-input-default-bindings --input-conf=~/.dwm/configs/wallpaperKeyMap.conf --hwdec &
+  echo "xwinwrap -ov -fs -- mpv -wid WID "$1" --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --no-input-default-bindings --input-conf=~/.dwm/configs/wallpaperKeyMap.conf --hwdec" >~/.dwm/background.sh
 elif [[ $Type == "img" ]]; then
-    feh --bg-scale --no-fehbg "$1"
-    echo "feh --no-fehbg --bg-scale "$1 >~/.dwm/background.sh
+  feh --bg-scale --no-fehbg "$1"
+  echo "feh --no-fehbg --bg-scale "$1 >~/.dwm/background.sh
 elif [[ $Type == "page" ]]; then
-    xwinwrap -ov -g 1920x1080+0+0 -- firefox --safe-model --kiosk --new-window "$1" &
+  xwinwrap -ov -g 1920x1080+0+0 -- firefox --safe-model --kiosk --new-window "$1" &
 fi

@@ -1,1 +1,1 @@
-xwinwrap -ov -g 1920x1080+0+0 -- mpv -wid WID /home/walter/Downloads/359525880_nb2-1-80.flv --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --no-input-default-bindings --input-conf=~/.dwm/configs/wallpaperKeyMap.conf --hwdec
+xwinwrap -ov -fs -- mpv -wid WID /home/walter/Desktop/Wallpapers/video/in_the_clouds_by_VISUALDON.mp4 --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --no-input-default-bindings --input-conf=~/.dwm/configs/wallpaperKeyMap.conf --hwdec
