@@ -18,7 +18,7 @@ sleep 1
 
 # input method engine
 fcitx5 -d
+# usb mountion manager
+udiskie -tN &
 # proxy
 trojan -c ~/.dwm/configs/trojan-cli.json &
-# usb mountion manager
-udiskie -t &

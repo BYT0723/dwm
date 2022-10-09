@@ -56,18 +56,27 @@ static const Rule rules[] = {
     /* class                    instance            title           tags mask
        isfloating    monitor */
     {"firefox", NULL, NULL, 1 << 1, 0, -1},
-    {"obs", NULL, NULL, 1 << 4, 0, -1},
-    {"qBittorrent", NULL, NULL, 1 << 5, 0, -1},
 
-    // float
+    {"TelegramDesktop", NULL, NULL, 1 << 2, 0, -1},
+    {"wechat.exe", NULL, NULL, 1 << 2, 0, -1},
+
     {"qqmusic", NULL, NULL, 1 << 3, 1, -1},
     {"netease-cloud-music", NULL, NULL, 1 << 3, 1, -1},
-    {"xunlei", NULL, NULL, 1 << 5, 1, -1},
+
+    {"obs", NULL, NULL, 1 << 4, 0, -1},
+
+    {"DBeaver", NULL, NULL, 1 << 5, 0, -1},
+
+    {"xunlei", NULL, NULL, 1 << 6, 1, -1},
+    {"qBittorrent", NULL, NULL, 1 << 6, 0, -1},
+
+    // other only floating
     {"vlc", NULL, NULL, 0, 1, -1},
     {"mpv", NULL, NULL, 0, 1, -1},
     {"feh", NULL, NULL, 0, 1, -1},
-    {"dbeaver", NULL, NULL, 0, 1, -1},
     // wps
+    {"wpsoffice", NULL, NULL, 0, 1, -1},
+    {"wpspdf", NULL, NULL, 0, 1, -1},
     {"wps", NULL, NULL, 0, 1, -1},
     {"wpp", NULL, NULL, 0, 1, -1},
     {"et", NULL, NULL, 0, 1, -1},
@@ -87,9 +96,9 @@ static const int lockfullscreen =
 
 static const Layout layouts[] = {
     /* symbol     arrange function */
-    {" ﬿ ", tile}, /* first entry is default */
-    {" 禎", NULL},   /* no layout function means floating behavior */
-    {"  ", monocle},
+    {"[T]", tile}, /* first entry is default */
+    {"[F]", NULL}, /* no layout function means floating behavior */
+    {"[M]", monocle},
     {"HHH", grid},
     {":::", gaplessgrid},
     {"|M|", centeredmaster},

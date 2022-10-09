@@ -132,6 +132,7 @@ typedef struct Monitor Monitor;
 typedef struct Client Client;
 struct Client {
   char name[256];
+  char class[256];
   float mina, maxa;
   float cfact;
   int x, y, w, h;
@@ -231,6 +232,7 @@ static void detach(Client *c);
 static void detachstack(Client *c);
 static Monitor *dirtomon(int dir);
 static void drawbar(Monitor *m);
+static void wrapclienttitle(char *class, char *name, char *title);
 static void drawbars(void);
 //  static void enternotify(XEvent *e);
 static void expose(XEvent *e);
@@ -398,6 +400,8 @@ void applyrules(Client *c) {
   XGetClassHint(dpy, c->win, &ch);
   class = ch.res_class ? ch.res_class : broken;
   instance = ch.res_name ? ch.res_name : broken;
+
+  strcpy(c->class, class);
 
   for (i = 0; i < LENGTH(rules); i++) {
     r = &rules[i];
@@ -972,24 +976,30 @@ void drawbar(Monitor *m) {
     drw_text(drw, x, 0, w, bh, lrpad / 2, tags[i], urg & 1 << i);
     x += w;
   }
+  // layout symbol
   w = blw = TEXTW(m->ltsymbol);
   drw_setscheme(drw, scheme[SchemeNorm]);
   x = drw_text(drw, x, 0, w, bh, lrpad / 2, m->ltsymbol, 0);
 
+  // draw tab
   if ((w = m->ww - tw - stw - x) > bh) {
     if (n > 0) {
       int remainder = w % n;
-      int tabw = (1.0 / (double)n) * w + 1;
+      // int tabw = (1.0 / (double)n) * w + 1;
       for (c = m->clients; c; c = c->next) {
         if (!ISVISIBLE(c))
           continue;
         if (m->sel == c)
           scm = SchemeSel;
         else if (HIDDEN(c))
-          scm = SchemeSel;
+          scm = SchemeHid;
         else
           scm = SchemeNorm;
         drw_setscheme(drw, scheme[scm]);
+
+        char title[256];
+        wrapclienttitle(c->class, c->name, title);
+        int tabw = MIN(TEXTW(title), TEXTW("==============="));
 
         if (remainder >= 0) {
           if (remainder == 0) {
@@ -997,13 +1007,17 @@ void drawbar(Monitor *m) {
           }
           remainder--;
         }
-        drw_text(drw, x, 0, tabw, bh, lrpad / 2, c->name, 0);
+
+        drw_text(drw, x, 0, tabw, bh, lrpad / 2, title, 0);
+        // 为浮动窗口添加浮动标志
         if (c->isfloating)
           drw_rect(drw, x + boxs, boxs, boxw, boxw, c->isfixed, 0);
         x += tabw;
       }
+      drw_setscheme(drw, scheme[SchemeHid]);
+      drw_rect(drw, x, 0, m->ww - tw - stw - x, bh, 1, 1);
     } else {
-      drw_setscheme(drw, scheme[SchemeNorm]);
+      drw_setscheme(drw, scheme[SchemeHid]);
       drw_rect(drw, x, 0, w, bh, 1, 1);
     }
   }
@@ -1011,6 +1025,20 @@ void drawbar(Monitor *m) {
   m->bt = n;
   m->btw = w;
   drw_map(drw, m->barwin, 0, 0, m->ww - stw, bh);
+}
+
+void wrapclienttitle(char *class, char *name, char *title) {
+  if (strstr(class, "st-256color")) {
+    char *path = strstr(name, ":");
+    if (path)
+      snprintf(title, 256, "%s%s", " ", path);
+    else
+      snprintf(title, 256, "%s%s", " ", name);
+  } else if (strstr(class, "firefox")) {
+    snprintf(title, 256, "%s%s", " ", name);
+  } else {
+    snprintf(title, 256, "%s%s", "? ", name);
+  }
 }
 
 void drawbars(void) {
