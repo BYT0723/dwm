@@ -1,9 +1,19 @@
 #!/bin/bash
+
+# color
+black=#1e222a
+green=#7eca9c
+white=#abb2bf
+grey=#282c34
+blue=#7aa2f7
+red=#d47d85
+darkblue=#668ee3
+
 # Screenshot: http://s.natalian.org/2013-08-17/dwm_status.png
 # Network speed stuff stolen from http://linuxclues.blogspot.sg/2009/11/shell-script-show-network-speed.html
 
 # This function parses /proc/net/dev file searching for a line containing $interface data.
-# Within that line, the first and ninth numbers after ':' are respectively the received and transmited bytes.
+
 function get_bytes {
   # Find active network interface
   interface=$(ip route get 8.8.8.8 2>/dev/null | awk '{print $5}')
@@ -38,52 +48,24 @@ old_received_bytes=$received_bytes
 old_transmitted_bytes=$transmitted_bytes
 old_time=$now
 
-print_net() {
-  lan=$(ip addr | grep 'enp0s20f0u4u3' | grep 'inet' | awk '{print $2}')
-  if [[ "$lan" != "" ]]; then
-    echo -e "${lan} "
-  fi
-}
-
-print_wlan() {
-  wlan=$(ip addr | grep 'wlp2s0' | grep 'inet' | awk '{print $2}')
-  if [[ "$wlan" != "" ]]; then
-    echo -e "直${wlan} "
-  fi
-}
-
 print_mem() {
-  memtotal=$(($(grep -m1 'MemTotal:' /proc/meminfo | awk '{print $2}') / 1024))
-  memavailable=$(($(grep -m1 'MemAvailable:' /proc/meminfo | awk '{print $2}') / 1024))
-
-  mem=$(echo "scale=2;${memtotal}-${memavailable}" | bc)
-
   printf '\x03'
-  if [ $mem -gt 1024 ]; then
-    # memdec=$(( mem % 1024 * 976 / 10000 ))
-    # mem=$(( mem / 1024 ))
-    # echo -e "$mem.${memdec}G"
-
-    mem=$(echo "scale=1;${mem}/1024" | bc)
-    echo -e " ${mem}G"
-  else
-    echo -e " ${mem}M"
-  fi
+  printf "^c$blue^^b$black^  "
+  printf "^c$blue^ $(free -h | awk '/^内存/ { print $3 }' | sed s/i//g)"
 }
 
 # CPU
 print_cpu() {
-  a=($(cat /proc/stat | grep -E "cpu\b" | awk -v total=0 '{$1="";for(i=2;i<=NF;i++){total+=$i};used=$2+$3+$4+$7+$8 }END{print total,used}'))
-  sleep 1
-  b=($(cat /proc/stat | grep -E "cpu\b" | awk -v total=0 '{$1="";for(i=2;i<=NF;i++){total+=$i};used=$2+$3+$4+$7+$8 }END{print total,used}'))
-  # cpuload=(`cat /proc/loadavg | awk '{print $1}'`)
-  cpu_usage=$(((${b[1]} - ${a[1]}) * 100 / (${b[0]} - ${a[0]})))
+  printf '\x04'
+
+  cpu_val=$(grep -o "^[^ ]*" /proc/loadavg)
 
   isShowTemp=$(cat ~/.dwm/configs/statusConf | grep "show_temp" | tail -n 1 | awk -F '=' '{print $2}')
+  printf "^c$black^ ^b$green^ CPU"
+  printf "^c$white^ ^b$grey^ $cpu_val"
+
   if [[ $isShowTemp -eq 1 ]]; then
-    printf "\x04 %2d%% $(print_temp)" ${cpu_usage}
-  else
-    printf "\x04 %2d%%" ${cpu_usage}
+    printf "$(print_temp)"
   fi
 }
 
@@ -95,28 +77,28 @@ print_temp() {
 
   index=$((temp / 20))
   icon=${icons[$index]}
-  echo -e "${icon} ${temp}°C"
+  printf "^c$black^ ^b$red^ ${icon} ${temp}°C"
 }
 
 print_disk() {
+  printf '\x02'
   disk_root=$(df -h | grep /dev/sda2 | awk '{print $4}')
   icon="﫭"
   if [[ $(echo $disk_root | awk -F 'G' '{print $1}') -le 10 ]]; then
     icon=""
   fi
-  echo -e "\x02$icon $disk_root "
+  printf "^c$grey^^b$white^ $icon $disk_root"
 }
 
 print_date() {
   printf '\x01'
   isExp=$(cat ~/.dwm/configs/statusConf | grep "date_exp" | tail -n 1 | awk -F '=' '{print $2}')
 
-  # '+ %x(%a) %H:%M'
-  # '+%H:%M'
+  printf "^c$black^ ^b$darkblue^  "
   if [[ $isExp -eq 1 ]]; then
-    date '+%x(%a) %H:%M '
+    printf "^c$black^^b$blue^ $(date '+%x(%a) %H:%M')  "
   else
-    date '+%H:%M '
+    printf "^c$black^^b$blue^ $(date '+%H:%M')  "
   fi
 }
 
@@ -131,6 +113,8 @@ vel_recv="$(get_velocity $received_bytes $old_received_bytes $now)"
 vel_trans="$(get_velocity $transmitted_bytes $old_transmitted_bytes $now)"
 
 print_speed() {
+  printf '\x05'
+  printf "^c$blue^^b$black^   "
   recvIcon=" "
   transIcon=" "
   if [ $received_bytes -ne $old_received_bytes ]; then
@@ -142,13 +126,13 @@ print_speed() {
   isExp=$(cat ~/.dwm/configs/statusConf | grep "net_speed_exp" | tail -n 1 | awk -F '=' '{print $2}')
 
   if [[ $isExp -eq 1 ]]; then
-    echo -e "\x05  ${recvIcon} $vel_recv ${transIcon} $vel_trans "
+    echo -e "${recvIcon} $vel_recv ${transIcon} $vel_trans"
   else
-    echo -e "\x05   ${recvIcon} ${transIcon} "
+    echo -e "${recvIcon} ${transIcon}"
   fi
 }
 
-xsetroot -name "$(print_speed) $(print_cpu)  $(print_mem)  $(print_disk) $(print_date)"
+xsetroot -name "$(print_speed) $(print_cpu) $(print_mem) $(print_disk)$(print_date)"
 # Update old values to perform new calculation
 old_received_bytes=$received_bytes
 old_transmitted_bytes=$transmitted_bytes
