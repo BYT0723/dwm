@@ -18,8 +18,10 @@ static const          int showsystray = 1; /* 0 means no systray */
 static const int showbar = 1;       /* 0 means no bar */
 static const int topbar = 1;        /* 0 means bottom bar */
 static const Bool viewontag = True; /* Switch view on tag switch */
-static const char *fonts[] = {"CaskaydiaCove Nerd Font:style=Regular:size=12",
-                              "文泉驿等宽微米黑:style=Regular:size=12"};
+static const char *fonts[] = {
+  "CaskaydiaCove Nerd Font:style=Regular:size=12",
+  "文泉驿等宽微米黑:style=Regular:size=12"
+};
 static const char dmenufont[] = "CaskaydiaCove Nerd Font:style=Regular:size=12";
 
 static const char col_gray1[] = "#eeeeee";
@@ -44,32 +46,32 @@ static const Rule rules[] = {
      *	WM_CLASS(STRING) = instance, class
      *	WM_NAME(STRING) = title
      */
-    /* class                instance            title             tags mask     isfloating    monitor */
-    {"firefox",             NULL,               NULL,             1 << 1,       0,            -1},
+    /* class                instance    title     tags mask     isfloating    monitor */
+    {"firefox",             NULL,       NULL,     1 << 1,       0,            -1},
 
-    {"TelegramDesktop",     NULL,               NULL,             1 << 2,       0,            -1},
-    {"wechat.exe",          NULL,               NULL,             1 << 2,       0,            -1},
+    {"TelegramDesktop",     NULL,       NULL,     1 << 2,       0,            -1},
+    {"wechat.exe",          NULL,       NULL,     1 << 2,       0,            -1},
 
-    {"qqmusic",             NULL,               NULL,             1 << 3,       1,            -1},
-    {"netease-cloud-music", NULL,               NULL,             1 << 3,       1,            -1},
+    {"qqmusic",             NULL,       NULL,     1 << 3,       1,            -1},
+    {"netease-cloud-music", NULL,       NULL,     1 << 3,       1,            -1},
 
-    {"obs",                 NULL,               NULL,             1 << 4,       0,            -1},
+    {"obs",                 NULL,       NULL,     1 << 4,       0,            -1},
 
-    {"DBeaver",             NULL,               NULL,             1 << 5,       0,            -1},
+    {"DBeaver",             NULL,       NULL,     1 << 5,       0,            -1},
 
-    {"xunlei",              NULL,               NULL,             1 << 6,       1,            -1},
-    {"qBittorrent",         NULL,               NULL,             1 << 6,       0,            -1},
+    {"xunlei",              NULL,       NULL,     1 << 6,       1,            -1},
+    {"qBittorrent",         NULL,       NULL,     1 << 6,       0,            -1},
 
     // other only floating
-    {"vlc",                 NULL,               NULL,             0,            1,            -1},
-    {"mpv",                 NULL,               NULL,             0,            1,            -1},
-    {"feh",                 NULL,               NULL,             0,            1,            -1},
+    {"vlc",                 NULL,       NULL,     0,            1,            -1},
+    {"mpv",                 NULL,       NULL,     0,            1,            -1},
+    {"feh",                 NULL,       NULL,     0,            1,            -1},
     // wps
-    {"wpsoffice",           NULL,               NULL,             0,            1,            -1},
-    {"wpspdf",              NULL,               NULL,             0,            1,            -1},
-    {"wps",                 NULL,               NULL,             0,            1,            -1},
-    {"wpp",                 NULL,               NULL,             0,            1,            -1},
-    {"et",                  NULL,               NULL,             0,            1,            -1},
+    {"wpsoffice",           NULL,       NULL,     0,            1,            -1},
+    {"wpspdf",              NULL,       NULL,     0,            1,            -1},
+    {"wps",                 NULL,       NULL,     0,            1,            -1},
+    {"wpp",                 NULL,       NULL,     0,            1,            -1},
+    {"et",                  NULL,       NULL,     0,            1,            -1},
 };
 
 /* layout(s) */
