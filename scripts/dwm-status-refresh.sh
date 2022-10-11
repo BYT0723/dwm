@@ -50,8 +50,7 @@ old_time=$now
 
 print_mem() {
   printf '\x03'
-  printf "^c$blue^^b$black^  "
-  printf "^c$blue^ $(free -h | awk '/^内存/ { print $3 }' | sed s/i//g)"
+  printf "^c$blue^^b$black^  $(free -h | awk '/^内存/ { print $3 }' | sed s/i//g) "
 }
 
 # CPU
@@ -61,8 +60,7 @@ print_cpu() {
   cpu_val=$(grep -o "^[^ ]*" /proc/loadavg)
 
   isShowTemp=$(cat ~/.dwm/configs/statusConf | grep "show_temp" | tail -n 1 | awk -F '=' '{print $2}')
-  printf "^c$black^ ^b$green^ CPU"
-  printf "^c$white^ ^b$grey^ $cpu_val"
+  printf "^c$white^^b$grey^  $cpu_val "
 
   if [[ $isShowTemp -eq 1 ]]; then
     printf "$(print_temp)"
@@ -77,7 +75,7 @@ print_temp() {
 
   index=$((temp / 20))
   icon=${icons[$index]}
-  printf "^c$black^ ^b$red^ ${icon} ${temp}°C"
+  printf "^c$black^^b$red^ ${icon} ${temp}°C "
 }
 
 print_disk() {
@@ -87,18 +85,17 @@ print_disk() {
   if [[ $(echo $disk_root | awk -F 'G' '{print $1}') -le 10 ]]; then
     icon=""
   fi
-  printf "^c$grey^^b$white^ $icon $disk_root"
+  printf "^c$grey^^b$white^ $icon $disk_root "
 }
 
 print_date() {
   printf '\x01'
   isExp=$(cat ~/.dwm/configs/statusConf | grep "date_exp" | tail -n 1 | awk -F '=' '{print $2}')
 
-  printf "^c$black^ ^b$darkblue^  "
   if [[ $isExp -eq 1 ]]; then
-    printf "^c$black^^b$blue^ $(date '+%x(%a) %H:%M')  "
+    printf "^c$black^^b$blue^  $(date '+%x(%a) %H:%M') "
   else
-    printf "^c$black^^b$blue^ $(date '+%H:%M')  "
+    printf "^c$black^^b$blue^  $(date '+%H:%M') "
   fi
 }
 
@@ -114,7 +111,7 @@ vel_trans="$(get_velocity $transmitted_bytes $old_transmitted_bytes $now)"
 
 print_speed() {
   printf '\x05'
-  printf "^c$blue^^b$black^   "
+  printf "^c$black^^b$blue^   "
   recvIcon=" "
   transIcon=" "
   if [ $received_bytes -ne $old_received_bytes ]; then
@@ -126,13 +123,13 @@ print_speed() {
   isExp=$(cat ~/.dwm/configs/statusConf | grep "net_speed_exp" | tail -n 1 | awk -F '=' '{print $2}')
 
   if [[ $isExp -eq 1 ]]; then
-    echo -e "${recvIcon} $vel_recv ${transIcon} $vel_trans"
+    echo -e "${recvIcon} $vel_recv ${transIcon} $vel_trans "
   else
-    echo -e "${recvIcon} ${transIcon}"
+    echo -e "${recvIcon} ${transIcon} "
   fi
 }
 
-xsetroot -name "$(print_speed) $(print_cpu) $(print_mem) $(print_disk)$(print_date)"
+xsetroot -name "$(print_speed)$(print_cpu)$(print_mem)$(print_disk)$(print_date)"
 # Update old values to perform new calculation
 old_received_bytes=$received_bytes
 old_transmitted_bytes=$transmitted_bytes

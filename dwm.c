@@ -168,6 +168,7 @@ struct Monitor {
   int by;             /* bar geometry */
   int btw;            /* width of tasks portion of bar */
   int bt;             /* number of tasks */
+  int tw;             /* width of task */
   int mx, my, mw, mh; /* screen size */
   int wx, wy, ww, wh; /* window area  */
   int gappih;         /* horizontal gap between windows */
@@ -595,7 +596,9 @@ void buttonpress(XEvent *e) {
           statuscmdn = ch;
         }
       }
-    } else {
+    } else if (ev->x > selmon->ww - m->btw - statusw - getsystraywidth() &&
+               ev->x < selmon->ww - (m->btw - m->bt * m->tw) - statusw -
+                           getsystraywidth()) { // tasks click event
       x += blw;
       c = m->clients;
 
@@ -604,7 +607,8 @@ void buttonpress(XEvent *e) {
           if (!ISVISIBLE(c))
             continue;
           else
-            x += (1.0 / (double)m->bt) * m->btw;
+            // x += (1.0 / (double)m->bt) * m->btw;
+            x += m->tw;
         } while (ev->x > x && (c = c->next));
 
         click = ClkWinTitle;
@@ -1088,6 +1092,7 @@ void drawbar(Monitor *m) {
     if (!(occ & 1 << i || m->tagset[m->seltags] & 1 << i))
       continue;
     w = TEXTW(tags[i]);
+    // 高亮所在的tag
     drw_setscheme(
         drw, scheme[m->tagset[m->seltags] & 1 << i ? SchemeSel : SchemeNorm]);
     drw_text(drw, x, 0, w, bh, lrpad / 2, tags[i], urg & 1 << i);
@@ -1133,6 +1138,7 @@ void drawbar(Monitor *m) {
           drw_rect(drw, x + boxs, boxs, boxw, boxw, c->isfixed, 0);
         x += tabw;
       }
+      m->tw = tabw;
       drw_setscheme(drw, scheme[SchemeNorm]);
       drw_rect(drw, x, 0, m->ww - tw - stw - x, bh, 1, 1);
     } else {
