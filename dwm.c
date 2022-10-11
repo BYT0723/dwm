@@ -953,8 +953,6 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
     die("malloc");
   p = text;
 
-  // memcpy(text, stext, len);
-
   i = -1, j = 0;
   while (stext[++i])
     if ((unsigned char)stext[i] >= ' ')
@@ -1153,17 +1151,36 @@ void drawbar(Monitor *m) {
 }
 
 void wrapclienttitle(char *class, char *name, char *title) {
+  char *icon = "";
   if (strstr(class, "st-256color")) {
-    char *path = strstr(name, ":");
-    if (path)
-      snprintf(title, 256, "%s%s", " ", path);
-    else
-      snprintf(title, 256, "%s%s", " ", name);
-  } else if (strstr(class, "firefox")) {
-    snprintf(title, 256, "%s%s", " ", name);
-  } else {
-    snprintf(title, 256, "%s%s", "? ", name);
-  }
+    icon = " ";
+    if (strstr(name, ":")) {
+      name = strstr(name, ":");
+      if (strstr(name, "nvim"))
+        icon = " ";
+    }
+  } else if (strstr(class, "firefox") || strstr(class, "Chromium")) {
+    if (strstr(name, "Firefox"))
+      icon = " ";
+    else if (strstr(name, "Chromium"))
+      icon = " ";
+    else if (strstr(name, "YouTube"))
+      icon = " ";
+    else if (strstr(name, "Twitter"))
+      icon = " ";
+  } else if (strstr(class, "neovide"))
+    icon = " ";
+  else if (strstr(class, "TelegramDesktop"))
+    icon = " ";
+  else if (strstr(class, "wechat.exe"))
+    icon = " ";
+  else if (strstr(class, "qqmusic"))
+    icon = " ";
+  else if (strstr(class, "netease-cloud-music"))
+    icon = " ";
+  else if (strstr(class, "DBeaver"))
+    icon = " ";
+  snprintf(title, 256, "%s%s", icon, name);
 }
 
 void drawbars(void) {
