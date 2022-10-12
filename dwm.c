@@ -77,8 +77,8 @@
 #define XEMBED_EMBEDDED_VERSION (VERSION_MAJOR << 16) | VERSION_MINOR
 
 /* enums */
-enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
-enum { SchemeNorm, SchemeSel, SchemeHid };       /* color schemes */
+enum { CurNormal, CurResize, CurMove, CurLast };       /* cursor */
+enum { SchemeNorm, SchemeSel, SchemeHid, SchemeTask }; /* color schemes */
 enum {
   NetSupported,
   NetWMName,
@@ -1105,10 +1105,10 @@ void drawbar(Monitor *m) {
   if ((w = m->ww - tw - stw - x) > bh) {
     if (n > 0) {
       int remainder = w % n;
-      int tabw = TEXTW("====================");
-      if (tabw * n >= w) {
+      // int tabw = (1.0 / (double)n) * w + 1;
+      int tabw = TEXTW("                    ");
+      if (tabw * n >= w)
         tabw = (1.0 / (double)n) * w + 1;
-      }
       for (c = m->clients; c; c = c->next) {
         if (!ISVISIBLE(c))
           continue;
@@ -1117,7 +1117,7 @@ void drawbar(Monitor *m) {
         else if (HIDDEN(c))
           scm = SchemeHid;
         else
-          scm = SchemeNorm;
+          scm = SchemeTask;
         drw_setscheme(drw, scheme[scm]);
 
         char title[256];
@@ -1151,25 +1151,35 @@ void drawbar(Monitor *m) {
 }
 
 void wrapclienttitle(char *class, char *name, char *title) {
-  char *icon = "";
+  char *icon = class;
+  // terminal
   if (strstr(class, "st-256color")) {
-    icon = " ";
-    if (strstr(name, ":")) {
+    icon = " ";
+    if (strstr(name, ":"))
       name = strstr(name, ":");
-      if (strstr(name, "nvim"))
-        icon = " ";
-    }
+    if (strcmp(name, "nvim") == 0)
+      icon = " ";
   } else if (strstr(class, "firefox") || strstr(class, "Chromium")) {
+    // browser
     if (strstr(name, "Firefox"))
       icon = " ";
     else if (strstr(name, "Chromium"))
       icon = " ";
-    else if (strstr(name, "YouTube"))
-      icon = " ";
+
+    if (strstr(name, "Google"))
+      icon = " ";
+    else if (strstr(name, "Bing"))
+      icon = " ";
+
+    if (strstr(name, "YouTube"))
+      icon = " ";
     else if (strstr(name, "Twitter"))
       icon = " ";
+    else if (strstr(name, "Gmail"))
+      icon = " ";
+    // application
   } else if (strstr(class, "neovide"))
-    icon = " ";
+    icon = " ";
   else if (strstr(class, "TelegramDesktop"))
     icon = " ";
   else if (strstr(class, "wechat.exe"))
@@ -1178,9 +1188,17 @@ void wrapclienttitle(char *class, char *name, char *title) {
     icon = " ";
   else if (strstr(class, "netease-cloud-music"))
     icon = " ";
+  else if (strstr(class, "vlc"))
+    icon = "嗢 ";
+  else if (strstr(class, "mpv"))
+    icon = " ";
   else if (strstr(class, "DBeaver"))
     icon = " ";
-  snprintf(title, 256, "%s%s", icon, name);
+  else if (strstr(class, "Pcmanfm"))
+    icon = " ";
+  else if (strstr(class, "lxappearance"))
+    icon = " ";
+  snprintf(title, strlen(title), "%s %s", icon, name);
 }
 
 void drawbars(void) {

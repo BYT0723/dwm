@@ -32,10 +32,11 @@ static const char col_gray5[] = "#222222";
 static const char col_black[] = "#073642";
 static const char col_cyan[] = "#2aa198";
 static const char *colors[][3] = {
-    /*               fg         bg         border   */
-    [SchemeNorm] = {col_gray5, col_gray1, col_black},
-    [SchemeSel]  = {col_gray2, col_gray5, col_cyan},
-    [SchemeHid]  = {col_gray3, col_gray4, col_cyan},
+    /*                fg         bg         border   */
+    [SchemeNorm]  = {col_gray5, col_gray1, col_black},
+    [SchemeSel]   = {col_gray2, col_gray5, col_cyan},
+    [SchemeHid]   = {col_gray4, col_gray2, col_cyan},
+    [SchemeTask]  = {col_gray3, col_gray4, col_cyan},
 };
 
 /* tagging */
@@ -54,6 +55,7 @@ static const Rule rules[] = {
 
     {"qqmusic",             NULL,       NULL,     1 << 3,       1,            -1},
     {"netease-cloud-music", NULL,       NULL,     1 << 3,       1,            -1},
+    {"OSD Lyrics",          NULL,       NULL,     1 << 3,       1,            -1},
 
     {"obs",                 NULL,       NULL,     1 << 4,       0,            -1},
 
