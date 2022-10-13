@@ -5,7 +5,7 @@ float)
   ;;
 
 translator)
-  st -i -g 80x20+500+200 -e ./translate.sh
+  st -i -g 80x20+500+200 -e ~/.dwm/translate.sh
   ;;
 *)
   st
