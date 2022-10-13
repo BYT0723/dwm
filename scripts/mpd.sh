@@ -31,6 +31,7 @@ fi
 # Options
 layout=$(cat ${theme} | grep 'USE_ICON' | cut -d'=' -f2)
 if [[ "$layout" == 'NO' ]]; then
+  option_power="⏻ Start Local MPD"
   if [[ ${status} == *"[playing]"* ]]; then
     option_1=" Pause"
   else
@@ -45,6 +46,7 @@ if [[ "$layout" == 'NO' ]]; then
   option_8=" Repeat"
   option_9=" Random"
 else
+  option_power="⏻"
   if [[ ${status} == *"[playing]"* ]]; then
     option_1=""
   else
@@ -95,7 +97,7 @@ rofi_cmd() {
 # Pass variables to rofi dmenu
 run_rofi() {
   if [[ -z "$status" ]]; then
-    rofi_cmd
+    echo -e "$option_power" | rofi_cmd
   else
     echo -e "$option_1\n$option_2\n$option_3\n$option_4\n$option_5\n$option_6\n$option_7\n$option_8\n$option_9" | rofi_cmd
   fi
@@ -103,7 +105,9 @@ run_rofi() {
 
 # Execute Command
 run_cmd() {
-  if [[ "$1" == '--opt1' ]]; then
+  if [[ "$1" == '--on' ]]; then
+    mpd
+  elif [[ "$1" == '--opt1' ]]; then
     mpc -q toggle && notify-send -u low -t 500 " $(mpc current)"
   elif [[ "$1" == '--opt2' ]]; then
     mpc -q stop
@@ -127,6 +131,9 @@ run_cmd() {
 # Actions
 chosen="$(run_rofi)"
 case ${chosen} in
+$option_power)
+  run_cmd --on
+  ;;
 $option_1)
   run_cmd --opt1
   ;;

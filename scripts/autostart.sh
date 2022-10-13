@@ -1,9 +1,12 @@
 #!/bin/bash
 
-# nohup go-status &
+# status
 /bin/bash ~/.dwm/dwm-status.sh &
+
+# wallpaper
 /bin/bash ~/.dwm/background.sh &
-xautolock -time 30 -locker slock -detectsleep &
+
+# picom
 picom --config ~/.dwm/configs/picom.conf -b
 
 # 系统操作
@@ -22,3 +25,6 @@ fcitx5 -d
 udiskie -tN &
 # proxy
 trojan -c ~/.dwm/configs/trojan-cli.json &
+
+# autolock
+xautolock -time 30 -locker slock -detectsleep &
