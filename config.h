@@ -42,6 +42,7 @@ static const char *colors[][3] = {
 /* tagging */
 static const char *tags[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
 /* task icon */
+static const char *taskWidth = "                    ";
 static const TaskIcon icons[] = {
   /* class                title               icon */
   {"st-256color",         NULL,               ""},

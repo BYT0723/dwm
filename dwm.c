@@ -1112,7 +1112,7 @@ void drawbar(Monitor *m) {
     if (n > 0) {
       int remainder = w % n;
       // int tabw = (1.0 / (double)n) * w + 1;
-      int tabw = TEXTW("                    ");
+      int tabw = TEXTW(taskWidth);
       if (tabw * n >= w)
         tabw = (1.0 / (double)n) * w + 1;
       for (c = m->clients; c; c = c->next) {
