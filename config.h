@@ -35,45 +35,67 @@ static const char *colors[][3] = {
     /*                fg         bg         border   */
     [SchemeNorm]  = {col_gray5, col_gray1, col_black},
     [SchemeSel]   = {col_gray2, col_gray5, col_cyan},
-    [SchemeHid]   = {col_gray4, col_gray2, col_cyan},
-    [SchemeTask]  = {col_gray3, col_gray4, col_cyan},
+    [SchemeHid]  = {col_gray3, col_gray4, col_cyan},
+    [SchemeTask]   = {col_gray4, col_gray2, col_cyan},
 };
 
 /* tagging */
 static const char *tags[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
-
+/* task icon */
+static const TaskIcon icons[] = {
+  /* class                title               icon */
+  {"st-256color",         NULL,               ""},
+  {"firefox",             NULL,               ""},
+  {"Chromium",            NULL,               ""},
+  {"firefox",             "YouTube",          ""},
+  {"Chromium",            "YouTube",          ""},
+  {"firefox",             "Twitter",          ""},
+  {"Chromium",            "Twitter",          ""},
+  {"firefox",             "Gmail",            ""},
+  {"Chromium",            "Gmail",            ""},
+  {"neovide",             NULL,               ""},
+  {"TelegramDesktop",     NULL,               ""},
+  {"wechat.exe",          NULL,               ""},
+  {"qqmusic",             NULL,               ""},
+  {"netease-cloud-music", NULL,               ""},
+  {"vlc",                 NULL,               " "},
+  {"mpv",                 NULL,               ""},
+  {"DBeaver",             NULL,               ""},
+  {"Pcmanfm",             NULL,               ""},
+  {"Lxappearance",        NULL,               ""},
+};
 static const Rule rules[] = {
-    /* xprop(1):
+  /* xprop(1):
      *	WM_CLASS(STRING) = instance, class
      *	WM_NAME(STRING) = title
      */
-    /* class                instance    title     tags mask     isfloating    monitor */
-    {"firefox",             NULL,       NULL,     1 << 1,       0,            -1},
+  /* class                instance    title     tags mask     isfloating    monitor */
+  {"firefox",             NULL,       NULL,     1 << 1,       0,            -1},
 
-    {"TelegramDesktop",     NULL,       NULL,     1 << 2,       0,            -1},
-    {"wechat.exe",          NULL,       NULL,     1 << 2,       0,            -1},
+  {"TelegramDesktop",     NULL,       NULL,     1 << 2,       0,            -1},
+  {"wechat.exe",          NULL,       NULL,     1 << 2,       0,            -1},
 
-    {"qqmusic",             NULL,       NULL,     1 << 3,       1,            -1},
-    {"netease-cloud-music", NULL,       NULL,     1 << 3,       1,            -1},
-    {"OSD Lyrics",          NULL,       NULL,     1 << 3,       1,            -1},
+  {"qqmusic",             NULL,       NULL,     1 << 3,       1,            -1},
+  {"netease-cloud-music", NULL,       NULL,     1 << 3,       1,            -1},
+  // {"OSD Lyrics",          NULL,       NULL,     1 << 3,       1,            -1},
 
-    {"obs",                 NULL,       NULL,     1 << 4,       0,            -1},
+  {"obs",                 NULL,       NULL,     1 << 4,       0,            -1},
 
-    {"DBeaver",             NULL,       NULL,     1 << 5,       0,            -1},
+  {"DBeaver",             NULL,       NULL,     1 << 5,       0,            -1},
 
-    {"xunlei",              NULL,       NULL,     1 << 6,       1,            -1},
-    {"qBittorrent",         NULL,       NULL,     1 << 6,       0,            -1},
+  {"xunlei",              NULL,       NULL,     1 << 6,       1,            -1},
+  {"qBittorrent",         NULL,       NULL,     1 << 6,       0,            -1},
 
-    // other only floating
-    {"vlc",                 NULL,       NULL,     0,            1,            -1},
-    {"mpv",                 NULL,       NULL,     0,            1,            -1},
-    {"feh",                 NULL,       NULL,     0,            1,            -1},
-    // wps
-    {"wpsoffice",           NULL,       NULL,     0,            1,            -1},
-    {"wpspdf",              NULL,       NULL,     0,            1,            -1},
-    {"wps",                 NULL,       NULL,     0,            1,            -1},
-    {"wpp",                 NULL,       NULL,     0,            1,            -1},
-    {"et",                  NULL,       NULL,     0,            1,            -1},
+  // other only floating
+  {"vlc",                 NULL,       NULL,     0,            1,            -1},
+  {"mpv",                 NULL,       NULL,     0,            1,            -1},
+  {"feh",                 NULL,       NULL,     0,            1,            -1},
+  // wps
+  {"wpsoffice",           NULL,       NULL,     0,            1,            -1},
+  {"wpspdf",              NULL,       NULL,     0,            1,            -1},
+  {"wps",                 NULL,       NULL,     0,            1,            -1},
+  {"wpp",                 NULL,       NULL,     0,            1,            -1},
+  {"et",                  NULL,       NULL,     0,            1,            -1},
 };
 
 /* layout(s) */
@@ -125,9 +147,9 @@ static const char *dmenucmd[]  = {"dmenu_run",
                                  // "-l","10",
                                  "-p", ">>> ", "-m", dmenumon, "-fn", dmenufont,
                                  NULL};
-static const char *termcmd[]   = {"st", NULL};
-static const char *floatcmd[]  = {"st", "-i", "-g", "80x25+500+200", NULL};
-static const char *transcmd[]  = {"st", "-i", "-g", "80x20+500+200", "-e", "./.dwm/translate.sh"};
+static const char *termcmd[]   = {"./.dwm/term.sh", NULL};
+static const char *floatcmd[]  = {"./.dwm/term.sh", "float", NULL};
+static const char *transcmd[]  = {"./.dwm/term.sh", "translator", NULL};
 static const char *roficmd[]   = {"./.dwm/rofi.sh", NULL};
 static const char *powermenu[] = {"./.dwm/powermenu.sh", NULL};
 static const char *mpdcmd[]    = {"./.dwm/mpd.sh", NULL};

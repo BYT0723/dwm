@@ -192,6 +192,12 @@ struct Monitor {
 
 typedef struct {
   const char *class;
+  const char *title;
+  const char *icon;
+} TaskIcon;
+
+typedef struct {
+  const char *class;
   const char *instance;
   const char *title;
   unsigned int tags;
@@ -1151,54 +1157,20 @@ void drawbar(Monitor *m) {
 }
 
 void wrapclienttitle(char *class, char *name, char *title) {
-  char *icon = class;
-  // terminal
-  if (strstr(class, "st-256color")) {
-    icon = " ";
-    if (strstr(name, ":"))
-      name = strstr(name, ":");
-    if (strcmp(name, "nvim") == 0)
-      icon = " ";
-  } else if (strstr(class, "firefox") || strstr(class, "Chromium")) {
-    // browser
-    if (strstr(name, "Firefox"))
-      icon = " ";
-    else if (strstr(name, "Chromium"))
-      icon = " ";
+  char buf[256];
+  unsigned int i;
+  const char *icon = NULL;
+  const TaskIcon *ti = NULL;
 
-    if (strstr(name, "Google"))
-      icon = " ";
-    else if (strstr(name, "Bing"))
-      icon = " ";
-
-    if (strstr(name, "YouTube"))
-      icon = " ";
-    else if (strstr(name, "Twitter"))
-      icon = " ";
-    else if (strstr(name, "Gmail"))
-      icon = " ";
-    // application
-  } else if (strstr(class, "neovide"))
-    icon = " ";
-  else if (strstr(class, "TelegramDesktop"))
-    icon = " ";
-  else if (strstr(class, "wechat.exe"))
-    icon = " ";
-  else if (strstr(class, "qqmusic"))
-    icon = " ";
-  else if (strstr(class, "netease-cloud-music"))
-    icon = " ";
-  else if (strstr(class, "vlc"))
-    icon = "嗢 ";
-  else if (strstr(class, "mpv"))
-    icon = " ";
-  else if (strstr(class, "DBeaver"))
-    icon = " ";
-  else if (strstr(class, "Pcmanfm"))
-    icon = " ";
-  else if (strstr(class, "lxappearance"))
-    icon = " ";
-  snprintf(title, strlen(title), "%s %s", icon, name);
+  for (i = 0; i < LENGTH(icons); i++) {
+    ti = &icons[i];
+    if ((!ti->class || strstr(class, ti->class)) &&
+        (!ti->title || strstr(name, ti->title))) {
+      icon = ti->icon;
+    }
+  }
+  snprintf(buf, sizeof(buf), "%s %s", icon ? icon : class, name);
+  title = buf;
 }
 
 void drawbars(void) {
