@@ -4,10 +4,15 @@
 /bin/bash ~/.dwm/dwm-status.sh &
 
 # wallpaper
-/bin/bash ~/.dwm/background.sh &
+if [[ -f ~/.dwm/background.sh ]]; then
+  /bin/bash ~/.dwm/background.sh &
+fi
 
 # picom
 picom --config ~/.dwm/configs/picom.conf -b
+
+# autolock
+xautolock -time 30 -locker slock -detectsleep &
 
 # 系统操作
 mate-power-manager &
@@ -25,6 +30,3 @@ fcitx5 -d
 udiskie -tN &
 # proxy
 trojan -c ~/.dwm/configs/trojan-cli.json &
-
-# autolock
-xautolock -time 30 -locker slock -detectsleep &

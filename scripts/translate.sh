@@ -1,11 +1,16 @@
 #!/bin/bash
 
-if [[ -x ydict ]]; then
-  if [[ -x go ]]; then
+if ! [[ -n $(command -v ydict) ]]; then
+  if ! [[ -n $(command -v go) ]]; then
     echo "install go environment please !"
-    exit 1
+    exit
   else
-    go install github.com/TimothyYe/ydict
+    read -p "install ydict ? (y/n): " flag
+    if [[ $flag == "y" ]]; then
+      go install github.com/TimothyYe/ydict@latest
+    else
+      exit
+    fi
   fi
 fi
 
