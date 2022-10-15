@@ -2,3 +2,5 @@ dwm
 *.orig
 *.rej
 *.o
+./scripts/configs/trojan-cli.json
+./scripts/configs/proxy.pac
