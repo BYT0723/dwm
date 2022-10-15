@@ -4,9 +4,10 @@ DIR=$(pwd)
 sudo make clean install
 
 # 创建脚本软链接
-if ! [[ -d ~/.dwm ]]; then
-  ln -s ${DIR}/scripts/ ~/.dwm
+if [[ -d ~/.dwm ]]; then
+  mv ~/.dwm ~/.dwm-old
 fi
+ln -s ${DIR}/scripts/ ~/.dwm
 
 # 安装st
 if ! [[ -n $(command -v st) ]]; then
