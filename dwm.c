@@ -1160,6 +1160,7 @@ void wrapclienttitle(char *class, char *name, char *title) {
   char buf[256];
   unsigned int i;
   const char *icon = NULL;
+  const char *left = "", *right = "";
   const TaskIcon *ti = NULL;
 
   for (i = 0; i < LENGTH(icons); i++) {
@@ -1169,7 +1170,12 @@ void wrapclienttitle(char *class, char *name, char *title) {
       icon = ti->icon;
     }
   }
-  snprintf(buf, sizeof(buf), "%s %s", icon ? icon : class, name);
+  if (!icon) {
+    icon = class;
+    left = "[";
+    right = "]";
+  }
+  snprintf(buf, sizeof(buf), "%s%s%s %s", left, icon, right, name);
   title = buf;
 }
 
