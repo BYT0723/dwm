@@ -1118,20 +1118,16 @@ void drawbar(Monitor *m) {
   x = drw_text(drw, x, 0, w, bh, lrpad / 2, m->ltsymbol, 0);
 
   // draw tab
+  drw_setscheme(drw, scheme[SchemeEmpty]);
+  drw_rect(drw, x, 0, m->ww - tw - stw - x, bh, 1, 1);
   if ((w = m->ww - tw - stw - x) > bh) {
     if (n > 0) {
       int remainder = w % n;
-      int textWidth = TEXTW(taskWidth);
-      int margin = 5;
-      int tabw = textWidth + margin * 2;
+      int tabw = TEXTW(taskWidth);
       if (tabw * n >= w)
         tabw = (1.0 / (double)n) * w + 1;
 
       for (c = m->clients; c; c = c->next) {
-        drw_setscheme(drw, scheme[SchemeEmpty]);
-        drw_rect(drw, x, 0, margin, bh, 1, 1);
-        x += margin;
-
         if (!ISVISIBLE(c))
           continue;
         if (m->sel == c)
@@ -1152,21 +1148,13 @@ void drawbar(Monitor *m) {
           remainder--;
         }
 
-        drw_text(drw, x, 0, tabw, bh, lrpad / 2, title, 0);
+        drw_task(drw, x, 0, tabw, bh, bh / 2, title, 0, 0);
         // 为浮动窗口添加浮动标志
         if (c->isfloating)
           drw_rect(drw, x + boxs, boxs, boxw, boxw, c->isfixed, 0);
-        x += textWidth;
-
-        drw_setscheme(drw, scheme[SchemeEmpty]);
-        x += margin;
+        x += tabw;
       }
       m->tw = tabw;
-      drw_setscheme(drw, scheme[SchemeEmpty]);
-      drw_rect(drw, x, 0, m->ww - tw - stw - x, bh, 1, 1);
-    } else {
-      drw_setscheme(drw, scheme[SchemeEmpty]);
-      drw_rect(drw, x, 0, w, bh, 1, 1);
     }
   }
 

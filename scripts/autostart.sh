@@ -22,11 +22,12 @@ sleep 1
 nm-applet &
 volumeicon &
 
-sleep 1
-
-# input method engine
-fcitx5 -d
 # usb mountion manager
 udiskie -tn &
 # proxy
 trojan -c ~/.dwm/configs/trojan-cli.json &
+
+sleep 2
+
+# input method engine
+fcitx5 -d
