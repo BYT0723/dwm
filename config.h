@@ -19,8 +19,8 @@ static const int showsystray             = 1;   /* 0 means no systray */
 
 static const Bool viewontag = True; /* Switch view on tag switch */
 static const char *fonts[] = {
-  "CaskaydiaCove Nerd Font:style=Regular:size=12",
-  "文泉驿等宽微米黑:style=Regular:size=12"
+  "CaskaydiaCove Nerd Font:style=Regular:size=14",
+  "文泉驿等宽微米黑:style=Regular:size=14"
 };
 static const char dmenufont[] = "CaskaydiaCove Nerd Font:style=Regular:size=12";
 
@@ -52,7 +52,7 @@ static const unsigned int alphas[][3]      = {
 /* tagging */
 static const char *tags[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
 /* task icon */
-static const char *taskWidth = "                    ";
+static const char *taskWidth = "               ";
 static const TaskIcon icons[] = {
   /* class                title               icon */
   {"st-256color",         NULL,               ""},

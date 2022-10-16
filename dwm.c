@@ -1148,7 +1148,7 @@ void drawbar(Monitor *m) {
           remainder--;
         }
 
-        drw_task(drw, x, 0, tabw, bh, bh / 2, title, 0, 0);
+        drw_task(drw, x, 0, tabw, bh, bh / 2, 5, title, 0);
         // 为浮动窗口添加浮动标志
         if (c->isfloating)
           drw_rect(drw, x + boxs, boxs, boxw, boxw, c->isfixed, 0);

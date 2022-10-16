@@ -391,7 +391,8 @@ int drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h,
 }
 
 int drw_task(Drw *drw, int x, int y, unsigned int w, unsigned int h,
-             unsigned int lpad, const char *text, int invert, int redict) {
+             unsigned int lpad, unsigned int lmargin, const char *text,
+             int invert) {
   int i, ty, ellipsis_x = 0;
   unsigned int tmpw, ew, ellipsis_w = 0, ellipsis_len;
   XftDraw *d = NULL;
@@ -420,18 +421,15 @@ int drw_task(Drw *drw, int x, int y, unsigned int w, unsigned int h,
   } else {
     XSetForeground(drw->dpy, drw->gc,
                    drw->scheme[invert ? ColFg : ColBg].pixel);
-    if (redict < 1) {
-      XFillArc(drw->dpy, drw->drawable, drw->gc, x, y, lpad * 2, h, 90 * 64,
-               180 * 64);
-      x += lpad;
-      w -= lpad;
-    }
-    if (redict > -1)
-      w -= lpad;
+    x += lmargin;
+    w -= lmargin;
+    XFillArc(drw->dpy, drw->drawable, drw->gc, x, y, lpad * 2, h, 90 * 64,
+             180 * 64);
+    x += lpad;
+    w -= lpad * 2;
     XFillRectangle(drw->dpy, drw->drawable, drw->gc, x, y, w, h);
-    if (redict > -1)
-      XFillArc(drw->dpy, drw->drawable, drw->gc, x + w - lpad, y, lpad * 2, h,
-               270 * 64, 180 * 64);
+    XFillArc(drw->dpy, drw->drawable, drw->gc, x + w - lpad, y, lpad * 2, h,
+             270 * 64, 180 * 64);
     d = XftDrawCreate(drw->dpy, drw->drawable, drw->visual, drw->cmap);
   }
 
