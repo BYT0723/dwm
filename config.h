@@ -24,32 +24,35 @@ static const char *fonts[] = {
 };
 static const char dmenufont[] = "CaskaydiaCove Nerd Font:style=Regular:size=12";
 
-static const char col_gray1[]       = "#222222";
-static const char col_gray2[]       = "#444444";
-static const char col_gray3[]       = "#bbbbbb";
-static const char col_gray4[]       = "#eeeeee";
-static const char col_cyan[]        = "#005577";
+
+static const char col_gray2[] = "#aaaaaa";
+static const char col_gray3[] = "#999999";
+static const char col_gray4[] = "#444444";
+static const char col_gray5[] = "#222222";
+static const char col_black[] = "#073642";
+static const char col_cyan[] = "#2aa198";
 static const unsigned int baralpha = 0xd0;
+static const unsigned int emptyalpha = 0x01;
 static const unsigned int borderalpha = OPAQUE;
-static const char *colors[][3]      = {
-	/*               fg         bg         border   */
-	[SchemeNorm] = { col_gray3, col_gray1, col_cyan },
-	[SchemeSel]  = { col_gray4, col_cyan,  col_gray3  },
-	[SchemeHid]  = { col_cyan,  col_gray1, col_cyan  },
-  [SchemeTask]   = {col_gray3, col_gray2, col_cyan},
+static const char *colors[][3] = {
+  /*                fg         bg         border   */
+  [SchemeNorm]  = {col_gray5, col_gray2, col_black},
+  [SchemeSel]   = {col_gray2, col_gray5, col_cyan},
+  [SchemeHid]  = {col_gray3, col_gray4, col_cyan},
+	[SchemeEmpty] = { col_black, col_black, col_black },
 };
 static const unsigned int alphas[][3]      = {
 	/*               fg      bg        border     */
-	[SchemeNorm] = { OPAQUE, baralpha, borderalpha },
-	[SchemeSel]  = { OPAQUE, baralpha, borderalpha },
-	[SchemeHid] = { OPAQUE, baralpha, borderalpha },
-	[SchemeTask]  = { OPAQUE, baralpha, borderalpha },
+	[SchemeNorm] = { OPAQUE, baralpha,  emptyalpha},
+	[SchemeSel]  = { OPAQUE, baralpha, emptyalpha },
+	[SchemeHid] = { OPAQUE, baralpha, emptyalpha },
+  [SchemeEmpty] = {emptyalpha, emptyalpha, emptyalpha},
 };
 
 /* tagging */
 static const char *tags[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
 /* task icon */
-static const char *taskWidth = "                              ";
+static const char *taskWidth = "                    ";
 static const TaskIcon icons[] = {
   /* class                title               icon */
   {"st-256color",         NULL,               ""},

@@ -85,8 +85,8 @@
 #define OPAQUE 0xffU
 
 /* enums */
-enum { CurNormal, CurResize, CurMove, CurLast };       /* cursor */
-enum { SchemeNorm, SchemeSel, SchemeHid, SchemeTask }; /* color schemes */
+enum { CurNormal, CurResize, CurMove, CurLast };        /* cursor */
+enum { SchemeNorm, SchemeSel, SchemeHid, SchemeEmpty }; /* color schemes */
 enum {
   NetSupported,
   NetWMName,
@@ -264,7 +264,6 @@ static void focusstack(int inc, int vis);
 static Atom getatomprop(Client *c, Atom prop);
 static int getrootptr(int *x, int *y);
 static long getstate(Window w);
-static unsigned int getsystraywidth();
 static int gettextprop(Window w, Atom atom, char *text, unsigned int size);
 static unsigned int getsystraywidth();
 static void grabbuttons(Client *c, int focused);
@@ -1122,11 +1121,17 @@ void drawbar(Monitor *m) {
   if ((w = m->ww - tw - stw - x) > bh) {
     if (n > 0) {
       int remainder = w % n;
-      // int tabw = (1.0 / (double)n) * w + 1;
-      int tabw = TEXTW(taskWidth);
+      int textWidth = TEXTW(taskWidth);
+      int margin = 5;
+      int tabw = textWidth + margin * 2;
       if (tabw * n >= w)
         tabw = (1.0 / (double)n) * w + 1;
+
       for (c = m->clients; c; c = c->next) {
+        drw_setscheme(drw, scheme[SchemeEmpty]);
+        drw_rect(drw, x, 0, margin, bh, 1, 1);
+        x += margin;
+
         if (!ISVISIBLE(c))
           continue;
         if (m->sel == c)
@@ -1134,7 +1139,7 @@ void drawbar(Monitor *m) {
         else if (HIDDEN(c))
           scm = SchemeHid;
         else
-          scm = SchemeTask;
+          scm = SchemeNorm;
         drw_setscheme(drw, scheme[scm]);
 
         char title[256];
@@ -1151,13 +1156,16 @@ void drawbar(Monitor *m) {
         // 为浮动窗口添加浮动标志
         if (c->isfloating)
           drw_rect(drw, x + boxs, boxs, boxw, boxw, c->isfixed, 0);
-        x += tabw;
+        x += textWidth;
+
+        drw_setscheme(drw, scheme[SchemeEmpty]);
+        x += margin;
       }
       m->tw = tabw;
-      drw_setscheme(drw, scheme[SchemeNorm]);
+      drw_setscheme(drw, scheme[SchemeEmpty]);
       drw_rect(drw, x, 0, m->ww - tw - stw - x, bh, 1, 1);
     } else {
-      drw_setscheme(drw, scheme[SchemeNorm]);
+      drw_setscheme(drw, scheme[SchemeEmpty]);
       drw_rect(drw, x, 0, w, bh, 1, 1);
     }
   }
@@ -1165,6 +1173,16 @@ void drawbar(Monitor *m) {
   m->bt = n;
   m->btw = w;
   drw_map(drw, m->barwin, 0, 0, m->ww - stw, bh);
+}
+
+void drawbars(void) {
+  Monitor *m;
+
+  for (m = mons; m; m = m->next)
+    drawbar(m);
+
+  if (showsystray && !systraypinning)
+    updatesystray(0);
 }
 
 void wrapclienttitle(char *class, char *name, char *title) {
@@ -1188,16 +1206,6 @@ void wrapclienttitle(char *class, char *name, char *title) {
   }
   snprintf(buf, sizeof(buf), "%s%s%s %s", left, icon, right, name);
   title = buf;
-}
-
-void drawbars(void) {
-  Monitor *m;
-
-  for (m = mons; m; m = m->next)
-    drawbar(m);
-
-  if (showsystray && !systraypinning)
-    updatesystray(0);
 }
 
 //  void enternotify(XEvent *e) {
