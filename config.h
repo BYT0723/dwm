@@ -3,78 +3,87 @@
 /* appearance */
 static const unsigned int borderpx = 2; /* border pixel of windows */
 static const unsigned int snap = 32;    /* snap pixel */
-static const int showbar = 1;       /* 0 means no bar */
-static const int topbar = 1;        /* 0 means bottom bar */
+static const          int showbar = 1;  /* 0 means no bar */
+static const          int topbar = 1;   /* 0 means bottom bar */
 
-static const unsigned int gappih = 5; /* horiz inner gap between windows */
-static const unsigned int gappiv = 5; /* vert inner gap between windows */
-static const unsigned int gappoh = 7; /* horiz outer gap between windows and screen edge */
-static const unsigned int gappov = 9; /* vert outer gap between windows and screen edge */
-static                int smartgaps = 0; /* 1 means no outer gap when there is only one window */
+static const unsigned int gappih = 5;     /* horiz inner gap between windows */
+static const unsigned int gappiv = 5;     /* vert inner gap between windows */
+static const unsigned int gappoh = 7;     /* horiz outer gap between windows and screen edge */
+static const unsigned int gappov = 9;     /* vert outer gap between windows and screen edge */
+static                int smartgaps = 0;  /* 1 means no outer gap when there is only one window */
 
-static const unsigned int systraypinning = 0;   /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
-static const unsigned int systrayspacing = 2;   /* systray spacing */
-static const int systraypinningfailfirst = 1;   /* 1: if pinning fails, display systray on the first monitor, False: display systray on the last monitor*/
-static const int showsystray             = 1;   /* 0 means no systray */
+static const unsigned int systraypinning = 0;           /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
+static const unsigned int systrayspacing = 2;           /* systray spacing */
+static const int          systraypinningfailfirst = 1;  /* 1: if pinning fails, display systray on the first monitor, False: display systray on the last monitor*/
+static const int          showsystray             = 1;  /* 0 means no systray */
 
 static const Bool viewontag = True; /* Switch view on tag switch */
 static const char *fonts[] = {
   "CaskaydiaCove Nerd Font:style=Regular:size=14",
   "文泉驿等宽微米黑:style=Regular:size=14"
 };
-static const char dmenufont[] = "CaskaydiaCove Nerd Font:style=Regular:size=12";
 
 
 static const char col_gray2[] = "#aaaaaa";
 static const char col_gray3[] = "#999999";
 static const char col_gray4[] = "#444444";
 static const char col_gray5[] = "#222222";
-static const char col_black[] = "#073642";
+static const char col_black[] = "#000000";
 static const char col_cyan[] = "#2aa198";
 static const unsigned int baralpha = 0xd0;
-static const unsigned int emptyalpha = 0x01;
+static const unsigned int emptyalpha = 0x00;
 static const unsigned int borderalpha = OPAQUE;
 static const char *colors[][3] = {
   /*                fg         bg         border   */
   [SchemeNorm]  = {col_gray5, col_gray2, col_black},
-  [SchemeSel]   = {col_gray2, col_gray5, col_cyan},
-  [SchemeHid]  = {col_gray3, col_gray4, col_cyan},
-	[SchemeEmpty] = { col_black, col_black, col_black },
+  [SchemeSel]   = {col_gray2, col_gray5, col_cyan },
+  [SchemeHid]   = {col_gray3, col_gray4, col_cyan },
+  [SchemeTagNorm]  = {col_gray2, col_black, col_black},
+  [SchemeTagSel]   = {col_gray5, col_black, col_black},
+	[SchemeEmpty] = {col_black, col_black, col_black},
 };
 static const unsigned int alphas[][3]      = {
-	/*               fg      bg        border     */
-	[SchemeNorm] = { OPAQUE, baralpha,  emptyalpha},
-	[SchemeSel]  = { OPAQUE, baralpha, emptyalpha },
-	[SchemeHid] = { OPAQUE, baralpha, emptyalpha },
-  [SchemeEmpty] = {emptyalpha, emptyalpha, emptyalpha},
+	/*                fg          bg          border     */
+	[SchemeNorm]  = { OPAQUE,     baralpha,   emptyalpha},
+	[SchemeSel]   = { OPAQUE,     baralpha,   emptyalpha },
+	[SchemeHid]   = { OPAQUE,     baralpha,   emptyalpha },
+  [SchemeTagNorm]  = {OPAQUE, emptyalpha, emptyalpha},
+  [SchemeTagSel]   = {OPAQUE, emptyalpha, emptyalpha},
+  [SchemeEmpty] = { emptyalpha, emptyalpha, emptyalpha},
 };
 
-/* tagging */
-static const char *tags[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
 /* task icon */
 static const char *taskWidth = "                    ";
 static const TaskIcon icons[] = {
   /* class                title               icon */
-  {"st-256color",         NULL,               ""},
-  {"firefox",             NULL,               ""},
-  {"Chromium",            NULL,               ""},
-  {"firefox",             "YouTube",          ""},
-  {"Chromium",            "YouTube",          ""},
-  {"firefox",             "Twitter",          ""},
-  {"Chromium",            "Twitter",          ""},
-  {"firefox",             "Gmail",            ""},
-  {"Chromium",            "Gmail",            ""},
-  {"neovide",             NULL,               ""},
-  {"TelegramDesktop",     NULL,               ""},
-  {"wechat.exe",          NULL,               ""},
-  {"qqmusic",             NULL,               ""},
-  {"netease-cloud-music", NULL,               ""},
-  {"vlc",                 NULL,               " "},
-  {"mpv",                 NULL,               ""},
-  {"DBeaver",             NULL,               ""},
-  {"Pcmanfm",             NULL,               ""},
-  {"Lxappearance",        NULL,               ""},
+  // default
+  {NULL,                  NULL,               "ﬓ "},
+  // terminal
+  {"st-256color",         NULL,               " "},
+  // brower
+  {"firefox",             NULL,               " "},
+  {"Chromium",            NULL,               " "},
+  // website
+  {NULL,                  "YouTube",          " "},
+  {NULL,                  "Twitter",          " "},
+  {NULL,                  "Gmail",            " "},
+  // application
+  {"neovide",             NULL,               " "},
+  {"TelegramDesktop",     NULL,               " "},
+  {"wechat.exe",          NULL,               " "},
+  {"qqmusic",             NULL,               " "},
+  {"netease-cloud-music", NULL,               " "},
+  {"vlc",                 NULL,               "嗢"},
+  {"mpv",                 NULL,               " "},
+  {"DBeaver",             NULL,               " "},
+  {"Pcmanfm",             NULL,               " "},
+  {"Lxappearance",        NULL,               " "},
 };
+
+/* tagging */
+static const char *tags[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
+// static const char *tags[] = {"", "", "", "", "", "", "", "", ""};
+
 static const Rule rules[] = {
   /* xprop(1):
      *	WM_CLASS(STRING) = instance, class
@@ -121,20 +130,20 @@ static const int   lockfullscreen = 1; /* 1 will force focus on the fullscreen w
 
 static const Layout layouts[] = {
     /* symbol     arrange function */
-    {"[T]",       tile}, /* first entry is default */
-    {"[F]",       NULL}, /* no layout function means floating behavior */
-    {"[M]",       monocle},
-    {"HHH",       grid},
-    {":::",       gaplessgrid},
-    {"|M|",       centeredmaster},
-    {">M>",       centeredfloatingmaster},
-    {"[|=]",      deck},
-    {"TTT",       bstack},
-    {"===",       bstackhoriz},
-    {"[@]",       spiral},
-    {"[\\]",      dwindle},
-    {"###",       nrowgrid},
-    {"---",       horizgrid},
+    {"[Tile]",            tile}, /* first entry is default */
+    {"[Float]",           NULL}, /* no layout function means floating behavior */
+    {"[Monocle]",         monocle},
+    {"[Grid]",            grid},
+    {"[GaplessGrid]",     gaplessgrid},
+    {"[NRowGrid]",        nrowgrid},
+    {"[HorizGrid]",       horizgrid},
+    {"[CenteredMaster]",  centeredmaster},
+    {"[CenteredFloatingMaster]",       centeredfloatingmaster},
+    {"[Deck]",            deck},
+    {"[BStack]",          bstack},
+    {"[BStackHoriz]",     bstackhoriz},
+    {"[Spiral]",          spiral},
+    {"[Dwindle]",         dwindle},
 };
 
 /* key definitions */
@@ -152,13 +161,6 @@ static const Layout layouts[] = {
   }
 
 /* commands */
-static char dmenumon[2] =
-    "0"; /* component of dmenucmd, manipulated in spawn() */
-static const char *dmenucmd[]  = {"dmenu_run",
-                                 // "-b",
-                                 // "-l","10",
-                                 "-p", ">>> ", "-m", dmenumon, "-fn", dmenufont,
-                                 NULL};
 static const char *termcmd[]   = {"./.dwm/term.sh", NULL};
 static const char *floatcmd[]  = {"./.dwm/term.sh", "float", NULL};
 static const char *transcmd[]  = {"./.dwm/term.sh", "translator", NULL};

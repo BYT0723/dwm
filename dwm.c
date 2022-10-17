@@ -85,8 +85,15 @@
 #define OPAQUE 0xffU
 
 /* enums */
-enum { CurNormal, CurResize, CurMove, CurLast };        /* cursor */
-enum { SchemeNorm, SchemeSel, SchemeHid, SchemeEmpty }; /* color schemes */
+enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
+enum {
+  SchemeNorm,
+  SchemeSel,
+  SchemeHid,
+  SchemeEmpty,
+  SchemeTagNorm,
+  SchemeTagSel
+}; /* color schemes */
 enum {
   NetSupported,
   NetWMName,
@@ -1108,7 +1115,8 @@ void drawbar(Monitor *m) {
     w = TEXTW(tags[i]);
     // 高亮所在的tag
     drw_setscheme(
-        drw, scheme[m->tagset[m->seltags] & 1 << i ? SchemeSel : SchemeNorm]);
+        drw,
+        scheme[m->tagset[m->seltags] & 1 << i ? SchemeTagSel : SchemeTagNorm]);
     drw_text(drw, x, 0, w, bh, lrpad / 2, tags[i], urg & 1 << i);
     x += w;
   }
@@ -1177,7 +1185,6 @@ void wrapclienttitle(char *class, char *name, char *title) {
   char buf[256];
   unsigned int i;
   const char *icon = NULL;
-  const char *left = "", *right = "";
   const TaskIcon *ti = NULL;
 
   for (i = 0; i < LENGTH(icons); i++) {
@@ -1187,12 +1194,7 @@ void wrapclienttitle(char *class, char *name, char *title) {
       icon = ti->icon;
     }
   }
-  if (!icon) {
-    icon = class;
-    left = "[";
-    right = "]";
-  }
-  snprintf(buf, sizeof(buf), "%s%s%s %s", left, icon, right, name);
+  snprintf(buf, sizeof(buf), "%s%s", icon, name);
   title = buf;
 }
 
@@ -2304,8 +2306,6 @@ void sigchld(int unused) {
 }
 
 void spawn(const Arg *arg) {
-  if (arg->v == dmenucmd)
-    dmenumon[0] = '0' + selmon->num;
   if (fork() == 0) {
     if (dpy)
       close(ConnectionNumber(dpy));
