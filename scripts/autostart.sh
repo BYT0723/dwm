@@ -23,7 +23,7 @@ nm-applet &
 volumeicon &
 
 # usb mountion manager
-udiskie -tn &
+udiskie -tN &
 # proxy
 trojan -c ~/.dwm/configs/trojan-cli.json &
 

@@ -8,8 +8,8 @@ static const int topbar = 1;        /* 0 means bottom bar */
 
 static const unsigned int gappih = 5; /* horiz inner gap between windows */
 static const unsigned int gappiv = 5; /* vert inner gap between windows */
-static const unsigned int gappoh = 10; /* horiz outer gap between windows and screen edge */
-static const unsigned int gappov = 5; /* vert outer gap between windows and screen edge */
+static const unsigned int gappoh = 7; /* horiz outer gap between windows and screen edge */
+static const unsigned int gappov = 9; /* vert outer gap between windows and screen edge */
 static                int smartgaps = 0; /* 1 means no outer gap when there is only one window */
 
 static const unsigned int systraypinning = 0;   /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
@@ -52,7 +52,7 @@ static const unsigned int alphas[][3]      = {
 /* tagging */
 static const char *tags[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
 /* task icon */
-static const char *taskWidth = "               ";
+static const char *taskWidth = "                    ";
 static const TaskIcon icons[] = {
   /* class                title               icon */
   {"st-256color",         NULL,               ""},
