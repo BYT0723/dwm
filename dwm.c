@@ -1122,7 +1122,7 @@ void drawbar(Monitor *m) {
   }
   // layout symbol
   w = blw = TEXTW(m->ltsymbol);
-  drw_setscheme(drw, scheme[SchemeNorm]);
+  drw_setscheme(drw, scheme[SchemeHid]);
   x = drw_text(drw, x, 0, w, bh, lrpad / 2, m->ltsymbol, 0);
 
   // draw tab
@@ -1159,7 +1159,7 @@ void drawbar(Monitor *m) {
         drw_task(drw, x, 0, tabw, bh, bh / 2, 5, title, 0);
         // 为浮动窗口添加浮动标志
         if (c->isfloating)
-          drw_rect(drw, x + boxs, boxs, boxw, boxw, c->isfixed, 0);
+          drw_rect(drw, x + bh / 2, boxs, boxw, boxw, c->isfixed, 0);
         x += tabw;
       }
       m->tw = tabw;
