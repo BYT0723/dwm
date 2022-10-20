@@ -9,7 +9,7 @@ if [[ -f ~/.dwm/background.sh ]]; then
 fi
 
 # picom
-picom --config ~/.dwm/configs/picom.conf -b
+picom --config ~/.dwm/configs/picom.conf -b --experimental-backends
 
 # autolock
 xautolock -time 30 -locker slock -detectsleep &
