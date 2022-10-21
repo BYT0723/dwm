@@ -42,6 +42,7 @@ static const char *colors[][3] = {
   [SchemeNorm]    = {col_black, col_cyan, col_black},
   [SchemeSel]     = {col_black, col_green, col_cyan },
   [SchemeHid]     = {col_white, col_black, col_black },
+  // tag
   [SchemeTagNorm] = {col_white, col_ab_black, col_ab_black},
   [SchemeTagSel]  = {col_black, col_blue, col_black},
 	[SchemeEmpty]   = {col_ab_black, col_ab_black, col_ab_black},
@@ -51,6 +52,7 @@ static const unsigned int alphas[][3]      = {
 	[SchemeNorm]  = { OPAQUE,     OPAQUE,   emptyalpha},
 	[SchemeSel]   = { OPAQUE,     OPAQUE,   OPAQUE },
 	[SchemeHid]   = { OPAQUE,     baralpha, emptyalpha },
+  // tag
   [SchemeTagNorm]  = {OPAQUE, emptyalpha, emptyalpha},
   [SchemeTagSel]   = {OPAQUE, baralpha, emptyalpha},
   [SchemeEmpty] = { emptyalpha, emptyalpha, emptyalpha},
@@ -109,6 +111,9 @@ static const Rule rules[] = {
 
   {"xunlei",              NULL,       NULL,     1 << 6,       1,            -1},
   {"qBittorrent",         NULL,       NULL,     1 << 6,       0,            -1},
+
+
+  {"Steam",               NULL,       NULL,     1 << 6,       1,            -1},
 
   // other only floating
   {"vlc",                 NULL,       NULL,     0,            1,            -1},
