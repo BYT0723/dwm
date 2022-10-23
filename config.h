@@ -176,6 +176,8 @@ static const char *roficmd[]   = {"./.dwm/rofi.sh", NULL};
 static const char *powermenu[] = {"./.dwm/powermenu.sh", NULL};
 static const char *mpdcmd[]    = {"./.dwm/mpd.sh", NULL};
 
+static const char *layoutmenu_cmd = "./.dwm/layoutmenu.sh";
+
 // 打开关闭触摸板
 static const char *toggleTouchpad[] = {"./.dwm/touchpad-toggle.sh", NULL};
 // 截图
@@ -279,6 +281,7 @@ static Button buttons[] = {
   { ClkTagBar,       MODKEY,     Button3,  toggletag,      {0}},
   // layout
  	{ ClkLtSymbol,          0,     Button1,  setlayout,      {0}},
+	{ ClkLtSymbol,          0,     Button3,  layoutmenu,     {0}},
   // task
   { ClkWinTitle,          0,     Button1,  togglewin,      {0}},
   { ClkWinTitle,          0,     Button2,  killclient,     {0}},
