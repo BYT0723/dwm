@@ -112,9 +112,6 @@ static const Rule rules[] = {
   {"xunlei",              NULL,       NULL,     1 << 6,       1,            -1},
   {"qBittorrent",         NULL,       NULL,     1 << 6,       0,            -1},
 
-
-  {"Steam",               NULL,       NULL,     1 << 6,       1,            -1},
-
   // other only floating
   {"vlc",                 NULL,       NULL,     0,            1,            -1},
   {"mpv",                 NULL,       NULL,     0,            1,            -1},
