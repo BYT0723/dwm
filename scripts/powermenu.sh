@@ -95,7 +95,7 @@ run_cmd() {
     confirm_run 'kill -9 -1'
   elif [[ "$1" == '--opt3' ]]; then
     mpc -q pause
-    confirm_run 'amixer set Master mute' 'systemctl suspend'
+    confirm_run 'pamixer -m' 'systemctl suspend'
   elif [[ "$1" == '--opt4' ]]; then
     confirm_run 'systemctl hibernate'
   elif [[ "$1" == '--opt5' ]]; then

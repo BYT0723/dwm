@@ -8,8 +8,8 @@ static const          int topbar = 1;   /* 0 means bottom bar */
 
 static const unsigned int gappih = 5;     /* horiz inner gap between windows */
 static const unsigned int gappiv = 5;     /* vert inner gap between windows */
-static const unsigned int gappoh = 7;     /* horiz outer gap between windows and screen edge */
-static const unsigned int gappov = 9;     /* vert outer gap between windows and screen edge */
+static const unsigned int gappoh = 9;     /* horiz outer gap between windows and screen edge */
+static const unsigned int gappov = 10;    /* vert outer gap between windows and screen edge */
 static                int smartgaps = 0;  /* 1 means no outer gap when there is only one window */
 
 static const unsigned int systraypinning = 0;           /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
@@ -39,12 +39,12 @@ static const unsigned int emptyalpha = 0x00;
 static const unsigned int borderalpha = OPAQUE;
 static const char *colors[][3] = {
   /*                  fg         bg         border   */
-  [SchemeNorm]    = {col_black, col_cyan, col_black},
+  [SchemeNorm]    = {col_black, col_cyan,  col_ab_black},
   [SchemeSel]     = {col_black, col_green, col_cyan },
   [SchemeHid]     = {col_white, col_black, col_black },
   // tag
-  [SchemeTagNorm] = {col_white, col_ab_black, col_ab_black},
-  [SchemeTagSel]  = {col_black, col_blue, col_black},
+  [SchemeTagNorm] = {col_white,    col_ab_black, col_ab_black},
+  [SchemeTagSel]  = {col_black,    col_blue,     col_black},
 	[SchemeEmpty]   = {col_ab_black, col_ab_black, col_ab_black},
 };
 static const unsigned int alphas[][3]      = {
@@ -53,9 +53,9 @@ static const unsigned int alphas[][3]      = {
 	[SchemeSel]   = { OPAQUE,     OPAQUE,   OPAQUE },
 	[SchemeHid]   = { OPAQUE,     baralpha, emptyalpha },
   // tag
-  [SchemeTagNorm]  = {OPAQUE, emptyalpha, emptyalpha},
-  [SchemeTagSel]   = {OPAQUE, baralpha, emptyalpha},
-  [SchemeEmpty] = { emptyalpha, emptyalpha, emptyalpha},
+  [SchemeTagNorm]  = {OPAQUE,     emptyalpha, emptyalpha},
+  [SchemeTagSel]   = {OPAQUE,     baralpha,   emptyalpha},
+  [SchemeEmpty]    = {emptyalpha, emptyalpha, emptyalpha},
 };
 
 /* task icon */
@@ -77,6 +77,7 @@ static const TaskIcon icons[] = {
   {"neovide",             NULL,               " "},
   {"TelegramDesktop",     NULL,               " "},
   {"wechat.exe",          NULL,               " "},
+  {"icalingua",           NULL,               " "},
   {"qqmusic",             NULL,               " "},
   {"netease-cloud-music", NULL,               " "},
   {"vlc",                 NULL,               "嗢"},
@@ -95,10 +96,11 @@ static const Rule rules[] = {
      *	WM_NAME(STRING) = title
      */
   /* class                instance    title     tags mask     isfloating    monitor */
-  {"firefox",             NULL,       NULL,     1 << 1,       0,            -1},
+  // {"firefox",             NULL,       NULL,     1 << 1,       0,            -1},
 
   {"TelegramDesktop",     NULL,       NULL,     1 << 2,       0,            -1},
   {"wechat.exe",          NULL,       NULL,     1 << 2,       0,            -1},
+  {"icalingua",           NULL,       NULL,     1 << 2,       0,            -1},
 
   {"qqmusic",             NULL,       NULL,     1 << 3,       1,            -1},
   {"netease-cloud-music", NULL,       NULL,     1 << 3,       1,            -1},
@@ -183,11 +185,11 @@ static const char *flameshot[] = {"flameshot", "gui", NULL};
 /* commands spawned when clicking statusbar, the mouse button pressed is
  * exported as BUTTON */
 static const StatusCmd statuscmds[] = {
-  {"./.dwm/statuscmd.sh date $BUTTON", 1},      // date
+  {"./.dwm/statuscmd.sh date $BUTTON",      1}, // date
   {"./.dwm/statuscmd.sh disk-root $BUTTON", 2}, // disk
-  {"./.dwm/statuscmd.sh memory $BUTTON", 3},    // memory
-  {"./.dwm/statuscmd.sh cpuInfo $BUTTON", 4},   // cpu
-  {"./.dwm/statuscmd.sh netSpeed $BUTTON", 5},  // speed
+  {"./.dwm/statuscmd.sh memory $BUTTON",    3}, // memory
+  {"./.dwm/statuscmd.sh cpuInfo $BUTTON",   4}, // cpu
+  {"./.dwm/statuscmd.sh netSpeed $BUTTON",  5}, // speed
 };
 static const char *statuscmd[] = {"/bin/sh", "-c", NULL, NULL};
 
@@ -231,6 +233,7 @@ static Key keys[] = {
   {MODKEY,                        XK_Tab,     view,           {0}},
   {MODKEY,                        XK_0,       view,           {.ui = ~0}},
   {MODKEY | ShiftMask,            XK_0,       tag,            {.ui = ~0}},
+  {MODKEY | ControlMask,          XK_0,       toggletag,            {.ui = ~0}},
   {MODKEY,                        XK_comma,   focusmon,       {.i = -1}},
   {MODKEY,                        XK_period,  focusmon,       {.i = +1}},
   {MODKEY | ShiftMask,            XK_comma,   tagmon,         {.i = -1}},

@@ -17,7 +17,7 @@ if [[ -z "$status" ]]; then
   mesg="MPD is Offline"
 else
   prompt="$(mpc -f "%artist%" current)"
-  mesg="$(mpc -f "%title%" current) :: $(mpc status | grep "#" | awk '{print $3}')  墳$(mpc volume | awk -F ':' '{print $2}')"
+  mesg="$(mpc -f "%title%" current) :: $(mpc status | grep "#" | awk '{print $3}')  墳 $(mpc volume | awk -F ':' '{print $2}')"
 fi
 
 if [[ ("$theme" == *'type-1'*) || ("$theme" == *'type-3'*) || ("$theme" == *'type-5'*) ]]; then
@@ -42,9 +42,8 @@ if [[ "$layout" == 'NO' ]]; then
   option_4=" Next"
   option_5="ﱜ Down"
   option_6="ﱛ Up"
-  option_7=" Search"
-  option_8=" Repeat"
-  option_9=" Random"
+  option_7=" Repeat"
+  option_8=" Random"
 else
   option_power="⏻"
   if [[ ${status} == *"[playing]"* ]]; then
@@ -57,9 +56,8 @@ else
   option_4=""
   option_5="ﱜ"
   option_6="ﱛ"
-  option_7=""
-  option_8=""
-  option_9=""
+  option_7=""
+  option_8=""
 fi
 
 # Toggle Actions
@@ -71,7 +69,7 @@ if [[ ${status} == *"repeat: on"* ]]; then
 elif [[ ${status} == *"repeat: off"* ]]; then
   urgent="-u 7"
 else
-  option_8=" Parsing Error"
+  option_7=" Parsing Error"
 fi
 # Random
 if [[ ${status} == *"random: on"* ]]; then
@@ -79,7 +77,7 @@ if [[ ${status} == *"random: on"* ]]; then
 elif [[ ${status} == *"random: off"* ]]; then
   [ -n "$urgent" ] && urgent+=",8" || urgent="-u 8"
 else
-  option_9=" Parsing Error"
+  option_8=" Parsing Error"
 fi
 
 # Rofi CMD
@@ -99,7 +97,7 @@ run_rofi() {
   if [[ -z "$status" ]]; then
     echo -e "$option_power" | rofi_cmd
   else
-    echo -e "$option_1\n$option_2\n$option_3\n$option_4\n$option_5\n$option_6\n$option_7\n$option_8\n$option_9" | rofi_cmd
+    echo -e "$option_1\n$option_2\n$option_3\n$option_4\n$option_5\n$option_6\n$option_7\n$option_8" | rofi_cmd
   fi
 }
 
@@ -122,8 +120,6 @@ run_cmd() {
   elif [[ "$1" == '--opt7' ]]; then
     mpc -q repeat
   elif [[ "$1" == '--opt8' ]]; then
-    mpc -q repeat
-  elif [[ "$1" == '--opt9' ]]; then
     mpc -q random
   fi
 }
@@ -157,8 +153,5 @@ $option_7)
   ;;
 $option_8)
   run_cmd --opt8
-  ;;
-$option_9)
-  run_cmd --opt9
   ;;
 esac
