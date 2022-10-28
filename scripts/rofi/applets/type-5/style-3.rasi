@@ -2,7 +2,7 @@
  *
  * Author : Aditya Shakya (adi1090x)
  * Github : @adi1090x
- * 
+ *
  * Rofi Theme File
  * Rofi Version: 1.7.3
  **/
@@ -62,7 +62,7 @@ imagebox {
     border-radius:               100%;
     border-color:                @selected;
     background-color:            transparent;
-    background-image:            url("~/.config/rofi/images/g.png", height);
+    background-image:            url("~/.dwm/rofi/images/g.png", height);
     children:                    [ "dummy", "inputbar", "dummy" ];
 }
 
@@ -125,7 +125,7 @@ listview {
     cycle:                       true;
     scrollbar:                   false;
     layout:                      vertical;
-    
+
     spacing:                     5px;
     background-color:            transparent;
     cursor:                      "default";

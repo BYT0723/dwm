@@ -171,9 +171,12 @@ static const Layout layouts[] = {
 static const char *termcmd[]   = {"./.dwm/term.sh", NULL};
 static const char *floatcmd[]  = {"./.dwm/term.sh", "float", NULL};
 static const char *transcmd[]  = {"./.dwm/term.sh", "translator", NULL};
-static const char *roficmd[]   = {"./.dwm/rofi.sh", NULL};
-static const char *powermenu[] = {"./.dwm/powermenu.sh", NULL};
-static const char *mpdcmd[]    = {"./.dwm/mpd.sh", NULL};
+
+// rofi application
+static const char *roficmd[]   = {"./.dwm/rofi/bin/app.sh", NULL};
+static const char *powercmd[] = {"./.dwm/rofi/bin/powermenu.sh", NULL};
+static const char *mpdcmd[]    = {"./.dwm/rofi/bin/mpd.sh", NULL};
+static const char *linkcmd[]    = {"./.dwm/rofi/bin/quicklinks.sh", NULL};
 
 static const char *layoutmenu_cmd = "./.dwm/layoutmenu.sh";
 
@@ -196,19 +199,20 @@ static const char *statuscmd[] = {"/bin/sh", "-c", NULL, NULL};
 static Key keys[] = {
   /* modifier                     key         function        argument */
   // custom shell script
-  {MODKEY,                        XK_d,       spawn,          {.v = roficmd}},
   {MODKEY,                        XK_Return,  spawn,          {.v = termcmd}},
   {MODKEY,                        XK_n,       spawn,          {.v = floatcmd}},
   {MODKEY | ShiftMask,            XK_n,       spawn,          {.v = transcmd}},
-  {MODKEY,                        XK_a,       spawn,          {.v = flameshot}},
-  {MODKEY | ShiftMask,            XK_m,       spawn,          {.v = mpdcmd}},
-  {MODKEY | ControlMask,          XK_m,       spawn,          {.v = powermenu}},
   {MODKEY,                        XK_space,   spawn,          {.v = toggleTouchpad}},
+  {MODKEY,                        XK_a,       spawn,          {.v = flameshot}},
+  // rofi
+  {MODKEY,                        XK_d,       spawn,          {.v = roficmd}},
+  {MODKEY | ShiftMask ,           XK_m,       spawn,          {.v = mpdcmd}},
+  {MODKEY | ShiftMask,            XK_l,       spawn,          {.v = linkcmd}},
+  {MODKEY | ControlMask,          XK_m,       spawn,          {.v = powercmd}},
 
   // layout
   {MODKEY,                        XK_t,       setlayout,      {.v = &layouts[0]}},
-  {MODKEY,                        XK_f,       setlayout,      {.v = &layouts[1]}},
-  {MODKEY,                        XK_m,       setlayout,      {.v = &layouts[2]}},
+  {MODKEY | ShiftMask,            XK_t,       layoutmenu,     {0}},
 
   // layout adjust
   {MODKEY,                        XK_v,       incnmaster,     {.i = +1}},

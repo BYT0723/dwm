@@ -16,8 +16,9 @@ if [[ -z "$status" ]]; then
   prompt='Offline'
   mesg="MPD is Offline"
 else
-  prompt="$(mpc -f "%artist%" current)"
-  mesg="$(mpc -f "%title%" current) :: $(mpc status | grep "#" | awk '{print $3}')  墳 $(mpc volume | awk -F ':' '{print $2}')"
+  prompt="$(mpc -f "%title% - %artist%" current)"
+  # mesg="$(mpc -f "%title%" current) :: $(mpc status | grep "#" | awk '{print $3}')  墳 $(mpc volume | awk -F ':' '{print $2}')"
+  mesg="$(mpc status | grep "#" | awk '{print $3}')  墳 $(mpc volume | awk -F ':' '{print $2}')"
 fi
 
 if [[ ("$theme" == *'type-1'*) || ("$theme" == *'type-3'*) || ("$theme" == *'type-5'*) ]]; then
@@ -83,7 +84,7 @@ fi
 # Rofi CMD
 rofi_cmd() {
   rofi -theme-str "listview {columns: $list_col; lines: $list_row;}" \
-    -theme-str 'textbox-prompt-colon {str: "";}' \
+    -theme-str 'textbox-prompt-colon {str: "MPD";}' \
     -dmenu \
     -p "$prompt" \
     -mesg "$mesg" \
