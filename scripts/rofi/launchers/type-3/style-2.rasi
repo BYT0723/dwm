@@ -2,16 +2,18 @@
  *
  * Author : Aditya Shakya (adi1090x)
  * Github : @adi1090x
- * 
+ *
  * Rofi Theme File
  * Rofi Version: 1.7.3
  **/
 
 /*****----- Configuration -----*****/
 configuration {
-	modi:                       "drun";
+	modi:                       "drun,run,window";
     show-icons:                 true;
-    display-drun:               "";
+    display-drun:               " ";
+    display-run:                " ";
+    display-window:             " ";
 	drun-display-format:        "{name}";
 }
 
@@ -100,7 +102,7 @@ listview {
     reverse:                     false;
     fixed-height:                true;
     fixed-columns:               true;
-    
+
     spacing:                     0px;
     margin:                      0px;
     padding:                     0px;

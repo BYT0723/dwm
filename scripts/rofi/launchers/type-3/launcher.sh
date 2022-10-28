@@ -11,7 +11,7 @@
 ## style-6     style-7     style-8     style-9     style-10
 
 dir="$HOME/.dwm/rofi/launchers/type-3"
-theme='style-1'
+theme='style-2'
 
 ## Run
 rofi \
