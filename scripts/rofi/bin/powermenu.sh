@@ -6,7 +6,9 @@
 ## Applets : Power Menu
 
 # Import Current Theme
-source "$HOME"/.dwm/rofi/applets/shared/theme.bash
+type="$HOME/.dwm/rofi/applets/type-3"
+style='style-2.rasi'
+
 theme="$type/$style"
 
 # Theme Elements
@@ -46,7 +48,7 @@ fi
 # Rofi CMD
 rofi_cmd() {
   rofi -theme-str "listview {columns: $list_col; lines: $list_row;}" \
-    -theme-str 'textbox-prompt-colon {str: "Power";}' \
+    -theme-str 'textbox-prompt-colon {str: " ";}' \
     -dmenu \
     -p "$prompt" \
     -mesg "$mesg" \

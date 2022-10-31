@@ -6,12 +6,13 @@
 ## Applets : Quick Links
 
 # Import Current Theme
-source ~/.dwm/rofi/applets/shared/theme.bash
+type="$HOME/.dwm/rofi/applets/type-1"
+style='style-2.rasi'
 theme="$type/$style"
 
 # Theme Elements
 prompt='Quick Links'
-mesg="Using '$BROWSER' as web browser"
+mesg="Using '$BROWSER' Open Link"
 
 if [[ ("$theme" == *'type-1'*) || ("$theme" == *'type-3'*) || ("$theme" == *'type-5'*) ]]; then
   list_col='1'
@@ -22,7 +23,7 @@ elif [[ ("$theme" == *'type-2'*) || ("$theme" == *'type-4'*) ]]; then
 fi
 
 if [[ ("$theme" == *'type-1'*) || ("$theme" == *'type-5'*) ]]; then
-  efonts="JetBrains Mono Nerd Font 10"
+  efonts="JetBrains Mono Nerd Font 14"
 else
   efonts="JetBrains Mono Nerd Font 24"
 fi
@@ -48,7 +49,7 @@ fi
 # Rofi CMD
 rofi_cmd() {
   rofi -theme-str "listview {columns: $list_col; lines: $list_row;}" \
-    -theme-str 'textbox-prompt-colon {str: "Web";}' \
+    -theme-str 'textbox-prompt-colon {str: " ";}' \
     -theme-str "element-text {font: \"$efonts\";}" \
     -dmenu \
     -p "$prompt" \

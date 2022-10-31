@@ -93,9 +93,9 @@ print_date() {
   isExp=$(cat ~/.dwm/configs/statusConf | grep "date_exp" | tail -n 1 | awk -F '=' '{print $2}')
 
   if [[ $isExp -eq 1 ]]; then
-    printf "^c$black^^b$blue^  $(date '+%x(%a) %H:%M') "
+    printf "^c$black^^b$blue^ $(date '+ %m-%d(%a)  %H:%M') "
   else
-    printf "^c$black^^b$blue^  $(date '+%H:%M') "
+    printf "^c$black^^b$blue^ $(date '+ %H:%M') "
   fi
 }
 

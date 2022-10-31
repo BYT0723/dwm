@@ -177,6 +177,7 @@ static const char *roficmd[]   = {"./.dwm/rofi/bin/app.sh", NULL};
 static const char *powercmd[] = {"./.dwm/rofi/bin/powermenu.sh", NULL};
 static const char *mpdcmd[]    = {"./.dwm/rofi/bin/mpd.sh", NULL};
 static const char *linkcmd[]    = {"./.dwm/rofi/bin/quicklinks.sh", NULL};
+static const char *modulecmd[]    = {"./.dwm/rofi/bin/module.sh", NULL};
 
 static const char *layoutmenu_cmd = "./.dwm/layoutmenu.sh";
 
@@ -206,13 +207,15 @@ static Key keys[] = {
   {MODKEY,                        XK_a,       spawn,          {.v = flameshot}},
   // rofi
   {MODKEY,                        XK_d,       spawn,          {.v = roficmd}},
+  {MODKEY,                        XK_m,       spawn,          {.v = modulecmd}},
   {MODKEY | ShiftMask ,           XK_m,       spawn,          {.v = mpdcmd}},
-  {MODKEY | ShiftMask,            XK_l,       spawn,          {.v = linkcmd}},
   {MODKEY | ControlMask,          XK_m,       spawn,          {.v = powercmd}},
+  {MODKEY | ShiftMask,            XK_l,       spawn,          {.v = linkcmd}},
 
   // layout
   {MODKEY,                        XK_t,       setlayout,      {.v = &layouts[0]}},
   {MODKEY | ShiftMask,            XK_t,       layoutmenu,     {0}},
+  {MODKEY,                        XK_f,       setlayout,      {.v = &layouts[1]}},
 
   // layout adjust
   {MODKEY,                        XK_v,       incnmaster,     {.i = +1}},

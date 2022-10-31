@@ -6,7 +6,8 @@
 ## Applets : MPD (music)
 
 # Import Current Theme
-source "$HOME"/.dwm/rofi/applets/shared/theme.bash
+type="$HOME/.dwm/rofi/applets/type-2"
+style='style-3.rasi'
 theme="$type/$style"
 
 # Theme Elements
@@ -84,7 +85,7 @@ fi
 # Rofi CMD
 rofi_cmd() {
   rofi -theme-str "listview {columns: $list_col; lines: $list_row;}" \
-    -theme-str 'textbox-prompt-colon {str: "MPD";}' \
+    -theme-str 'textbox-prompt-colon {str: " ";}' \
     -dmenu \
     -p "$prompt" \
     -mesg "$mesg" \
@@ -107,17 +108,17 @@ run_cmd() {
   if [[ "$1" == '--on' ]]; then
     mpd
   elif [[ "$1" == '--opt1' ]]; then
-    mpc -q toggle && notify-send -u low -t 500 " $(mpc current)"
+    mpc -q toggle && notify-send -u low -t 2000 " $(mpc current) $option_1"
   elif [[ "$1" == '--opt2' ]]; then
     mpc -q stop
   elif [[ "$1" == '--opt3' ]]; then
-    mpc -q prev && notify-send -u low -t 500 " $(mpc current)"
+    mpc -q prev && notify-send -u low -t 2000 " $(mpc current) $option_1"
   elif [[ "$1" == '--opt4' ]]; then
-    mpc -q next && notify-send -u low -t 500 " $(mpc current)"
+    mpc -q next && notify-send -u low -t 2000 " $(mpc current) $option_1"
   elif [[ "$1" == '--opt5' ]]; then
-    mpc volume -20 && notify-send -u low -t 500 " $(mpc volume)"
+    mpc volume -20 && notify-send -u low -t 2000 " $(mpc volume)"
   elif [[ "$1" == '--opt6' ]]; then
-    mpc volume +20 && notify-send -u low -t 500 " $(mpc volume)"
+    mpc volume +20 && notify-send -u low -t 2000 " $(mpc volume)"
   elif [[ "$1" == '--opt7' ]]; then
     mpc -q repeat
   elif [[ "$1" == '--opt8' ]]; then
