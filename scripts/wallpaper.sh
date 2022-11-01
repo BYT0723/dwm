@@ -1,7 +1,9 @@
 #!/bin/sh
 [ -z "$1" ] && exit
 
-killall xwinwrap
+if [[ -n $(pgrep xwinwrap) ]]; then
+  killall xwinwrap
+fi
 
 sleep 0.3
 

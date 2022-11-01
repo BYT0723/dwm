@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if ! [[ -n $(command -v ydict) ]]; then
   if ! [[ -n $(command -v go) ]]; then

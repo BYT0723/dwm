@@ -9,15 +9,14 @@
 
 /*****----- Configuration -----*****/
 configuration {
-	modi:                       "combi,drun,run,window,filebrowser";
+	modi:                       "drun,run,window,filebrowser";
     show-icons:                 true;
-    display-combi:              "練";
     display-drun:               "";
     display-run:                "";
-    display-filebrowser:        "";
     display-window:             "";
-	/* drun-display-format:     "{name}"; */
-	window-format:              "{w} · {c} · {t}";
+    display-filebrowser:        "";
+	drun-display-format:          "{name}";
+	window-format:                "{w} · {c} · {t}";
 }
 
 /*****----- Global Properties -----*****/

@@ -12,11 +12,9 @@
 ## style-11    style-12    style-13    style-14    style-15
 
 dir="$HOME/.dwm/rofi/launchers/type-1"
-config="$HOME/.dwm/rofi/config.rasi"
-theme='style-5'
+theme='style-7'
 
 ## Run
 rofi \
-  -config ${config} \
-  -show combi \
+  -show drun \
   -theme ${dir}/${theme}.rasi
