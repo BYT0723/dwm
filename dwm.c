@@ -609,7 +609,9 @@ void buttonpress(XEvent *e) {
           if (!isCode) {
             ch = *s;
             *s = '\0';
-            x += TEXTW(text) - lrpad;
+            if (strlen(text) > 0) {
+              x += TEXTW(text) - lrpad + bh;
+            }
             *s = ch;
             if (x >= ev->x)
               break;
@@ -621,7 +623,9 @@ void buttonpress(XEvent *e) {
         if ((unsigned char)(*s) < ' ') {
           ch = *s;
           *s = '\0';
-          x += TEXTW(text) - lrpad;
+          if (strlen(text) > 0) {
+            x += TEXTW(text) - lrpad + bh;
+          }
           *s = ch;
           text = s + 1;
           if (x >= ev->x)
@@ -988,7 +992,9 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
       if (!isCode) {
         isCode = 1;
         text[i] = '\0';
-        w += TEXTW(text) - lrpad;
+        if (strlen(text) > 0) {
+          w += TEXTW(text) - lrpad + bh;
+        }
         text[i] = '^';
         if (text[++i] == 'f')
           w += atoi(text + ++i);
@@ -1000,20 +1006,18 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
     }
   }
   if (!isCode)
-    w += TEXTW(text) - lrpad;
+    w += TEXTW(text) - lrpad + bh;
   else
     isCode = 0;
   text = p;
 
-  w += 2; /* 1px padding on both sides */
   ret = m->ww - w;
   x = m->ww - w - getsystraywidth();
 
   drw_setscheme(drw, scheme[LENGTH(colors)]);
-  drw->scheme[ColFg] = scheme[SchemeNorm][ColFg];
-  drw->scheme[ColBg] = scheme[SchemeNorm][ColBg];
+  drw->scheme[ColFg] = scheme[SchemeEmpty][ColFg];
+  drw->scheme[ColBg] = scheme[SchemeEmpty][ColBg];
   drw_rect(drw, x, 0, w, bh, 1, 1);
-  x++;
 
   /* process status text */
   i = -1;
@@ -1022,10 +1026,11 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
       isCode = 1;
 
       text[i] = '\0';
-      w = TEXTW(text) - lrpad;
-      drw_text(drw, x, 0, w, bh, 0, text, 0);
-
-      x += w;
+      if (strlen(text) > 0) {
+        w = TEXTW(text) - lrpad + bh;
+        drw_task(drw, x, 0, w, bh, bh / 2, 0, text, 0);
+        x += w;
+      }
 
       /* process code */
       while (text[++i] != '^') {
@@ -1069,8 +1074,8 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
   }
 
   if (!isCode) {
-    w = TEXTW(text) - lrpad;
-    drw_text(drw, x, 0, w, bh, 0, text, 0);
+    w = TEXTW(text) - lrpad + bh;
+    drw_task(drw, x, 0, w, bh, bh / 2, 0, text, 0);
   }
 
   drw_setscheme(drw, scheme[SchemeNorm]);

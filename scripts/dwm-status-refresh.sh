@@ -14,6 +14,8 @@ darkblue=#668ee3
 
 # This function parses /proc/net/dev file searching for a line containing $interface data.
 
+showIcon=true
+
 function get_bytes {
   # Find active network interface
   interface=$(ip route get 8.8.8.8 2>/dev/null | awk '{print $5}')
@@ -49,43 +51,53 @@ old_transmitted_bytes=$transmitted_bytes
 old_time=$now
 
 print_mem() {
+  if $showIcon; then
+    icon=" "
+  fi
   printf '\x03'
-  printf "^c$blue^^b$black^  $(free -h | awk '/^内存/ { print $3 }' | sed s/i//g) "
+  printf "^c$blue^^b$black^$icon$(free -h | awk '/^内存/ { print $3 }' | sed s/i//g)"
 }
 
 # CPU
 print_cpu() {
   printf '\x04'
+  if $showIcon; then
+    icon=" "
+  fi
 
   cpu_val=$(grep -o "^[^ ]*" /proc/loadavg)
 
   isShowTemp=$(cat ~/.dwm/configs/statusConf | grep "show_temp" | tail -n 1 | awk -F '=' '{print $2}')
-  printf "^c$white^^b$grey^  $cpu_val "
+  printf "^c$white^^b$grey^$icon$cpu_val"
 
   if [[ $isShowTemp -eq 1 ]]; then
-    printf "$(print_temp)"
+    printf " | $(print_temp)"
   fi
 }
 
 print_temp() {
-  icons=("" "" "" "" "")
+  icons=(" " " " " " " " " ")
 
   test -f /sys/class/thermal/thermal_zone0/temp || return 0
   temp=$(head -c 2 /sys/class/thermal/thermal_zone0/temp)
 
-  index=$((temp / 20))
-  icon=${icons[$index]}
-  printf "^c$black^^b$red^ ${icon} ${temp}°C "
+  if $showIcon; then
+    index=$((temp / 20))
+    icon=${icons[$index]}
+  fi
+  printf "${icon}${temp}°C"
 }
 
 print_disk() {
   printf '\x02'
   disk_root=$(df -h | grep /dev/sda2 | awk '{print $4}')
-  icon="﫭"
-  if [[ $(echo $disk_root | awk -F 'G' '{print $1}') -le 10 ]]; then
-    icon=""
+  if $showIcon; then
+    icon="﫭 "
+    if [[ $(echo $disk_root | awk -F 'G' '{print $1}') -le 10 ]]; then
+      icon=" "
+    fi
   fi
-  printf "^c$grey^^b$white^ $icon $disk_root "
+  printf "^c$grey^^b$white^$icon$disk_root"
 }
 
 print_date() {
@@ -93,9 +105,9 @@ print_date() {
   isExp=$(cat ~/.dwm/configs/statusConf | grep "date_exp" | tail -n 1 | awk -F '=' '{print $2}')
 
   if [[ $isExp -eq 1 ]]; then
-    printf "^c$black^^b$blue^ $(date '+ %m-%d(%a)  %H:%M') "
+    printf "^c$black^^b$blue^$(date '+ %m-%d(%a)  %H:%M')"
   else
-    printf "^c$black^^b$blue^ $(date '+ %H:%M') "
+    printf "^c$black^^b$blue^$(date '+ %H:%M')"
   fi
 }
 
@@ -111,7 +123,6 @@ vel_trans="$(get_velocity $transmitted_bytes $old_transmitted_bytes $now)"
 
 print_speed() {
   printf '\x05'
-  printf "^c$black^^b$blue^   "
   recvIcon=" "
   transIcon=" "
   if [ $received_bytes -ne $old_received_bytes ]; then
@@ -120,12 +131,15 @@ print_speed() {
   if [ $transmitted_bytes -ne $old_transmitted_bytes ]; then
     transIcon="ﰵ"
   fi
+  if $showIcon; then
+    icon=" "
+  fi
   isExp=$(cat ~/.dwm/configs/statusConf | grep "net_speed_exp" | tail -n 1 | awk -F '=' '{print $2}')
 
   if [[ $isExp -eq 1 ]]; then
-    echo -e "${recvIcon} $vel_recv ${transIcon} $vel_trans "
+    echo -e "^c$black^^b$blue^$icon${recvIcon} $vel_recv ${transIcon} $vel_trans"
   else
-    echo -e "${recvIcon} ${transIcon} "
+    echo -e "^c$black^^b$blue^$icon${recvIcon} ${transIcon}"
   fi
 }
 

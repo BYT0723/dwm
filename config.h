@@ -34,8 +34,8 @@ static const char col_white[]   = "#eee8d5";  /*  7: white    */
 
 static const char col_ab_black[]   = "#000000";
 
-static const unsigned int baralpha = 0xd0;
 static const unsigned int emptyalpha = 0x00;
+static const unsigned int baralpha = 0xd0;
 static const unsigned int borderalpha = OPAQUE;
 static const char *colors[][3] = {
   /*                  fg         bg         border   */
@@ -55,6 +55,7 @@ static const unsigned int alphas[][3]      = {
   // tag
   [SchemeTagNorm]  = {OPAQUE,     emptyalpha, emptyalpha},
   [SchemeTagSel]   = {OPAQUE,     baralpha,   emptyalpha},
+  // empty
   [SchemeEmpty]    = {emptyalpha, emptyalpha, emptyalpha},
 };
 
@@ -115,6 +116,7 @@ static const Rule rules[] = {
   {"qBittorrent",         NULL,       NULL,     1 << 6,       0,            -1},
 
   // other only floating
+  {"Godot_Engine",        NULL,       NULL,     0,            1,            -1},
   {"vlc",                 NULL,       NULL,     0,            1,            -1},
   {"mpv",                 NULL,       NULL,     0,            1,            -1},
   {"feh",                 NULL,       NULL,     0,            1,            -1},
