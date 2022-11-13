@@ -60,7 +60,7 @@ static const unsigned int alphas[][3]      = {
 };
 
 /* task icon */
-static const char *taskWidth = "                    ";
+static const char *taskWidth = "               ";
 static const TaskIcon icons[] = {
   /* class                title               icon */
   // default
@@ -86,6 +86,7 @@ static const TaskIcon icons[] = {
   {"DBeaver",             NULL,               " "},
   {"Pcmanfm",             NULL,               " "},
   {"Lxappearance",        NULL,               " "},
+  {"thunderbird",         NULL,               " "},
 };
 
 /* tagging */
@@ -99,10 +100,10 @@ static const Rule rules[] = {
   /* class                instance    title     tags mask     isfloating    monitor */
   // {"firefox",             NULL,       NULL,     1 << 1,       0,            -1},
 
-  {"TelegramDesktop",     NULL,       NULL,     1 << 2,       0,            -1},
-  {"wechat.exe",          NULL,       NULL,     1 << 2,       0,            -1},
-  {"icalingua",           NULL,       NULL,     1 << 2,       0,            -1},
-
+  // {"TelegramDesktop",     NULL,       NULL,     1 << 2,       0,            -1},
+  // {"wechat.exe",          NULL,       NULL,     1 << 2,       0,            -1},
+  // {"icalingua",           NULL,       NULL,     1 << 2,       0,            -1},
+  //
   {"qqmusic",             NULL,       NULL,     1 << 3,       1,            -1},
   {"netease-cloud-music", NULL,       NULL,     1 << 3,       1,            -1},
   // {"OSD Lyrics",          NULL,       NULL,     1 << 3,       1,            -1},

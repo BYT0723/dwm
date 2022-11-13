@@ -3,12 +3,14 @@
 cmdType=$1
 buttonType=$2
 
+conf="$HOME/.dwm/configs/statusConf"
+
 propToggle() {
-  now=$(cat ~/.dwm/configs/statusConf | grep $1 | tail -n 1 | awk -F '=' '{print $2}')
+  now=$(cat $conf | grep $1 | awk -F '=' '{print $2}')
   if [[ $now -eq 1 ]]; then
-    sed -i "s/$1=1/$1=0/g" ~/.dwm/configs/statusConf
+    sed -i "s/$1=1/$1=0/g" $conf
   else
-    sed -i "s/$1=0/$1=1/g" ~/.dwm/configs/statusConf
+    sed -i "s/$1=0/$1=1/g" $conf
   fi
 }
 

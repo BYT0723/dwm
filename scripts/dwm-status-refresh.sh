@@ -14,7 +14,9 @@ darkblue=#668ee3
 
 # This function parses /proc/net/dev file searching for a line containing $interface data.
 
-showIcon=true
+conf="$HOME/.dwm/configs/statusConf"
+
+showIcon=false
 
 function get_bytes {
   # Find active network interface
@@ -67,11 +69,11 @@ print_cpu() {
 
   cpu_val=$(grep -o "^[^ ]*" /proc/loadavg)
 
-  isShowTemp=$(cat ~/.dwm/configs/statusConf | grep "show_temp" | tail -n 1 | awk -F '=' '{print $2}')
-  printf "^c$white^^b$grey^$icon$cpu_val"
+  isShowTemp=$(cat $conf | grep "show_temp" | tail -n 1 | awk -F '=' '{print $2}')
+  printf "^c$red^^b$grey^$icon$cpu_val"
 
   if [[ $isShowTemp -eq 1 ]]; then
-    printf " | $(print_temp)"
+    printf "  $(print_temp)"
   fi
 }
 
@@ -102,7 +104,7 @@ print_disk() {
 
 print_date() {
   printf '\x01'
-  isExp=$(cat ~/.dwm/configs/statusConf | grep "date_exp" | tail -n 1 | awk -F '=' '{print $2}')
+  isExp=$(cat $conf | grep "date_exp" | tail -n 1 | awk -F '=' '{print $2}')
 
   if [[ $isExp -eq 1 ]]; then
     printf "^c$black^^b$blue^$(date '+ %m-%d(%a)  %H:%M')"
@@ -126,15 +128,15 @@ print_speed() {
   recvIcon=" "
   transIcon=" "
   if [ $received_bytes -ne $old_received_bytes ]; then
-    recvIcon="ﰬ"
+    recvIcon=""
   fi
   if [ $transmitted_bytes -ne $old_transmitted_bytes ]; then
-    transIcon="ﰵ"
+    transIcon=""
   fi
   if $showIcon; then
     icon=" "
   fi
-  isExp=$(cat ~/.dwm/configs/statusConf | grep "net_speed_exp" | tail -n 1 | awk -F '=' '{print $2}')
+  isExp=$(cat $conf | grep "net_speed_exp" | tail -n 1 | awk -F '=' '{print $2}')
 
   if [[ $isExp -eq 1 ]]; then
     echo -e "^c$black^^b$blue^$icon${recvIcon} $vel_recv ${transIcon} $vel_trans"
