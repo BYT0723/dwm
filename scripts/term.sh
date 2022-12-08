@@ -1,13 +1,10 @@
 Type=$1
 case "$Type" in
 float)
-  st -i -g 80x25+500+200
-  ;;
-
-translator)
-  st -i -g 80x20+500+200 -e ~/.dwm/translate.sh
-  ;;
+    st -i -g 90x25+480+200
+    ;;
 *)
-  st
-  ;;
+    # st
+    alacritty
+    ;;
 esac

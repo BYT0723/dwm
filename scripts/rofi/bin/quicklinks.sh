@@ -15,90 +15,90 @@ prompt='Quick Links'
 mesg="Using '$BROWSER' Open Link"
 
 if [[ ("$theme" == *'type-1'*) || ("$theme" == *'type-3'*) || ("$theme" == *'type-5'*) ]]; then
-  list_col='1'
-  list_row='6'
+    list_col='1'
+    list_row='6'
 elif [[ ("$theme" == *'type-2'*) || ("$theme" == *'type-4'*) ]]; then
-  list_col='6'
-  list_row='1'
+    list_col='6'
+    list_row='1'
 fi
 
 if [[ ("$theme" == *'type-1'*) || ("$theme" == *'type-5'*) ]]; then
-  efonts="JetBrains Mono Nerd Font 14"
+    efonts="JetBrains Mono Nerd Font 14"
 else
-  efonts="JetBrains Mono Nerd Font 24"
+    efonts="JetBrains Mono Nerd Font 24"
 fi
 
 # Options
 layout=$(cat ${theme} | grep 'USE_ICON' | cut -d'=' -f2)
 if [[ "$layout" == 'NO' ]]; then
-  option_1=" Github"
-  option_2=" Youtube"
-  option_3=" Twitter"
-  option_4=" Gmail"
-  option_5=" QQMail"
-  option_6=" 163Mail"
+    option_1=" Github"
+    option_2=" Youtube"
+    option_3=" Twitter"
+    option_4=" Gmail"
+    option_5=" QQMail"
+    option_6=" 163Mail"
 else
-  option_1=" "
-  option_2=" "
-  option_3=" "
-  option_4=" "
-  option_5=" "
-  option_6=" "
+    option_1=" "
+    option_2=" "
+    option_3=" "
+    option_4=" "
+    option_5=" "
+    option_6=" "
 fi
 
 # Rofi CMD
 rofi_cmd() {
-  rofi -theme-str "listview {columns: $list_col; lines: $list_row;}" \
-    -theme-str 'textbox-prompt-colon {str: " ";}' \
-    -theme-str "element-text {font: \"$efonts\";}" \
-    -dmenu \
-    -p "$prompt" \
-    -mesg "$mesg" \
-    -markup-rows \
-    -theme ${theme}
+    rofi -theme-str "listview {columns: $list_col; lines: $list_row;}" \
+        -theme-str 'textbox-prompt-colon {str: " ";}' \
+        -theme-str "element-text {font: \"$efonts\";}" \
+        -dmenu \
+        -p "$prompt" \
+        -mesg "$mesg" \
+        -markup-rows \
+        -theme ${theme}
 }
 
 # Pass variables to rofi dmenu
 run_rofi() {
-  echo -e "$option_1\n$option_2\n$option_3\n$option_4\n$option_5\n$option_6" | rofi_cmd
+    echo -e "$option_1\n$option_2\n$option_3\n$option_4\n$option_5\n$option_6" | rofi_cmd
 }
 
 # Execute Command
 run_cmd() {
-  if [[ "$1" == '--opt1' ]]; then
-    xdg-open 'https://www.github.com/'
-  elif [[ "$1" == '--opt2' ]]; then
-    xdg-open 'https://www.youtube.com/'
-  elif [[ "$1" == '--opt3' ]]; then
-    xdg-open 'https://www.twitter.com/'
-  elif [[ "$1" == '--opt4' ]]; then
-    xdg-open 'https://mail.google.com/'
-  elif [[ "$1" == '--opt5' ]]; then
-    xdg-open 'https://mail.qq.com/'
-  elif [[ "$1" == '--opt6' ]]; then
-    xdg-open 'https://mail.163.com/'
-  fi
+    if [[ "$1" == '--opt1' ]]; then
+        xdg-open 'https://www.github.com/'
+    elif [[ "$1" == '--opt2' ]]; then
+        xdg-open 'https://www.youtube.com/'
+    elif [[ "$1" == '--opt3' ]]; then
+        xdg-open 'https://www.twitter.com/'
+    elif [[ "$1" == '--opt4' ]]; then
+        xdg-open 'https://mail.google.com/'
+    elif [[ "$1" == '--opt5' ]]; then
+        xdg-open 'https://mail.qq.com/'
+    elif [[ "$1" == '--opt6' ]]; then
+        xdg-open 'https://mail.163.com/'
+    fi
 }
 
 # Actions
 chosen="$(run_rofi)"
 case ${chosen} in
 $option_1)
-  run_cmd --opt1
-  ;;
+    run_cmd --opt1
+    ;;
 $option_2)
-  run_cmd --opt2
-  ;;
+    run_cmd --opt2
+    ;;
 $option_3)
-  run_cmd --opt3
-  ;;
+    run_cmd --opt3
+    ;;
 $option_4)
-  run_cmd --opt4
-  ;;
+    run_cmd --opt4
+    ;;
 $option_5)
-  run_cmd --opt5
-  ;;
+    run_cmd --opt5
+    ;;
 $option_6)
-  run_cmd --opt6
-  ;;
+    run_cmd --opt6
+    ;;
 esac

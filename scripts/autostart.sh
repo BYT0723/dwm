@@ -5,7 +5,7 @@
 
 # wallpaper
 if [[ -f ~/.dwm/background.sh ]]; then
-  /bin/bash ~/.dwm/background.sh &
+    /bin/bash ~/.dwm/background.sh &
 fi
 
 # picom

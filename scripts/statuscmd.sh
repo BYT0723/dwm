@@ -6,91 +6,91 @@ buttonType=$2
 conf="$HOME/.dwm/configs/statusConf"
 
 propToggle() {
-  now=$(cat $conf | grep $1 | awk -F '=' '{print $2}')
-  if [[ $now -eq 1 ]]; then
-    sed -i "s/$1=1/$1=0/g" $conf
-  else
-    sed -i "s/$1=0/$1=1/g" $conf
-  fi
+    now=$(cat $conf | grep $1 | awk -F '=' '{print $2}')
+    if [[ $now -eq 1 ]]; then
+        sed -i "s/$1=1/$1=0/g" $conf
+    else
+        sed -i "s/$1=0/$1=1/g" $conf
+    fi
 }
 
 dateHandler() {
-  buttonType=$1
-  case "$buttonType" in
-  1)
-    propToggle date_exp
-    ;;
-  2) ;;
+    buttonType=$1
+    case "$buttonType" in
+    1)
+        propToggle date_exp
+        ;;
+    2) ;;
 
-  3) ;;
+    3) ;;
 
-  esac
+    esac
 }
 
 diskHandler() {
-  buttonType=$1
-  case "$buttonType" in
-  1) ;;
+    buttonType=$1
+    case "$buttonType" in
+    1) ;;
 
-  2) ;;
+    2) ;;
 
-  3) ;;
+    3) ;;
 
-  esac
+    esac
 }
 
 memoryHandler() {
-  buttonType=$1
-  case "$buttonType" in
-  1) ;;
+    buttonType=$1
+    case "$buttonType" in
+    1) ;;
 
-  2) ;;
+    2) ;;
 
-  3) ;;
+    3) ;;
 
-  esac
+    esac
 }
 
 cpuHandler() {
-  buttonType=$1
-  case "$buttonType" in
-  1)
-    propToggle show_temp
-    ;;
-  2) ;;
+    buttonType=$1
+    case "$buttonType" in
+    1)
+        propToggle show_temp
+        ;;
+    2) ;;
 
-  3) ;;
+    3) ;;
 
-  esac
+    esac
 }
 
 netSpeedHandler() {
-  buttonType=$1
-  case "$buttonType" in
-  1)
-    propToggle net_speed_exp
-    ;;
-  2) ;;
+    buttonType=$1
+    case "$buttonType" in
+    1)
+        propToggle net_speed_exp
+        ;;
+    2) ;;
 
-  3) ;;
+    3) ;;
 
-  esac
+    esac
 }
 
 case "$cmdType" in
 date)
-  dateHandler $2
-  ;;
+    dateHandler $2
+    ;;
 disk-root)
-  diskHandler $2
-  ;;
+    diskHandler $2
+    ;;
 memory)
-  memoryHandler $2
-  ;;
+    memoryHandler $2
+    ;;
 cpuInfo)
-  cpuHandler $2
-  ;;
+    cpuHandler $2
+    ;;
 netSpeed)
-  netSpeedHandler $2
-  ;;
+    netSpeedHandler $2
+    ;;
 esac

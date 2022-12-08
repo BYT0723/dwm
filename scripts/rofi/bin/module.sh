@@ -14,21 +14,23 @@ theme="$type/$style"
 prompt='Module'
 mesg="Manage Module Of System"
 
+HistoryPopCount=10
+
 if [[ ("$theme" == *'type-1'*) || ("$theme" == *'type-3'*) || ("$theme" == *'type-5'*) ]]; then
-  list_col='1'
-  list_row='6'
+    list_col='1'
+    list_row='6'
 elif [[ ("$theme" == *'type-2'*) || ("$theme" == *'type-4'*) ]]; then
-  list_col='6'
-  list_row='1'
+    list_col='6'
+    list_row='1'
 fi
 
-#
+# 运行状态图标转化
 runIcon() {
-  if [[ -n $(pgrep $1) ]]; then
-    echo " "
-  else
-    echo " "
-  fi
+    if [[ -n $(pgrep $1) ]]; then
+        echo " "
+    else
+        echo " "
+    fi
 }
 
 # 定义运行命令的Map
@@ -36,88 +38,104 @@ declare -A runcmd
 runcmd["picom"]="picom --config $HOME/.dwm/configs/picom.conf -b --experimental-backends"
 
 toggleApplication() {
-  if [[ -n $(pgrep $1) ]]; then
-    killall $1
-  else
-    ${runcmd[$1]}
-  fi
+    if [[ -n $(pgrep $1) ]]; then
+        killall $1
+    else
+        ${runcmd[$1]}
+    fi
 }
 
 declare -A confPath
 confPath["picom"]="$HOME/.dwm/configs/picom.conf"
 
 typeToValue() {
-  case "$1" in
-  bool)
-    echo false
-    ;;
-  int)
-    echo 0
-    ;;
-  esac
+    case "$1" in
+    bool)
+        echo false
+        ;;
+    int)
+        echo 0
+        ;;
+    esac
 }
 
 confIcon() {
-  flag=$(typeToValue $3)
-  if [[ -n $(cat ${confPath[$1]} | grep $2 | grep $flag) ]]; then
-    echo " "
-  else
-    echo " "
-  fi
+    flag=$(typeToValue $3)
+    if [[ -n $(cat ${confPath[$1]} | grep $2 | grep $flag) ]]; then
+        echo " "
+    else
+        echo " "
+    fi
 }
 
 toggleConf() {
-  flag=$(typeToValue $3)
-  line=$(cat ${confPath[$1]} | grep $2 -n | awk -F ':' '{print $1}')
-  if [[ -n $(cat ${confPath[$1]} | grep $2 | grep $flag) ]]; then
-    sed -i $line' s/false/true/' ${confPath[$1]}
-  else
-    sed -i $line' s/true/false/' ${confPath[$1]}
-  fi
+    flag=$(typeToValue $3)
+    line=$(cat ${confPath[$1]} | grep $2 -n | awk -F ':' '{print $1}')
+    if [[ -n $(cat ${confPath[$1]} | grep $2 | grep $flag) ]]; then
+        sed -i $line' s/false/true/' ${confPath[$1]}
+    else
+        sed -i $line' s/true/false/' ${confPath[$1]}
+    fi
 }
 
 # Options
 layout=$(cat ${theme} | grep 'USE_ICON' | cut -d'=' -f2)
 if [[ "$layout" == 'NO' ]]; then
-  option_1=" Picom                 $(runIcon picom)"
-  option_2=" Picom Animation       $(confIcon picom ^animations bool)"
+    option_1=" Picom                 $(runIcon picom)"
+    option_2=" Picom Animation       $(confIcon picom ^animations bool)"
+    option_3=" Notification Show     $(dunstctl count history)"
+    option_4=" Notification Close    $(dunstctl count displayed)"
 else
-  option_1=" $(runIcon picom)"
-  option_2=" $(confIcon picom ^animations bool)"
+    option_1=" $(runIcon picom)"
+    option_2=" $(confIcon picom ^animations bool)"
+    option_3=" "
+    option_4=" "
 fi
 
 # Rofi CMD
 rofi_cmd() {
-  rofi -theme-str "listview {columns: $list_col; lines: $list_row;}" \
-    -theme-str 'textbox-prompt-colon {str: " ";}' \
-    -dmenu \
-    -p "$prompt" \
-    -mesg "$mesg" \
-    -markup-rows \
-    -theme ${theme}
+    rofi -theme-str "listview {columns: $list_col; lines: $list_row;}" \
+        -theme-str 'textbox-prompt-colon {str: " ";}' \
+        -dmenu \
+        -p "$prompt" \
+        -mesg "$mesg" \
+        -markup-rows \
+        -theme ${theme}
 }
 
 # Pass variables to rofi dmenu
 run_rofi() {
-  echo -e "$option_1\n$option_2" | rofi_cmd
+    echo -e "$option_1\n$option_2\n$option_3\n$option_4" | rofi_cmd
 }
 
 # Execute Command
 run_cmd() {
-  if [[ "$1" == '--opt1' ]]; then
-    toggleApplication picom
-  elif [[ "$1" == '--opt2' ]]; then
-    toggleConf picom ^animations bool
-  fi
+    if [[ "$1" == '--opt1' ]]; then
+        toggleApplication picom
+    elif [[ "$1" == '--opt2' ]]; then
+        toggleConf picom ^animations bool
+    elif [[ "$1" == '--opt3' ]]; then
+        for ((i = 0; i < $HistoryPopCount; i++)); do
+            dunstctl history-pop
+        done
+    elif [[ "$1" == '--opt4' ]]; then
+        dunstctl close-all
+    fi
 }
 
 # Actions
 chosen="$(run_rofi)"
 case ${chosen} in
 $option_1)
-  run_cmd --opt1
-  ;;
+    run_cmd --opt1
+    ;;
 $option_2)
-  run_cmd --opt2
-  ;;
+    run_cmd --opt2
+    ;;
+$option_3)
+    run_cmd --opt3
+    ;;
+$option_4)
+    run_cmd --opt4
+    ;;
 esac
