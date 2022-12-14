@@ -24,73 +24,84 @@ elif [[ ("$theme" == *'type-2'*) || ("$theme" == *'type-4'*) ]]; then
     list_row='1'
 fi
 
-# 运行状态图标转化
-runIcon() {
-    if [[ -n $(pgrep $1) ]]; then
-        echo " "
-    else
-        echo " "
-    fi
-}
-
-# 定义运行命令的Map
-declare -A runcmd
-runcmd["picom"]="picom --config $HOME/.dwm/configs/picom.conf -b --experimental-backends"
-
-toggleApplication() {
-    if [[ -n $(pgrep $1) ]]; then
-        killall $1
-    else
-        ${runcmd[$1]}
-    fi
-}
-
+# 定义配置文件位置
 declare -A confPath
 confPath["picom"]="$HOME/.dwm/configs/picom.conf"
+confPath["statusBar"]="$HOME/.dwm/configs/statusConf"
 
-typeToValue() {
-    case "$1" in
-    bool)
-        echo false
-        ;;
-    int)
-        echo 0
-        ;;
-    esac
-}
+# 定义运行命令的Map
+declare -A applicationCmd
+applicationCmd["picom"]="picom --config $HOME/.dwm/configs/picom.conf -b --experimental-backends"
 
-confIcon() {
-    flag=$(typeToValue $3)
-    if [[ -n $(cat ${confPath[$1]} | grep $2 | grep $flag) ]]; then
-        echo " "
-    else
-        echo " "
-    fi
-}
-
-toggleConf() {
-    flag=$(typeToValue $3)
-    line=$(cat ${confPath[$1]} | grep $2 -n | awk -F ':' '{print $1}')
-    if [[ -n $(cat ${confPath[$1]} | grep $2 | grep $flag) ]]; then
-        sed -i $line' s/false/true/' ${confPath[$1]}
-    else
-        sed -i $line' s/true/false/' ${confPath[$1]}
-    fi
-}
+source $HOME/.dwm/rofi/bin/util.sh
 
 # Options
 layout=$(cat ${theme} | grep 'USE_ICON' | cut -d'=' -f2)
+
 if [[ "$layout" == 'NO' ]]; then
-    option_1=" Picom                 $(runIcon picom)"
-    option_2=" Picom Animation       $(confIcon picom ^animations bool)"
-    option_3=" Notification Show     $(dunstctl count history)"
-    option_4=" Notification Close    $(dunstctl count displayed)"
+    firstOpt=(
+        " Notification             $(icon active app dunst)"
+        " Network                  $(icon active app NetworkManager)"
+        " Bluetooth                $(icon active service bluetooth)"
+        " Picom                    $(icon active app picom)"
+        " StatusBar"
+    )
+    barOpt=(
+        " NetSpeed                $(icon toggle conf statusBar ^net_speed_exp number)"
+        " Template                $(icon toggle conf statusBar ^show_temp number)"
+        " DateTime                $(icon toggle conf statusBar ^date_exp number)"
+    )
+    networkOpt=$(nmcli connection show | grep -E 'wifi' | awk '{print $1}')
+    bluetoothOpt=$(bluetoothctl devices Trusted | awk '{print substr($0,26,20)}')
+    picomOpt=(
+        "蘒 Toggle                  $(icon toggle app picom)"
+        "𧻓 Animation               $(icon toggle conf picom ^animations bool)"
+    )
+    notificationOpt=(
+        "Pop                      $(dunstctl count history)"
+        "CloseAll                 $(dunstctl count displayed)"
+    )
 else
-    option_1=" $(runIcon picom)"
-    option_2=" $(confIcon picom ^animations bool)"
-    option_3=" "
-    option_4=" "
+    firstOpt=(
+        " $(icon active app dunst)"
+        " $(icon active app NetworkManager)"
+        " $(icon active service bluetooth)"
+        " $(icon active app picom)"
+        " "
+    )
+    barOpt=(
+        " $(icon toggle conf statusBar ^net_speed_exp number)"
+        " $(icon toggle conf statusBar ^show_temp number)"
+        " $(icon toggle conf statusBar ^date_exp number)"
+    )
+    networkOpt=$(nmcli connection show | grep -E 'wifi' | awk '{print $1}')
+    bluetoothOpt=$(bluetoothctl devices Trusted | awk '{print substr($0,26,20)}')
+    picomOpt=(
+        "蘒$(icon toggle app picom)"
+        "𧻓$(icon toggle conf picom ^animations bool)"
+    )
+    notificationOpt=(
+        "P$(dunstctl count history)"
+        "C$(dunstctl count displayed)"
+    )
 fi
+
+declare -A optId
+optId[${firstOpt[0]}]="--opt1"
+optId[${firstOpt[1]}]="--opt2"
+optId[${firstOpt[2]}]="--opt3"
+optId[${firstOpt[3]}]="--opt4"
+optId[${firstOpt[4]}]="--opt5"
+
+optId[${barOpt[0]}]="--barOpt1"
+optId[${barOpt[1]}]="--barOpt2"
+optId[${barOpt[2]}]="--barOpt3"
+
+optId[${picomOpt[0]}]="--picomOpt1"
+optId[${picomOpt[1]}]="--picomOpt2"
+
+optId[${notificationOpt[0]}]="--notificationOpt1"
+optId[${notificationOpt[1]}]="--notificationOpt2"
 
 # Rofi CMD
 rofi_cmd() {
@@ -105,37 +116,93 @@ rofi_cmd() {
 
 # Pass variables to rofi dmenu
 run_rofi() {
-    echo -e "$option_1\n$option_2\n$option_3\n$option_4" | rofi_cmd
+    if [[ "$1" == ${optId[${firstOpt[0]}]} ]]; then
+        prompt='Notification'
+        mesg="Dunst Notification Manager"
+        opts=("${notificationOpt[@]}")
+    elif [[ "$1" == ${optId[${firstOpt[1]}]} ]]; then
+        prompt='Network'
+        mesg="Eth: $(nmcli connection show -active | grep -E 'eth' | awk '{print $1}')
+Wifi: $(nmcli connection show -active | grep -E 'wifi' | awk '{print $1}')"
+        opts=("${networkOpt[@]}")
+    elif [[ "$1" == ${optId[${firstOpt[2]}]} ]]; then
+        prompt='Bluetooth'
+        mesg="Connected: $(bluetoothctl devices Connected | awk '{print substr($0,26,20)}')"
+        opts=("${bluetoothOpt[@]}")
+    elif [[ "$1" == ${optId[${firstOpt[3]}]} ]]; then
+        prompt='Picom'
+        opts=("${picomOpt[@]}")
+    elif [[ "$1" == ${optId[${firstOpt[4]}]} ]]; then
+        prompt='StatusBar'
+        mesg="Dwm Status Bar"
+        opts=("${barOpt[@]}")
+    else
+        opts=("${firstOpt[@]}")
+    fi
+
+    for ((i = 0; i < ${#opts[@]}; i++)); do
+        if [[ $i > 0 ]]; then
+            msg=$msg"\n"
+        fi
+        msg=$msg${opts[$i]}
+    done
+    echo -e "$msg" | rofi_cmd
 }
 
 # Execute Command
 run_cmd() {
-    if [[ "$1" == '--opt1' ]]; then
+    case "$1" in
+    ${optId[${barOpt[0]}]})
+        toggleConf statusBar ^net_speed_exp number
+        ;;
+    ${optId[${barOpt[1]}]})
+        toggleConf statusBar ^show_temp number
+        ;;
+    ${optId[${barOpt[2]}]})
+        toggleConf statusBar ^date_exp number
+        ;;
+    ${optId[${picomOpt[0]}]})
         toggleApplication picom
-    elif [[ "$1" == '--opt2' ]]; then
+        ;;
+    ${optId[${picomOpt[1]}]})
         toggleConf picom ^animations bool
-    elif [[ "$1" == '--opt3' ]]; then
+        ;;
+    ${optId[${notificationOpt[0]}]})
         for ((i = 0; i < $HistoryPopCount; i++)); do
             dunstctl history-pop
         done
-    elif [[ "$1" == '--opt4' ]]; then
+        ;;
+    ${optId[${notificationOpt[1]}]})
         dunstctl close-all
-    fi
+        ;;
+    ${optId[${firstOpt[1]}]})
+        chosen="$(run_rofi $1)"
+        if [[ "$chosen" == "" || "$chosen" == "$(nmcli connection show -active | grep -E 'wifi' | awk '{print $1}')" ]]; then
+            exit
+        fi
+        nmcli connection up $chosen
+        ;;
+    ${optId[${firstOpt[2]}]})
+        chosen="$(run_rofi $1)"
+        if [[ "$chosen" == "" ]]; then
+            exit
+        fi
+        bluetoothctl connect
+        nmcli connection up $chosen
+        ;;
+    *)
+        chosen="$(run_rofi $1)"
+        if [[ "$chosen" == "" ]]; then
+            exit
+        fi
+        run_cmd ${optId[$chosen]}
+        ;;
+    esac
 }
 
 # Actions
 chosen="$(run_rofi)"
-case ${chosen} in
-$option_1)
-    run_cmd --opt1
-    ;;
-$option_2)
-    run_cmd --opt2
-    ;;
-$option_3)
-    run_cmd --opt3
-    ;;
-$option_4)
-    run_cmd --opt4
-    ;;
-esac
+if [[ "$chosen" == "" ]]; then
+    exit
+fi
+run_cmd ${optId[$chosen]}
