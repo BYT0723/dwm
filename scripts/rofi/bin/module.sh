@@ -34,6 +34,7 @@ declare -A applicationCmd
 applicationCmd["picom"]="picom --config $HOME/.dwm/configs/picom.conf -b --experimental-backends"
 
 source $HOME/.dwm/rofi/bin/util.sh
+source $HOME/.dwm/status-env.sh
 
 # Options
 layout=$(cat ${theme} | grep 'USE_ICON' | cut -d'=' -f2)
@@ -47,9 +48,10 @@ if [[ "$layout" == 'NO' ]]; then
         " StatusBar"
     )
     barOpt=(
-        " NetSpeed                $(icon toggle conf statusBar ^net_speed_exp number)"
-        " Template                $(icon toggle conf statusBar ^show_temp number)"
-        " DateTime                $(icon toggle conf statusBar ^date_exp number)"
+        " ShowIcon                $(icon toggle conf statusBar ^${confProperty[showIcon]} number)"
+        " NetSpeed                $(icon toggle conf statusBar ^${confProperty[netSpeedExp]} number)"
+        " Template                $(icon toggle conf statusBar ^${confProperty[showTemp]} number)"
+        " DateTime                $(icon toggle conf statusBar ^${confProperty[dateExp]} number)"
     )
     networkOpt=$(nmcli connection show | grep -E 'wifi' | awk '{print $1}')
     bluetoothOpt=$(bluetoothctl devices Trusted | awk '{print substr($0,26,20)}')
@@ -153,13 +155,16 @@ Wifi: $(nmcli connection show -active | grep -E 'wifi' | awk '{print $1}')"
 run_cmd() {
     case "$1" in
     ${optId[${barOpt[0]}]})
-        toggleConf statusBar ^net_speed_exp number
+        toggleConf statusBar ^${confProperty[showIcon]} number
         ;;
     ${optId[${barOpt[1]}]})
-        toggleConf statusBar ^show_temp number
+        toggleConf statusBar ^${confProperty[netSpeedExp]} number
         ;;
     ${optId[${barOpt[2]}]})
-        toggleConf statusBar ^date_exp number
+        toggleConf statusBar ^${confProperty[showTemp]} number
+        ;;
+    ${optId[${barOpt[3]}]})
+        toggleConf statusBar ^${confProperty[dateExp]} number
         ;;
     ${optId[${picomOpt[0]}]})
         toggleApplication picom

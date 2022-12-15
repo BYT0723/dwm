@@ -3,7 +3,7 @@
 cmdType=$1
 buttonType=$2
 
-conf="$HOME/.dwm/configs/statusConf"
+source $HOME/.dwm/status-env.sh
 
 propToggle() {
     now=$(cat $conf | grep $1 | awk -F '=' '{print $2}')
@@ -18,7 +18,7 @@ dateHandler() {
     buttonType=$1
     case "$buttonType" in
     1)
-        propToggle date_exp
+        propToggle ${confProperty["dateExp"]}
         ;;
     2) ;;
 
@@ -55,7 +55,7 @@ cpuHandler() {
     buttonType=$1
     case "$buttonType" in
     1)
-        propToggle show_temp
+        propToggle ${confProperty["showTemp"]}
         ;;
     2) ;;
 
@@ -68,7 +68,7 @@ netSpeedHandler() {
     buttonType=$1
     case "$buttonType" in
     1)
-        propToggle net_speed_exp
+        propToggle ${confProperty["netSpeedExp"]}
         ;;
     2) ;;
 

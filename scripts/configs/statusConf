@@ -1,3 +1,4 @@
-date_exp=0
-net_speed_exp=0
-show_temp=1
+showIcon=0
+dateExp=0
+netSpeedExp=0
+showTemp=1
