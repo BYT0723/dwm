@@ -1,8 +1,9 @@
 #!/bin/bash
 
+# statusBar Environment
 source $HOME/.dwm/status-env.sh
 
-# color
+# colorscheme
 black=#1e222a
 green=#7eca9c
 white=#abb2bf
@@ -11,12 +12,8 @@ blue=#7aa2f7
 red=#d47d85
 darkblue=#668ee3
 
-# Screenshot: http://s.natalian.org/2013-08-17/dwm_status.png
-# Network speed stuff stolen from http://linuxclues.blogspot.sg/2009/11/shell-script-show-network-speed.html
-
-# This function parses /proc/net/dev file searching for a line containing $interface data.
-
-if [[ $(getConf showIcon) -eq 1 ]]; then
+# icons initial
+if [[ $(getConfProp showIcon) -eq 1 ]]; then
     declare -A icons
     icons["disk"]="﫭 "
     icons["memory"]=" "
@@ -59,12 +56,13 @@ old_received_bytes=$received_bytes
 old_transmitted_bytes=$transmitted_bytes
 old_time=$now
 
+#  Output the current memory usage
 print_mem() {
     printf '\x03'
     printf "^c$blue^^b$black^${icons["memory"]}$(free -h | awk '/^内存/ { print $3 }' | sed s/i//g)"
 }
 
-# CPU
+# Output the current cpu load
 print_cpu() {
     printf '\x04'
 
@@ -72,11 +70,12 @@ print_cpu() {
 
     printf "^c$red^^b$grey^${icons[cpu]}$cpu_val"
 
-    if [[ $(getConf showTemp) -eq 1 ]]; then
+    if [[ $(getConfProp showTemp) -eq 1 ]]; then
         printf "  $(print_temp)"
     fi
 }
 
+# Output current temperature of cpu
 print_temp() {
     test -f /sys/class/thermal/thermal_zone0/temp || return 0
     temp=$(head -c 2 /sys/class/thermal/thermal_zone0/temp)
@@ -84,25 +83,23 @@ print_temp() {
     printf "${icons[temp]}${temp}°C"
 }
 
+# Output Disk free space size
+# disk path in variable $disk_root
 print_disk() {
     printf '\x02'
     disk_root=$(df -h | grep /dev/sda2 | awk '{print $4}')
     printf "^c$grey^^b$white^${icons[disk]}$disk_root"
 }
 
+# Output current datetime
 print_date() {
     printf '\x01'
-
-    if [[ $(getConf dateExp) -eq 1 ]]; then
+    if [[ $(getConfProp dateExp) -eq 1 ]]; then
         printf "^c$black^^b$blue^$(date '+ %m-%d(%a)  %H:%M')"
     else
         printf "^c$black^^b$blue^$(date '+ %H:%M')"
     fi
 }
-
-# LOC=$(readlink -f "$0")
-# DIR=$(dirname "$LOC")
-# export IDENTIFIER="unicode"
 
 get_bytes
 
@@ -110,6 +107,7 @@ get_bytes
 vel_recv="$(get_velocity $received_bytes $old_received_bytes $now)"
 vel_trans="$(get_velocity $transmitted_bytes $old_transmitted_bytes $now)"
 
+# Output network velocity
 print_speed() {
     printf '\x05'
     recvIcon=" "
@@ -121,7 +119,7 @@ print_speed() {
         transIcon=""
     fi
 
-    if [[ $(getConf netSpeedExp) -eq 1 ]]; then
+    if [[ $(getConfProp netSpeedExp) -eq 1 ]]; then
         echo -e "^c$black^^b$blue^${icons[netSpeed]}${recvIcon} $vel_recv ${transIcon} $vel_trans"
     else
         echo -e "^c$black^^b$blue^${icons[netSpeed]}${recvIcon} ${transIcon}"
@@ -129,6 +127,7 @@ print_speed() {
 }
 
 xsetroot -name "$(print_speed)$(print_cpu)$(print_mem)$(print_disk)$(print_date)"
+
 # Update old values to perform new calculation
 old_received_bytes=$received_bytes
 old_transmitted_bytes=$transmitted_bytes

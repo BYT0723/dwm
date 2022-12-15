@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Dwm layout menu file
+# Don't edit if you don't know what are you doing
+
 cat <<EOF | xmenu
 []=  Tiled	0
 ><>  Floating	1

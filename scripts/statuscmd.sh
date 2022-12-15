@@ -1,24 +1,21 @@
 #!/bin/bash
 
+#  Handle the statusBar click event
+#  see file config.h variable statuscmds
+
 cmdType=$1
+# 1 left button
+# 2 middle button
+# 3 right button
 buttonType=$2
 
 source $HOME/.dwm/status-env.sh
-
-propToggle() {
-    now=$(cat $conf | grep $1 | awk -F '=' '{print $2}')
-    if [[ $now -eq 1 ]]; then
-        sed -i "s/$1=1/$1=0/g" $conf
-    else
-        sed -i "s/$1=0/$1=1/g" $conf
-    fi
-}
 
 dateHandler() {
     buttonType=$1
     case "$buttonType" in
     1)
-        propToggle ${confProperty["dateExp"]}
+        toggleConfProp ${confProperty["dateExp"]}
         ;;
     2) ;;
 
@@ -55,7 +52,7 @@ cpuHandler() {
     buttonType=$1
     case "$buttonType" in
     1)
-        propToggle ${confProperty["showTemp"]}
+        toggleConfProp ${confProperty["showTemp"]}
         ;;
     2) ;;
 
@@ -68,7 +65,7 @@ netSpeedHandler() {
     buttonType=$1
     case "$buttonType" in
     1)
-        propToggle ${confProperty["netSpeedExp"]}
+        toggleConfProp ${confProperty["netSpeedExp"]}
         ;;
     2) ;;
 
@@ -77,6 +74,7 @@ netSpeedHandler() {
     esac
 }
 
+# route by $cmdType
 case "$cmdType" in
 date)
     dateHandler $2
