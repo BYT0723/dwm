@@ -53,8 +53,6 @@ if [[ "$layout" == 'NO' ]]; then
         " Template                $(icon toggle conf statusBar ^${confProperty[showTemp]} number)"
         " DateTime                $(icon toggle conf statusBar ^${confProperty[dateExp]} number)"
     )
-    networkOpt=$(nmcli connection show | grep -E 'wifi' | awk '{print $1}')
-    bluetoothOpt=$(bluetoothctl devices Trusted | awk '{print substr($0,26,20)}')
     picomOpt=(
         "蘒 Toggle                  $(icon toggle app picom)"
         "𧻓 Animation               $(icon toggle conf picom ^animations bool)"
@@ -72,12 +70,11 @@ else
         " "
     )
     barOpt=(
-        " $(icon toggle conf statusBar ^net_speed_exp number)"
-        " $(icon toggle conf statusBar ^show_temp number)"
-        " $(icon toggle conf statusBar ^date_exp number)"
+        " $(icon toggle conf statusBar ^${confProperty[showIcon]} number)"
+        " $(icon toggle conf statusBar ^${confProperty[netSpeedExp]} number)"
+        " $(icon toggle conf statusBar ^${confProperty[showTemp]} number)"
+        " $(icon toggle conf statusBar ^${confProperty[dateExp]} number)"
     )
-    networkOpt=$(nmcli connection show | grep -E 'wifi' | awk '{print $1}')
-    bluetoothOpt=$(bluetoothctl devices Trusted | awk '{print substr($0,26,20)}')
     picomOpt=(
         "蘒$(icon toggle app picom)"
         "𧻓$(icon toggle conf picom ^animations bool)"
@@ -124,15 +121,15 @@ run_rofi() {
         opts=("${notificationOpt[@]}")
     elif [[ "$1" == ${optId[${firstOpt[1]}]} ]]; then
         prompt='Network'
-        mesg="Eth: $(nmcli connection show -active | grep -E 'eth' | awk '{print $1}')
-Wifi: $(nmcli connection show -active | grep -E 'wifi' | awk '{print $1}')"
-        opts=("${networkOpt[@]}")
+        mesg="  $(nmcli connection show -active | grep -E 'eth' | awk '{print $1}')    $(nmcli connection show -active | grep -E 'wifi' | awk '{print $1}')"
+        opts=$(nmcli device wifi list --rescan auto | awk 'NR!=1 {print substr($0,28,18) substr($0,74,10)}' | awk '!a[$0]++')
     elif [[ "$1" == ${optId[${firstOpt[2]}]} ]]; then
         prompt='Bluetooth'
         mesg="Connected: $(bluetoothctl devices Connected | awk '{print substr($0,26,20)}')"
         opts=("${bluetoothOpt[@]}")
     elif [[ "$1" == ${optId[${firstOpt[3]}]} ]]; then
         prompt='Picom'
+        mesg="Windows Composer"
         opts=("${picomOpt[@]}")
     elif [[ "$1" == ${optId[${firstOpt[4]}]} ]]; then
         prompt='StatusBar'
@@ -211,3 +208,5 @@ if [[ "$chosen" == "" ]]; then
     exit
 fi
 run_cmd ${optId[$chosen]}
+
+exit
