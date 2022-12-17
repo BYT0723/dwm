@@ -9,7 +9,6 @@
 type="$HOME/.dwm/rofi/applets/type-1"
 style='style-2.rasi'
 theme="$type/$style"
-
 # Theme Elements
 prompt='Module'
 mesg="Manage Module Of System"
@@ -41,11 +40,11 @@ layout=$(cat ${theme} | grep 'USE_ICON' | cut -d'=' -f2)
 
 if [[ "$layout" == 'NO' ]]; then
     firstOpt=(
-        " Notification             $(icon active app dunst)"
+        " StatusBar"
+        " Picom                    $(icon active app picom)"
         " Network                  $(icon active app NetworkManager)"
         " Bluetooth                $(icon active service bluetooth)"
-        " Picom                    $(icon active app picom)"
-        " StatusBar"
+        " Notification             $(icon active app dunst)"
     )
     barOpt=(
         " ShowIcon                $(icon toggle conf statusBar ^${confProperty[showIcon]} number)"
@@ -116,25 +115,26 @@ rofi_cmd() {
 # Pass variables to rofi dmenu
 run_rofi() {
     if [[ "$1" == ${optId[${firstOpt[0]}]} ]]; then
-        prompt='Notification'
-        mesg="Dunst Notification Manager"
-        opts=("${notificationOpt[@]}")
-    elif [[ "$1" == ${optId[${firstOpt[1]}]} ]]; then
-        prompt='Network'
-        mesg="  $(nmcli connection show -active | grep -E 'eth' | awk '{print $1}')    $(nmcli connection show -active | grep -E 'wifi' | awk '{print $1}')"
-        opts=$(nmcli device wifi list --rescan auto | awk 'NR!=1 {print substr($0,28,18) substr($0,74,10)}' | awk '!a[$0]++')
-    elif [[ "$1" == ${optId[${firstOpt[2]}]} ]]; then
-        prompt='Bluetooth'
-        mesg="Connected: $(bluetoothctl devices Connected | awk '{print substr($0,26,20)}')"
-        opts=("${bluetoothOpt[@]}")
-    elif [[ "$1" == ${optId[${firstOpt[3]}]} ]]; then
-        prompt='Picom'
-        mesg="Windows Composer"
-        opts=("${picomOpt[@]}")
-    elif [[ "$1" == ${optId[${firstOpt[4]}]} ]]; then
         prompt='StatusBar'
         mesg="Dwm Status Bar"
         opts=("${barOpt[@]}")
+    elif [[ "$1" == ${optId[${firstOpt[1]}]} ]]; then
+        prompt='Picom'
+        mesg="Windows Composer"
+        opts=("${picomOpt[@]}")
+    elif [[ "$1" == ${optId[${firstOpt[2]}]} ]]; then
+        prompt='Network'
+        mesg="  $(nmcli connection show -active | grep -E 'eth' | awk '{print $1}')    $(nmcli connection show -active | grep -E 'wifi' | awk '{print $1}')"
+        opts=$(nmcli device wifi list --rescan auto | awk 'NR!=1 {print substr($0,28,18) substr($0,74,10)}' | awk '!a[$0]++')
+    elif [[ "$1" == ${optId[${firstOpt[3]}]} ]]; then
+        prompt='Bluetooth'
+        mesg="Connected:
+$(bluetoothctl devices Connected | awk '{print substr($0,25)}')"
+        opts=$(bluetoothctl devices | awk '{print substr($0,25)}')
+    elif [[ "$1" == ${optId[${firstOpt[4]}]} ]]; then
+        prompt='Notification'
+        mesg="Dunst Notification Manager"
+        opts=("${notificationOpt[@]}")
     else
         opts=("${firstOpt[@]}")
     fi
@@ -177,20 +177,19 @@ run_cmd() {
     ${optId[${notificationOpt[1]}]})
         dunstctl close-all
         ;;
-    ${optId[${firstOpt[1]}]})
+    ${optId[${firstOpt[2]}]})
         chosen="$(run_rofi $1)"
         if [[ "$chosen" == "" || "$chosen" == "$(nmcli connection show -active | grep -E 'wifi' | awk '{print $1}')" ]]; then
             exit
         fi
-        nmcli connection up $chosen
+        nmcli device wifi connect $(echo $chosen | awk '{print $1}')
         ;;
-    ${optId[${firstOpt[2]}]})
+    ${optId[${firstOpt[3]}]})
         chosen="$(run_rofi $1)"
         if [[ "$chosen" == "" ]]; then
             exit
         fi
-        bluetoothctl connect
-        nmcli connection up $chosen
+        bluetoothctl disconnect $(bluetoothctl devices Connected | grep "$chosen" | awk '{print $2}')
         ;;
     *)
         chosen="$(run_rofi $1)"
