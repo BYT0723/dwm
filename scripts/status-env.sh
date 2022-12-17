@@ -6,6 +6,7 @@ conf="$HOME/.dwm/configs/statusConf"
 
 declare -A confProperty
 confProperty["showIcon"]="showIcon"
+confProperty["showMpd"]="showMpd"
 confProperty["dateExp"]="dateExp"
 confProperty["showTemp"]="showTemp"
 confProperty["netSpeedExp"]="netSpeedExp"

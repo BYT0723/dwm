@@ -1,4 +1,5 @@
-showIcon=0
-dateExp=0
-netSpeedExp=0
+showIcon=1
+showMpd=0
+dateExp=1
+netSpeedExp=1
 showTemp=1

@@ -48,6 +48,7 @@ if [[ "$layout" == 'NO' ]]; then
     )
     barOpt=(
         " ShowIcon                $(icon toggle conf statusBar ^${confProperty[showIcon]} number)"
+        " ShowMpd                 $(icon toggle conf statusBar ^${confProperty[showMpd]} number)"
         " NetSpeed                $(icon toggle conf statusBar ^${confProperty[netSpeedExp]} number)"
         " Template                $(icon toggle conf statusBar ^${confProperty[showTemp]} number)"
         " DateTime                $(icon toggle conf statusBar ^${confProperty[dateExp]} number)"
@@ -70,6 +71,7 @@ else
     )
     barOpt=(
         " $(icon toggle conf statusBar ^${confProperty[showIcon]} number)"
+        " $(icon toggle conf statusBar ^${confProperty[showMpd]} number)"
         " $(icon toggle conf statusBar ^${confProperty[netSpeedExp]} number)"
         " $(icon toggle conf statusBar ^${confProperty[showTemp]} number)"
         " $(icon toggle conf statusBar ^${confProperty[dateExp]} number)"
@@ -94,6 +96,7 @@ optId[${firstOpt[4]}]="--opt5"
 optId[${barOpt[0]}]="--barOpt1"
 optId[${barOpt[1]}]="--barOpt2"
 optId[${barOpt[2]}]="--barOpt3"
+optId[${barOpt[3]}]="--barOpt4"
 
 optId[${picomOpt[0]}]="--picomOpt1"
 optId[${picomOpt[1]}]="--picomOpt2"
@@ -155,12 +158,15 @@ run_cmd() {
         toggleConf statusBar ^${confProperty[showIcon]} number
         ;;
     ${optId[${barOpt[1]}]})
-        toggleConf statusBar ^${confProperty[netSpeedExp]} number
+        toggleConf statusBar ^${confProperty[showMpd]} number
         ;;
     ${optId[${barOpt[2]}]})
-        toggleConf statusBar ^${confProperty[showTemp]} number
+        toggleConf statusBar ^${confProperty[netSpeedExp]} number
         ;;
     ${optId[${barOpt[3]}]})
+        toggleConf statusBar ^${confProperty[showTemp]} number
+        ;;
+    ${optId[${barOpt[4]}]})
         toggleConf statusBar ^${confProperty[dateExp]} number
         ;;
     ${optId[${picomOpt[0]}]})

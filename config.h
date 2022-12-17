@@ -19,8 +19,8 @@ static const int          showsystray             = 1;  /* 0 means no systray */
 
 static const Bool viewontag = True; /* Switch view on tag switch */
 static const char *fonts[] = {
-  "CaskaydiaCove Nerd Font:style=Regular:size=14",
-  "文泉驿等宽微米黑:style=Regular:size=14"
+  "CaskaydiaCove Nerd Font:style=Regular:size=12",
+  "文泉驿等宽微米黑:style=Regular:size=12"
 };
 
 static const char col_black[]   = "#073642";  /*  0: black    */
@@ -100,20 +100,20 @@ static const Rule rules[] = {
      *	WM_NAME(STRING) = title
      */
   /* class                instance    title     tags mask     isfloating    monitor */
-  // {"firefox",             NULL,       NULL,     1 << 1,       0,            -1},
+  {"firefox",             NULL,       NULL,     1 << 1,       0,            -1},
 
-  // {"TelegramDesktop",     NULL,       NULL,     1 << 2,       0,            -1},
-  // {"wechat.exe",          NULL,       NULL,     1 << 2,       0,            -1},
-  // {"icalingua",           NULL,       NULL,     1 << 2,       0,            -1},
+  {"TelegramDesktop",     NULL,       NULL,     1 << 2,       0,            -1},
+  {"wechat.exe",          NULL,       NULL,     1 << 2,       0,            -1},
+  {"icalingua",           NULL,       NULL,     1 << 2,       0,            -1},
   //
   {"qqmusic",             NULL,       NULL,     1 << 3,       1,            -1},
   {"netease-cloud-music", NULL,       NULL,     1 << 3,       1,            -1},
-  // {"OSD Lyrics",          NULL,       NULL,     1 << 3,       1,            -1},
+  {"OSD Lyrics",          NULL,       NULL,     1 << 3,       1,            -1},
 
   {"obs",                 NULL,       NULL,     1 << 4,       0,            -1},
 
   {"DBeaver",             NULL,       NULL,     1 << 5,       0,            -1},
-  {"RESP.app - Developer GUI for Redis",             NULL,       NULL,     1 << 5,       0,            -1},
+  {"RESP.app",            NULL,       NULL,     1 << 5,       0,            -1},
 
   {"xunlei",              NULL,       NULL,     1 << 6,       1,            -1},
   {"qBittorrent",         NULL,       NULL,     1 << 6,       0,            -1},

@@ -101,6 +101,22 @@ print_date() {
     fi
 }
 
+print_mpd() {
+    if [[ -z "$(mpc status)" ]]; then
+        return
+    fi
+    if [[ $(getConfProp showMpd) -eq 0 ]]; then
+        return
+    fi
+    printf '\x06'
+    local songName=$(mpc current)
+    if [[ $(getConfProp showIcon) -eq 1 ]]; then
+        printf "^c$black^^b$blue^  $songName"
+    else
+        printf "^c$black^^b$blue^$songName"
+    fi
+}
+
 get_bytes
 
 # Calculates speeds
@@ -126,7 +142,7 @@ print_speed() {
     fi
 }
 
-xsetroot -name "$(print_speed)$(print_cpu)$(print_mem)$(print_disk)$(print_date)"
+xsetroot -name "$(print_mpd)$(print_speed)$(print_cpu)$(print_mem)$(print_disk)$(print_date)"
 
 # Update old values to perform new calculation
 old_received_bytes=$received_bytes
