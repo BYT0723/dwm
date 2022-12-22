@@ -236,6 +236,7 @@ static Key keys[] = {
   {MODKEY | ShiftMask,            XK_j,       focusstackhid,  {.i = +1}},
   {MODKEY | ShiftMask,            XK_k,       focusstackhid,  {.i = -1}},
   {MODKEY | ShiftMask,            XK_s,       show,           {0}},
+  {MODKEY | ControlMask,          XK_s,       showall,        {0}},
   {MODKEY | ShiftMask,            XK_h,       hide,           {0}},
   {MODKEY | ShiftMask,            XK_f,       fullscreen,     {0}},
   {MODKEY | ControlMask,          XK_space,   togglefloating, {0}},

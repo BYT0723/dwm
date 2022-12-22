@@ -315,6 +315,7 @@ static void setmfact(const Arg *arg);
 static void setup(void);
 static void seturgent(Client *c, int urg);
 static void show(const Arg *arg);
+static void showall(const Arg *arg);
 static void showwin(Client *c);
 static void showhide(Client *c);
 static void sigchld(int unused);
@@ -1293,7 +1294,8 @@ void focusstackhid(const Arg *arg) { focusstack(arg->i, 1); }
 void focusstack(int inc, int hid) {
   Client *c = NULL, *i;
 
-  if ((!selmon->sel && !hid) || (selmon->sel->isfullscreen && lockfullscreen))
+  if ((!selmon->sel && !hid) ||
+      (selmon->sel && selmon->sel->isfullscreen && lockfullscreen))
     return;
   if (!selmon->clients)
     return;
@@ -2878,6 +2880,22 @@ void show(const Arg *arg) {
   if (selmon->hidsel)
     selmon->hidsel = 0;
   showwin(selmon->sel);
+}
+
+void showall(const Arg *arg) {
+  Client *c = NULL;
+  selmon->hidsel = 0;
+  for (c = selmon->clients; c; c = c->next) {
+    if (ISVISIBLE(c))
+      showwin(c);
+  }
+  if (!selmon->sel) {
+    for (c = selmon->clients; c && !ISVISIBLE(c); c = c->next)
+      ;
+    if (c)
+      focus(c);
+  }
+  restack(selmon);
 }
 
 void showwin(Client *c) {
