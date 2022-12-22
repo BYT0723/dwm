@@ -14,13 +14,11 @@ source $HOME/.dwm/status-env.sh
 dateHandler() {
     buttonType=$1
     case "$buttonType" in
-    1)
+    1) ;;
+    2) ;;
+    3)
         toggleConfProp ${confProperty["dateExp"]}
         ;;
-    2) ;;
-
-    3) ;;
-
     esac
 }
 
@@ -28,11 +26,8 @@ diskHandler() {
     buttonType=$1
     case "$buttonType" in
     1) ;;
-
     2) ;;
-
     3) ;;
-
     esac
 }
 
@@ -40,11 +35,8 @@ memoryHandler() {
     buttonType=$1
     case "$buttonType" in
     1) ;;
-
     2) ;;
-
     3) ;;
-
     esac
 }
 
@@ -52,12 +44,12 @@ cpuHandler() {
     buttonType=$1
     case "$buttonType" in
     1)
-        toggleConfProp ${confProperty["showTemp"]}
+        alacritty -e htop
         ;;
     2) ;;
-
-    3) ;;
-
+    3)
+        toggleConfProp ${confProperty["showTemp"]}
+        ;;
     esac
 }
 
@@ -65,12 +57,25 @@ netSpeedHandler() {
     buttonType=$1
     case "$buttonType" in
     1)
-        toggleConfProp ${confProperty["netSpeedExp"]}
+        alacritty -e speedtest
         ;;
     2) ;;
+    3)
+        toggleConfProp ${confProperty["netSpeedExp"]}
+        ;;
+    esac
+}
 
-    3) ;;
-
+mpdHandler() {
+    buttonType=$1
+    case "$buttonType" in
+    1)
+        mpc toggle
+        ;;
+    2) ;;
+    3)
+        $HOME/.dwm/rofi/bin/mpd.sh
+        ;;
     esac
 }
 
@@ -90,5 +95,8 @@ cpuInfo)
     ;;
 netSpeed)
     netSpeedHandler $2
+    ;;
+mpd)
+    mpdHandler $2
     ;;
 esac
