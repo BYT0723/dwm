@@ -20,6 +20,7 @@ if [[ $(getConfProp showIcon) -eq 1 ]]; then
     icons["temp"]=" "
     icons["cpu"]=" "
     icons["netSpeed"]=" "
+    icons["mpd"]=" "
 fi
 
 function get_bytes {
@@ -58,18 +59,24 @@ old_time=$now
 
 #  Output the current memory usage
 print_mem() {
-    printf '\x03'
-    printf "^c$blue^^b$black^${icons["memory"]}$(free -h | awk '/^内存/ { print $3 }' | sed s/i//g)"
+    # memory value
+    local mem_val=$(free -h | awk '/^内存/ { print $3 }' | sed s/i//g)
+    # colorscheme
+    printf "\x03^c$blue^^b$black^"
+    # output
+    printf "${icons[memory]}$mem_val"
 }
 
 # Output the current cpu load
 print_cpu() {
-    printf '\x04'
+    # cpu load value
+    local cpu_val=$(grep -o "^[^ ]*" /proc/loadavg)
+    # colorscheme
+    printf "\x04^c$red^^b$grey^"
+    # output
+    printf "${icons[cpu]}$cpu_val"
 
-    cpu_val=$(grep -o "^[^ ]*" /proc/loadavg)
-
-    printf "^c$red^^b$grey^${icons[cpu]}$cpu_val"
-
+    # append cpu temperature
     if [[ $(getConfProp showTemp) -eq 1 ]]; then
         printf "  $(print_temp)"
     fi
@@ -77,44 +84,58 @@ print_cpu() {
 
 # Output current temperature of cpu
 print_temp() {
+    # test get temperature file
     test -f /sys/class/thermal/thermal_zone0/temp || return 0
+    # temperature value
     temp=$(head -c 2 /sys/class/thermal/thermal_zone0/temp)
 
+    # output
     printf "${icons[temp]}${temp}°C"
 }
 
 # Output Disk free space size
 # disk path in variable $disk_root
 print_disk() {
-    printf '\x02'
-    disk_root=$(df -h | grep /dev/sda2 | awk '{print $4}')
-    printf "^c$grey^^b$white^${icons[disk]}$disk_root"
+    # root disk space value
+    local disk_root=$(df -h | grep /dev/sda2 | awk '{print $4}')
+    # colorscheme
+    printf "\x02^c$grey^^b$white^"
+    # output
+    printf "${icons[disk]}$disk_root"
 }
 
 # Output current datetime
 print_date() {
-    printf '\x01'
+    # colorscheme
+    printf "\x01^c$black^^b$blue^"
+    # output
     if [[ $(getConfProp dateExp) -eq 1 ]]; then
-        printf "^c$black^^b$blue^$(date '+ %m-%d(%a)  %H:%M')"
+        printf "$(date '+ %m-%d(%a)  %H:%M')"
     else
-        printf "^c$black^^b$blue^$(date '+ %H:%M')"
+        printf "$(date '+ %H:%M')"
     fi
 }
 
 print_mpd() {
+    # determine whether mpd is started
     if [[ -z "$(mpc status)" ]]; then
         return
     fi
+    # determine whether showMpd property is on
     if [[ $(getConfProp showMpd) -eq 0 ]]; then
         return
     fi
-    printf '\x06'
-    local songName=$(mpc current)
-    if [[ $(getConfProp showIcon) -eq 1 ]]; then
-        printf "^c$black^^b$blue^  $songName"
+
+    # calculate mpd play status
+    if [[ $(mpc status) == *"[playing]"* ]]; then
+        icon=""
     else
-        printf "^c$black^^b$blue^$songName"
+        icon=""
     fi
+    # colorscheme
+    printf "\x06^c$black^^b$blue^"
+    # output
+    printf "${icons[mpd]}$(mpc current) $icon"
 }
 
 get_bytes
@@ -125,20 +146,22 @@ vel_trans="$(get_velocity $transmitted_bytes $old_transmitted_bytes $now)"
 
 # Output network velocity
 print_speed() {
-    printf '\x05'
-    recvIcon=" "
-    transIcon=" "
+    # define the calculated upper and lower symbols
+    local recvIcon=" "
+    local transIcon=" "
     if [ $received_bytes -ne $old_received_bytes ]; then
         recvIcon=""
     fi
     if [ $transmitted_bytes -ne $old_transmitted_bytes ]; then
         transIcon=""
     fi
-
+    # colorscheme
+    printf "\x05^c$black^^b$blue^"
+    # output
     if [[ $(getConfProp netSpeedExp) -eq 1 ]]; then
-        echo -e "^c$black^^b$blue^${icons[netSpeed]}${recvIcon} $vel_recv ${transIcon} $vel_trans"
+        printf "${icons[netSpeed]}${recvIcon} $vel_recv ${transIcon} $vel_trans"
     else
-        echo -e "^c$black^^b$blue^${icons[netSpeed]}${recvIcon} ${transIcon}"
+        printf "${icons[netSpeed]}${recvIcon} ${transIcon}"
     fi
 }
 
