@@ -128,7 +128,7 @@ run_rofi() {
     elif [[ "$1" == ${optId[${firstOpt[2]}]} ]]; then
         prompt='Network'
         mesg="  $(nmcli connection show -active | grep -E 'eth' | awk '{print $1}')    $(nmcli connection show -active | grep -E 'wifi' | awk '{print $1}')"
-        opts=$(nmcli device wifi list --rescan auto | awk 'NR!=1 {print substr($0,28,18) substr($0,74,10)}' | awk '!a[$0]++')
+        opts=$(nmcli device wifi list --rescan auto | awk 'NR!=1 {print substr($0,28)}' | awk '{print $7," ",$1}' | awk '!a[$0]++')
     elif [[ "$1" == ${optId[${firstOpt[3]}]} ]]; then
         prompt='Bluetooth'
         mesg="Connected:
