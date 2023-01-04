@@ -188,7 +188,7 @@ run_cmd() {
         if [[ "$chosen" == "" || "$chosen" == "$(nmcli connection show -active | grep -E 'wifi' | awk '{print $1}')" ]]; then
             exit
         fi
-        nmcli device wifi connect $(echo $chosen | awk '{print $1}')
+        nmcli device wifi connect $(echo $chosen | awk '{print $2}')
         ;;
     ${optId[${firstOpt[3]}]})
         chosen="$(run_rofi $1)"
