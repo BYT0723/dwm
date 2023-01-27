@@ -1,17 +1,12 @@
 #!/usr/bin/env bash
 
-## Author  : Aditya Shakya (adi1090x)
-## Github  : @adi1090x
-#
-## Applets : Favorite Applications
-
 # Import Current Theme
 type="$HOME/.dwm/rofi/applets/type-1"
 style='style-2.rasi'
 theme="$type/$style"
-# Theme Elements
-prompt='Module'
-mesg="Manage Module Of System"
+
+source ~/.dwm/rofi/bin/util.sh
+source ~/.dwm/status-env.sh
 
 HistoryPopCount=10
 
@@ -31,9 +26,6 @@ confPath["statusBar"]="$HOME/.dwm/configs/statusConf"
 # 定义运行命令的Map
 declare -A applicationCmd
 applicationCmd["picom"]="picom --config $HOME/.dwm/configs/picom.conf -b --experimental-backends"
-
-source $HOME/.dwm/rofi/bin/util.sh
-source $HOME/.dwm/status-env.sh
 
 # Options
 layout=$(cat ${theme} | grep 'USE_ICON' | cut -d'=' -f2)
@@ -139,6 +131,8 @@ $(bluetoothctl devices Connected | awk '{print substr($0,25)}')"
         mesg="Dunst Notification Manager"
         opts=("${notificationOpt[@]}")
     else
+        prompt='Module'
+        mesg="Manage Module Of System"
         opts=("${firstOpt[@]}")
     fi
 
