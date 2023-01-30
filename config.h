@@ -1,21 +1,21 @@
 // #include <X11/XF86keysym.h>
 
 /* appearance */
-static const unsigned int borderpx = 0; /* border pixel of windows */
-static const unsigned int snap = 32;    /* snap pixel */
-static const          int showbar = 1;  /* 0 means no bar */
-static const          int topbar = 1;   /* 0 means bottom bar */
+static const unsigned int borderpx = 0;   /* border pixel of windows */
+static const unsigned int snap     = 32;  /* snap pixel */
+static const          int showbar  = 1;   /* 0 means no bar */
+static const          int topbar   = 1;   /* 0 means bottom bar */
 
-static const unsigned int gappih = 4;     /* horiz inner gap between windows */
-static const unsigned int gappiv = 4;     /* vert inner gap between windows */
-static const unsigned int gappoh = 4;     /* horiz outer gap between windows and screen edge */
-static const unsigned int gappov = 4;    /* vert outer gap between windows and screen edge */
-static                int smartgaps = 0;  /* 1 means no outer gap when there is only one window */
+static const unsigned int gappih    = 17;  /* horiz inner gap between windows */
+static const unsigned int gappiv    = 17;  /* vert inner gap between windows */
+static const unsigned int gappoh    = 17;  /* horiz outer gap between windows and screen edge */
+static const unsigned int gappov    = 17;  /* vert outer gap between windows and screen edge */
+static                int smartgaps = 0;   /* 1 means no outer gap when there is only one window */
 
-static const unsigned int systraypinning = 0;           /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
-static const unsigned int systrayspacing = 2;           /* systray spacing */
-static const int          systraypinningfailfirst = 1;  /* 1: if pinning fails, display systray on the first monitor, False: display systray on the last monitor*/
-static const int          showsystray             = 1;  /* 0 means no systray */
+static const unsigned int systraypinning          = 0;  /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
+static const unsigned int systrayspacing          = 2;  /* systray spacing */
+static const          int systraypinningfailfirst = 1;  /* 1: if pinning fails, display systray on the first monitor, False: display systray on the last monitor*/
+static const          int showsystray             = 1;  /* 0 means no systray */
 
 static const Bool viewontag = True; /* Switch view on tag switch */
 static const char *fonts[] = {
@@ -34,61 +34,62 @@ static const char col_white[]   = "#eee8d5";  /*  7: white    */
 
 static const char col_ab_black[]   = "#000000";
 
-static const unsigned int emptyalpha = 0x00;
-static const unsigned int baralpha = 0xd0;
+static const unsigned int emptyalpha  = 0x00;
+static const unsigned int baralpha    = 0xd0;
 static const unsigned int borderalpha = OPAQUE;
 static const char *colors[][3] = {
-  /*                  fg         bg         border   */
-  [SchemeNorm]    = {col_black, col_cyan,  col_ab_black},
-  [SchemeSel]     = {col_black, col_green, col_cyan },
-  [SchemeHid]     = {col_white, col_black, col_black },
+  /*                    fg            bg            border   */
+  [SchemeNorm]    = { col_black,    col_cyan,     col_ab_black},
+  [SchemeSel]     = { col_black,    col_green,    col_cyan },
+  [SchemeHid]     = { col_white,    col_black,    col_black },
   // tag
-  [SchemeTagNorm] = {col_white,    col_ab_black, col_ab_black},
-  [SchemeTagSel]  = {col_black,    col_blue,     col_black},
+  [SchemeTagNorm] = { col_white,    col_ab_black, col_ab_black},
+  [SchemeTagSel]  = { col_black,    col_blue,     col_black},
   // empty
-	[SchemeEmpty]   = {col_ab_black, col_ab_black, col_ab_black},
+	[SchemeEmpty]   = { col_ab_black, col_ab_black, col_ab_black},
 };
 static const unsigned int alphas[][3]      = {
-	/*                fg          bg          border     */
-	[SchemeNorm]  = { OPAQUE,     OPAQUE,   emptyalpha},
-	[SchemeSel]   = { OPAQUE,     OPAQUE,   OPAQUE },
-	[SchemeHid]   = { OPAQUE,     baralpha, emptyalpha },
+	/*                    fg          bg          border     */
+	[SchemeNorm]    = { OPAQUE,     OPAQUE,     emptyalpha},
+	[SchemeSel]     = { OPAQUE,     baralpha,   emptyalpha },
+	[SchemeHid]     = { OPAQUE,     baralpha,   emptyalpha },
   // tag
-  [SchemeTagNorm]  = {OPAQUE,     emptyalpha, emptyalpha},
-  [SchemeTagSel]   = {OPAQUE,     baralpha,   emptyalpha},
+  [SchemeTagNorm] = { OPAQUE,     emptyalpha, emptyalpha},
+  [SchemeTagSel]  = { OPAQUE,     baralpha,   emptyalpha},
   // empty
-  [SchemeEmpty]    = {emptyalpha, emptyalpha, emptyalpha},
+  [SchemeEmpty]   = { emptyalpha, emptyalpha, emptyalpha},
 };
 
 /* task icon */
 static const char *taskWidth = "               ";
 static const TaskIcon icons[] = {
-  /* class                title               icon */
+  /* class                title     icon */
   // default
-  {NULL,                  NULL,               "ﬓ "},
+  {NULL,                  NULL,      "ﬓ "},
   // terminal
-  {"st-256color",         NULL,               " "},
-  {"Alacritty",           NULL,               " "},
-  // brower
-  {"firefox",             NULL,               " "},
-  {"Chromium",            NULL,               " "},
+  {"st-256color",         NULL,      " "},
+  {"Alacritty",           NULL,      " "},
+  // browser
+  {"firefox",             NULL,      " "},
+  {"Chromium",            NULL,      " "},
   // website
-  {NULL,                  "YouTube",          " "},
-  {NULL,                  "Twitter",          " "},
-  {NULL,                  "Gmail",            " "},
+  {NULL,                  "YouTube", " "},
+  {NULL,                  "Twitter", " "},
+  {NULL,                  "Gmail",   " "},
   // application
-  {"neovide",             NULL,               " "},
-  {"TelegramDesktop",     NULL,               " "},
-  {"wechat.exe",          NULL,               " "},
-  {"icalingua",           NULL,               " "},
-  {"qqmusic",             NULL,               " "},
-  {"netease-cloud-music", NULL,               " "},
-  {"vlc",                 NULL,               "嗢"},
-  {"mpv",                 NULL,               " "},
-  {"DBeaver",             NULL,               " "},
-  {"Pcmanfm",             NULL,               " "},
-  {"Lxappearance",        NULL,               " "},
-  {"thunderbird",         NULL,               " "},
+  {"neovide",             NULL,      " "},
+  {"TelegramDesktop",     NULL,      " "},
+  {"wechat.exe",          NULL,      " "},
+  {"icalingua",           NULL,      " "},
+  {"qq",                  NULL,      " "},
+  {"qqmusic",             NULL,      " "},
+  {"netease-cloud-music", NULL,      " "},
+  {"vlc",                 NULL,      "嗢"},
+  {"mpv",                 NULL,      " "},
+  {"DBeaver",             NULL,      " "},
+  {"Pcmanfm",             NULL,      " "},
+  {"Lxappearance",        NULL,      " "},
+  {"thunderbird",         NULL,      " "},
 };
 
 /* tagging */
@@ -100,11 +101,12 @@ static const Rule rules[] = {
      *	WM_NAME(STRING) = title
      */
   /* class                instance    title     tags mask     isfloating    monitor */
-  {"firefox",             NULL,       NULL,     1 << 1,       0,            -1},
+  // {"firefox",             NULL,       NULL,     1 << 1,       0,            -1},
 
   {"TelegramDesktop",     NULL,       NULL,     1 << 2,       0,            -1},
   {"wechat.exe",          NULL,       NULL,     1 << 2,       0,            -1},
   {"icalingua",           NULL,       NULL,     1 << 2,       0,            -1},
+  {"qq",                  NULL,       NULL,     1 << 2,       0,            -1},
   //
   {"qqmusic",             NULL,       NULL,     1 << 3,       1,            -1},
   {"netease-cloud-music", NULL,       NULL,     1 << 3,       1,            -1},
@@ -132,9 +134,9 @@ static const Rule rules[] = {
 };
 
 /* layout(s) */
-static const float mfact = 0.55; /* factor of master area size [0.05..0.95] */
-static const int   nmaster = 1;    /* number of clients in master area */
-static const int   resizehints = 1; /* 1 means respect size hints in tiled resizals */
+static const float mfact          = 0.55; /* factor of master area size [0.05..0.95] */
+static const int   nmaster        = 1;    /* number of clients in master area */
+static const int   resizehints    = 1; /* 1 means respect size hints in tiled resizals */
 static const int   lockfullscreen = 1; /* 1 will force focus on the fullscreen window */
 
 #define FORCE_VSPLIT 1 /* nrowgrid layout: force two clients to always split vertically */
@@ -173,22 +175,19 @@ static const Layout layouts[] = {
   }
 
 /* commands */
-static const char *termcmd[]   = {"./.dwm/term.sh", NULL};
-static const char *floatcmd[]  = {"./.dwm/term.sh", "float", NULL};
-
-// rofi application
-static const char *roficmd[]   = {"./.dwm/rofi/bin/app.sh", NULL};
-static const char *powercmd[] = {"./.dwm/rofi/bin/powermenu.sh", NULL};
-static const char *mpdcmd[]    = {"./.dwm/rofi/bin/mpd.sh", NULL};
-static const char *linkcmd[]    = {"./.dwm/rofi/bin/quicklinks.sh", NULL};
-static const char *modulecmd[]    = {"./.dwm/rofi/bin/module.sh", NULL};
-
-static const char *layoutmenu_cmd = "./.dwm/layoutmenu.sh";
-
-// 打开关闭触摸板
+static const char *termcmd[]        = {"./.dwm/term.sh", NULL};
+static const char *floatcmd[]       = {"./.dwm/term.sh", "float", NULL};
+static const char *roficmd[]        = {"./.dwm/rofi/bin/app.sh", NULL};
+static const char *powercmd[]       = {"./.dwm/rofi/bin/powermenu.sh", NULL};
+static const char *mpdcmd[]         = {"./.dwm/rofi/bin/mpd.sh", NULL};
+static const char *linkcmd[]        = {"./.dwm/rofi/bin/quicklinks.sh", NULL};
+static const char *modulecmd[]      = {"./.dwm/rofi/bin/module.sh", NULL};
 static const char *toggleTouchpad[] = {"./.dwm/touchpad-toggle.sh", NULL};
+static const char *flameshot[]      = {"flameshot", "gui", NULL};
+// don't change or surround it by {}
+static const char *layoutmenu_cmd   = "./.dwm/layoutmenu.sh";
+
 // 截图
-static const char *flameshot[] = {"flameshot", "gui", NULL};
 
 /* commands spawned when clicking statusbar, the mouse button pressed is
  * exported as BUTTON */
@@ -198,7 +197,7 @@ static const StatusCmd statuscmds[] = {
   {"./.dwm/statuscmd.sh memory $BUTTON",    3}, // memory
   {"./.dwm/statuscmd.sh cpuInfo $BUTTON",   4}, // cpu
   {"./.dwm/statuscmd.sh netSpeed $BUTTON",  5}, // speed
-  {"./.dwm/statuscmd.sh mpd $BUTTON",       6}, // mpd 
+  {"./.dwm/statuscmd.sh mpd $BUTTON",       6}, // mpd
 };
 static const char *statuscmd[] = {"/bin/sh", "-c", NULL, NULL};
 
@@ -245,7 +244,7 @@ static Key keys[] = {
   {MODKEY,                        XK_Tab,     view,           {0}},
   {MODKEY,                        XK_0,       view,           {.ui = ~0}},
   {MODKEY | ShiftMask,            XK_0,       tag,            {.ui = ~0}},
-  {MODKEY | ControlMask,          XK_0,       toggletag,            {.ui = ~0}},
+  {MODKEY | ControlMask,          XK_0,       toggletag,      {.ui = ~0}},
   {MODKEY,                        XK_comma,   focusmon,       {.i = -1}},
   {MODKEY,                        XK_period,  focusmon,       {.i = +1}},
   {MODKEY | ShiftMask,            XK_comma,   tagmon,         {.i = -1}},
