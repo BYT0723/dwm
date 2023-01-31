@@ -33,25 +33,25 @@ layout=$(cat ${theme} | grep 'USE_ICON' | cut -d'=' -f2)
 if [[ "$layout" == 'NO' ]]; then
     firstOpt=(
         " StatusBar"
-        " Picom                    $(icon active app picom)"
-        " Network                  $(icon active app NetworkManager)"
-        " Bluetooth                $(icon active service bluetooth)"
-        " Notification             $(icon active app dunst)"
+        " Picom                         $(icon active app picom)"
+        " Network                       $(icon active app NetworkManager)"
+        " Bluetooth                     $(icon active service bluetooth)"
+        " Notification                  $(icon active app dunst)"
     )
     barOpt=(
-        " ShowIcon                $(icon toggle conf statusBar ^${confProperty[showIcon]} number)"
-        " ShowMpd                 $(icon toggle conf statusBar ^${confProperty[showMpd]} number)"
-        " NetSpeed                $(icon toggle conf statusBar ^${confProperty[netSpeedExp]} number)"
-        " Template                $(icon toggle conf statusBar ^${confProperty[showTemp]} number)"
-        " DateTime                $(icon toggle conf statusBar ^${confProperty[dateExp]} number)"
+        " ShowIcon                      $(icon toggle conf statusBar ^${confProperty[showIcon]} number)"
+        " ShowMpd                       $(icon toggle conf statusBar ^${confProperty[showMpd]} number)"
+        " NetSpeed                      $(icon toggle conf statusBar ^${confProperty[netSpeedExp]} number)"
+        " Template                      $(icon toggle conf statusBar ^${confProperty[showTemp]} number)"
+        " DateTime                      $(icon toggle conf statusBar ^${confProperty[dateExp]} number)"
     )
     picomOpt=(
-        "蘒 Toggle                  $(icon toggle app picom)"
-        "𧻓 Animation               $(icon toggle conf picom ^animations bool)"
+        "蘒 Toggle                       $(icon toggle app picom)"
+        "𧻓 Animation                    $(icon toggle conf picom ^animations bool)"
     )
     notificationOpt=(
-        "Pop                      $(dunstctl count history)"
-        "CloseAll                 $(dunstctl count displayed)"
+        "Pop                            $(dunstctl count history)"
+        "CloseAll                       $(dunstctl count displayed)"
     )
 else
     firstOpt=(

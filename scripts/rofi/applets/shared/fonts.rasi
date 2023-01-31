@@ -8,5 +8,5 @@
  **/
 
 * {
-    font: "JetBrains Mono Nerd Font Italic 15";
+    font: "JetBrains Mono Nerd Font Italic 12";
 }

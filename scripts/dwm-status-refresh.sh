@@ -107,7 +107,7 @@ print_disk() {
 # Output current datetime
 print_date() {
     # colorscheme
-    printf "\x01^c$black^^b$blue^"
+    printf "\x01^c$white^^b$black^"
     # output
     if [[ $(getConfProp dateExp) -eq 1 ]]; then
         printf "$(date '+ %m-%d(%a)  %H:%M')"

@@ -108,17 +108,17 @@ run_cmd() {
     if [[ "$1" == '--on' ]]; then
         mpd
     elif [[ "$1" == '--opt1' ]]; then
-        mpc -q toggle && notify-send -u low -t 2000 " $(mpc current) $option_1"
+        mpc -q toggle && notify-send -u low "$(mpc status | awk 'NR==2 {print $1}') $(mpc current)"
     elif [[ "$1" == '--opt2' ]]; then
         mpc -q stop
     elif [[ "$1" == '--opt3' ]]; then
-        mpc -q prev && notify-send -u low -t 2000 " $(mpc current) $option_1"
+        mpc -q prev && notify-send -u low " $(mpc current)"
     elif [[ "$1" == '--opt4' ]]; then
-        mpc -q next && notify-send -u low -t 2000 " $(mpc current) $option_1"
+        mpc -q next && notify-send -u low " $(mpc current)"
     elif [[ "$1" == '--opt5' ]]; then
-        mpc volume -20 && notify-send -u low -t 2000 " $(mpc volume)"
+        mpc volume -20 && notify-send -u low " $(mpc volume)"
     elif [[ "$1" == '--opt6' ]]; then
-        mpc volume +20 && notify-send -u low -t 2000 " $(mpc volume)"
+        mpc volume +20 && notify-send -u low " $(mpc volume)"
     elif [[ "$1" == '--opt7' ]]; then
         mpc -q repeat
     elif [[ "$1" == '--opt8' ]]; then
