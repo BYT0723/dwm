@@ -5,6 +5,7 @@ static const unsigned int borderpx = 0;   /* border pixel of windows */
 static const unsigned int snap     = 32;  /* snap pixel */
 static const          int showbar  = 1;   /* 0 means no bar */
 static const          int topbar   = 1;   /* 0 means bottom bar */
+static const char hostname[]       = " Arch-Walter";
 
 static const unsigned int gappih    = 17;  /* horiz inner gap between windows */
 static const unsigned int gappiv    = 17;  /* vert inner gap between windows */
@@ -289,6 +290,9 @@ static Key keys[] = {
 /* click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
 static Button buttons[] = {
   /* click          event mask  button    function        argument */
+  //hostname
+	{ ClkHostname,          0,     Button1,  spawn,          {.v = roficmd}},
+ 	{ ClkHostname,          0,     Button3,  spawn,          {.v = powercmd}},
   // tag
   { ClkTagBar,            0,     Button1,  view,           {0}},
   { ClkTagBar,            0,     Button3,  toggleview,     {0}},

@@ -123,6 +123,7 @@ enum {
   WMLast
 }; /* default atoms */
 enum {
+  ClkHostname,
   ClkTagBar,
   ClkLtSymbol,
   ClkStatusText,
@@ -581,6 +582,7 @@ void buttonpress(XEvent *e) {
   }
   if (ev->window == selmon->barwin) {
     i = x = 0;
+    x += TEXTW(hostname);
     unsigned int occ = 0;
     for (c = m->clients; c; c = c->next)
       occ |= c->tags;
@@ -590,7 +592,9 @@ void buttonpress(XEvent *e) {
         continue;
       x += TEXTW(tags[i]);
     } while (ev->x >= x && ++i < LENGTH(tags));
-    if (i < LENGTH(tags)) {
+    if (ev->x <= TEXTW(hostname)) {
+      click = ClkHostname;
+    }else if (i < LENGTH(tags)) {
       click = ClkTagBar;
       arg.ui = 1 << i;
     } else if (ev->x < x + blw)
@@ -636,8 +640,7 @@ void buttonpress(XEvent *e) {
         }
       }
     } else if (ev->x > selmon->ww - m->btw - statusw - getsystraywidth() &&
-               ev->x < selmon->ww - (m->btw - m->bt * m->tw) - statusw -
-                           getsystraywidth()) { // tasks click event
+               ev->x < selmon->ww - (m->btw - m->bt * m->tw) - statusw - getsystraywidth()) { // tasks click event
       x += blw;
       c = m->clients;
 
@@ -661,13 +664,12 @@ void buttonpress(XEvent *e) {
     click = ClkClientWin;
   }
   for (i = 0; i < LENGTH(buttons); i++)
-    if (click == buttons[i].click && buttons[i].func &&
-        buttons[i].button == ev->button &&
-        CLEANMASK(buttons[i].mask) == CLEANMASK(ev->state))
+    if (click == buttons[i].click &&
+      buttons[i].func &&
+      buttons[i].button == ev->button &&
+      CLEANMASK(buttons[i].mask) == CLEANMASK(ev->state))
       buttons[i].func((click == ClkTagBar || click == ClkWinTitle) &&
-                              buttons[i].arg.i == 0
-                          ? &arg
-                          : &buttons[i].arg);
+      buttons[i].arg.i == 0 ? &arg : &buttons[i].arg);
 }
 
 void checkotherwm(void) {
@@ -1116,15 +1118,19 @@ void drawbar(Monitor *m) {
       urg |= c->tags;
   }
   x = 0;
+
+  // // draw hostname
+  w = TEXTW(hostname);
+  drw_text(drw, x, 0, w, bh, lrpad / 2, hostname, 0);
+  x += w;
+
   for (i = 0; i < LENGTH(tags); i++) {
     /* Do not draw vacant tags */
     if (!(occ & 1 << i || m->tagset[m->seltags] & 1 << i))
       continue;
     w = TEXTW(tags[i]);
     // 高亮所在的tag
-    drw_setscheme(
-        drw,
-        scheme[m->tagset[m->seltags] & 1 << i ? SchemeTagSel : SchemeTagNorm]);
+    drw_setscheme(drw,scheme[m->tagset[m->seltags] & 1 << i ? SchemeTagSel : SchemeTagNorm]);
     drw_text(drw, x, 0, w, bh, lrpad / 2, tags[i], urg & 1 << i);
     x += w;
   }
