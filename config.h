@@ -43,25 +43,25 @@ static const char *colors[][3] = {
   [SchemeSel]     = { col_black,    col_green,    col_cyan },
   [SchemeHid]     = { col_white,    col_black,    col_black },
   // tag
-  [SchemeTagNorm] = { col_white,    col_ab_black, col_ab_black},
+  [SchemeTagNorm] = { col_white,    col_ab_black, col_black},
   [SchemeTagSel]  = { col_black,    col_blue,     col_black},
   // systray
-  [SchemeSystray] = { col_black,    col_ab_black, col_ab_black},
+  [SchemeSystray] = { col_black,    col_ab_black, col_black},
   // empty
-	[SchemeEmpty]   = { col_ab_black, col_ab_black, col_ab_black},
+	[SchemeEmpty]   = { col_ab_black, col_ab_black, col_black},
 };
 static const unsigned int alphas[][3]      = {
 	/*                    fg          bg          border     */
-	[SchemeNorm]    = { OPAQUE,     OPAQUE,     emptyalpha},
-	[SchemeSel]     = { OPAQUE,     baralpha,   emptyalpha },
-	[SchemeHid]     = { OPAQUE,     baralpha,   emptyalpha },
+	[SchemeNorm]    = { OPAQUE,     baralpha,   borderalpha },
+	[SchemeSel]     = { OPAQUE,     baralpha,   borderalpha },
+	[SchemeHid]     = { OPAQUE,     baralpha,   borderalpha },
   // tag
-  [SchemeTagNorm] = { OPAQUE,     emptyalpha, emptyalpha},
-  [SchemeTagSel]  = { OPAQUE,     baralpha,   emptyalpha},
+  [SchemeTagNorm] = { OPAQUE,     emptyalpha, borderalpha },
+  [SchemeTagSel]  = { OPAQUE,     baralpha,   borderalpha },
   // systray
-  [SchemeSystray] = { OPAQUE,     baralpha,   emptyalpha },
+  [SchemeSystray] = { OPAQUE,     baralpha,   borderalpha },
   // empty
-  [SchemeEmpty]   = { emptyalpha, emptyalpha, emptyalpha},
+  [SchemeEmpty]   = { emptyalpha, emptyalpha, borderalpha },
 };
 
 /* task icon */
