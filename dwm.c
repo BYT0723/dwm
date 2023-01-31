@@ -90,6 +90,7 @@ enum {
   SchemeNorm,
   SchemeSel,
   SchemeHid,
+  SchemeHost,
   SchemeTagNorm,
   SchemeTagSel,
   SchemeEmpty,
@@ -123,7 +124,7 @@ enum {
   WMLast
 }; /* default atoms */
 enum {
-  ClkHostname,
+  ClkHost,
   ClkTagBar,
   ClkLtSymbol,
   ClkStatusText,
@@ -582,7 +583,7 @@ void buttonpress(XEvent *e) {
   }
   if (ev->window == selmon->barwin) {
     i = x = 0;
-    x += TEXTW(hostname);
+    x += TEXTW(host);
     unsigned int occ = 0;
     for (c = m->clients; c; c = c->next)
       occ |= c->tags;
@@ -592,8 +593,8 @@ void buttonpress(XEvent *e) {
         continue;
       x += TEXTW(tags[i]);
     } while (ev->x >= x && ++i < LENGTH(tags));
-    if (ev->x <= TEXTW(hostname)) {
-      click = ClkHostname;
+    if (ev->x <= TEXTW(host)) {
+      click = ClkHost;
     }else if (i < LENGTH(tags)) {
       click = ClkTagBar;
       arg.ui = 1 << i;
@@ -1119,9 +1120,10 @@ void drawbar(Monitor *m) {
   }
   x = 0;
 
-  // // draw hostname
-  w = TEXTW(hostname);
-  drw_text(drw, x, 0, w, bh, lrpad / 2, hostname, 0);
+  // draw host
+  w = TEXTW(host);
+  drw_setscheme(drw, scheme[SchemeHost]);
+  drw_text(drw, x, 0, w, bh, lrpad / 2, host, 0);
   x += w;
 
   for (i = 0; i < LENGTH(tags); i++) {

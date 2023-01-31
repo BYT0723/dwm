@@ -5,7 +5,7 @@ static const unsigned int borderpx = 0;   /* border pixel of windows */
 static const unsigned int snap     = 32;  /* snap pixel */
 static const          int showbar  = 1;   /* 0 means no bar */
 static const          int topbar   = 1;   /* 0 means bottom bar */
-static const char hostname[]       = " Arch-Walter";
+static const char host[]           = " Arch-Walter";
 
 static const unsigned int gappih    = 17;  /* horiz inner gap between windows */
 static const unsigned int gappiv    = 17;  /* vert inner gap between windows */
@@ -43,6 +43,8 @@ static const char *colors[][3] = {
   [SchemeNorm]    = { col_black,    col_cyan,     col_ab_black},
   [SchemeSel]     = { col_black,    col_green,    col_cyan },
   [SchemeHid]     = { col_white,    col_black,    col_black },
+  //host
+  [SchemeHost]    = { col_magenta,  col_black,    col_black},    
   // tag
   [SchemeTagNorm] = { col_white,    col_ab_black, col_black},
   [SchemeTagSel]  = { col_black,    col_blue,     col_black},
@@ -56,6 +58,8 @@ static const unsigned int alphas[][3]      = {
 	[SchemeNorm]    = { OPAQUE,     baralpha,   borderalpha },
 	[SchemeSel]     = { OPAQUE,     baralpha,   borderalpha },
 	[SchemeHid]     = { OPAQUE,     baralpha,   borderalpha },
+  //host
+  [SchemeHost]    = { OPAQUE,     baralpha,   borderalpha },
   // tag
   [SchemeTagNorm] = { OPAQUE,     emptyalpha, borderalpha },
   [SchemeTagSel]  = { OPAQUE,     baralpha,   borderalpha },
@@ -291,8 +295,8 @@ static Key keys[] = {
 static Button buttons[] = {
   /* click          event mask  button    function        argument */
   //hostname
-	{ ClkHostname,          0,     Button1,  spawn,          {.v = roficmd}},
- 	{ ClkHostname,          0,     Button3,  spawn,          {.v = powercmd}},
+	{ ClkHost,              0,     Button1,  spawn,          {.v = roficmd}},
+ 	{ ClkHost,              0,     Button3,  spawn,          {.v = powercmd}},
   // tag
   { ClkTagBar,            0,     Button1,  view,           {0}},
   { ClkTagBar,            0,     Button3,  toggleview,     {0}},
