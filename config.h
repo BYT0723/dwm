@@ -1,16 +1,16 @@
 // #include <X11/XF86keysym.h>
 
 /* appearance */
-static const unsigned int borderpx = 0;   /* border pixel of windows */
+static const unsigned int borderpx = 3;   /* border pixel of windows */
 static const unsigned int snap     = 32;  /* snap pixel */
 static const          int showbar  = 1;   /* 0 means no bar */
 static const          int topbar   = 1;   /* 0 means bottom bar */
 static const char host[]           = " ";
 
-static const unsigned int gappih    = 19;  /* horiz inner gap between windows */
-static const unsigned int gappiv    = 19;  /* vert inner gap between windows */
-static const unsigned int gappoh    = 19;  /* horiz outer gap between windows and screen edge */
-static const unsigned int gappov    = 19;  /* vert outer gap between windows and screen edge */
+static const unsigned int gappih    = 16;  /* horiz inner gap between windows */
+static const unsigned int gappiv    = 16;  /* vert inner gap between windows */
+static const unsigned int gappoh    = 16;  /* horiz outer gap between windows and screen edge */
+static const unsigned int gappov    = 16;  /* vert outer gap between windows and screen edge */
 static                int smartgaps = 0;   /* 1 means no outer gap when there is only one window */
 
 static const unsigned int systraypinning          = 0;  /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
@@ -40,28 +40,28 @@ static const unsigned int baralpha    = 0xd0;
 static const unsigned int borderalpha = OPAQUE;
 static const char *colors[][3] = {
   /*                    fg            bg            border   */
-  [SchemeNorm]    = { col_black,    col_cyan,     col_ab_black},
-  [SchemeSel]     = { col_black,    col_green,    col_cyan },
-  [SchemeHid]     = { col_white,    col_black,    col_black },
+  [SchemeNorm]    = { col_black,    col_cyan,     col_ab_black },
+  [SchemeSel]     = { col_black,    col_green,    col_blue },
+  [SchemeHid]     = { col_white,    col_black,    col_ab_black },
   //host
-  [SchemeHost]    = { col_magenta,  col_black,    col_black},    
+  [SchemeHost]    = { col_red,      col_black,    col_black},    
   // tag
-  [SchemeTagNorm] = { col_white,    col_ab_black, col_black},
+  [SchemeTagNorm] = { col_white,    col_black,    col_black},
   [SchemeTagSel]  = { col_black,    col_blue,     col_black},
   // systray
-  [SchemeSystray] = { col_black,    col_ab_black, col_black},
+  [SchemeSystray] = { col_cyan,     col_black,    col_black},
   // empty
 	[SchemeEmpty]   = { col_ab_black, col_ab_black, col_black},
 };
 static const unsigned int alphas[][3]      = {
 	/*                    fg          bg          border     */
-	[SchemeNorm]    = { OPAQUE,     baralpha,   borderalpha },
-	[SchemeSel]     = { OPAQUE,     baralpha,   borderalpha },
-	[SchemeHid]     = { OPAQUE,     baralpha,   borderalpha },
+	[SchemeNorm]    = { OPAQUE,     OPAQUE,     emptyalpha  },
+	[SchemeSel]     = { OPAQUE,     OPAQUE,     baralpha    },
+	[SchemeHid]     = { OPAQUE,     OPAQUE,     emptyalpha  },
   //host
-  [SchemeHost]    = { OPAQUE,     baralpha,   borderalpha },
+  [SchemeHost]    = { OPAQUE,     OPAQUE,     borderalpha },
   // tag
-  [SchemeTagNorm] = { OPAQUE,     emptyalpha, borderalpha },
+  [SchemeTagNorm] = { OPAQUE,     baralpha,   borderalpha },
   [SchemeTagSel]  = { OPAQUE,     baralpha,   borderalpha },
   // systray
   [SchemeSystray] = { OPAQUE,     baralpha,   borderalpha },
@@ -134,6 +134,7 @@ static const Rule rules[] = {
   {"vlc",                 NULL,       NULL,     0,            1,            -1},
   {"mpv",                 NULL,       NULL,     0,            1,            -1},
   {"feh",                 NULL,       NULL,     0,            1,            -1},
+  {"peek",                NULL,       NULL,     0,            1,            -1},
   // wps
   {"wpsoffice",           NULL,       NULL,     0,            1,            -1},
   {"wpspdf",              NULL,       NULL,     0,            1,            -1},
