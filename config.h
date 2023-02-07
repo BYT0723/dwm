@@ -5,7 +5,9 @@ static const unsigned int borderpx = 3;   /* border pixel of windows */
 static const unsigned int snap     = 32;  /* snap pixel */
 static const          int showbar  = 1;   /* 0 means no bar */
 static const          int topbar   = 1;   /* 0 means bottom bar */
-static const char host[]           = " ";
+static const          int vertpad  = 10;  /* vertical padding of bar */
+static const          int sidepad  = 10;  /* horizontal padding of bar */
+static const          char host[]  = " ";
 
 static const unsigned int gappih    = 16;  /* horiz inner gap between windows */
 static const unsigned int gappiv    = 16;  /* vert inner gap between windows */
@@ -14,7 +16,7 @@ static const unsigned int gappov    = 16;  /* vert outer gap between windows and
 static                int smartgaps = 0;   /* 1 means no outer gap when there is only one window */
 
 static const unsigned int systraypinning          = 0;  /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
-static const unsigned int systrayspacing          = 2;  /* systray spacing */
+static const unsigned int systrayspacing          = 0;  /* systray spacing */
 static const          int systraypinningfailfirst = 1;  /* 1: if pinning fails, display systray on the first monitor, False: display systray on the last monitor*/
 static const          int showsystray             = 1;  /* 0 means no systray */
 
@@ -49,7 +51,7 @@ static const char *colors[][3] = {
   [SchemeTagNorm] = { col_white,    col_black,    col_black},
   [SchemeTagSel]  = { col_black,    col_blue,     col_black},
   // systray
-  [SchemeSystray] = { col_cyan,     col_black,    col_black},
+  [SchemeSystray] = { col_black,     col_black,    col_black},
   // empty
 	[SchemeEmpty]   = { col_ab_black, col_ab_black, col_black},
 };
@@ -64,7 +66,7 @@ static const unsigned int alphas[][3]      = {
   [SchemeTagNorm] = { OPAQUE,     baralpha,   borderalpha },
   [SchemeTagSel]  = { OPAQUE,     baralpha,   borderalpha },
   // systray
-  [SchemeSystray] = { OPAQUE,     baralpha,   borderalpha },
+  [SchemeSystray] = { baralpha,   baralpha,   borderalpha },
   // empty
   [SchemeEmpty]   = { emptyalpha, emptyalpha, borderalpha },
 };
