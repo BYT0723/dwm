@@ -62,14 +62,14 @@ static const unsigned int alphas[][3]      = {
 	[SchemeSel]     = { OPAQUE,     OPAQUE,     baralpha    },
 	[SchemeHid]     = { OPAQUE,     OPAQUE,     emptyalpha  },
   //host
-  [SchemeHost]    = { OPAQUE,     OPAQUE,     borderalpha },
+  [SchemeHost]    = { OPAQUE,     OPAQUE,     emptyalpha },
   // tag
-  [SchemeTagNorm] = { OPAQUE,     baralpha,   borderalpha },
-  [SchemeTagSel]  = { OPAQUE,     baralpha,   borderalpha },
+  [SchemeTagNorm] = { OPAQUE,     baralpha,   emptyalpha },
+  [SchemeTagSel]  = { OPAQUE,     baralpha,   emptyalpha },
   // systray
-  [SchemeSystray] = { baralpha,   baralpha,   borderalpha },
+  [SchemeSystray] = { baralpha,   baralpha,   emptyalpha },
   // empty
-  [SchemeEmpty]   = { emptyalpha, emptyalpha, borderalpha },
+  [SchemeEmpty]   = { emptyalpha, emptyalpha, emptyalpha },
 };
 
 /* task icon */

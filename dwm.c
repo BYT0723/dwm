@@ -603,11 +603,11 @@ void buttonpress(XEvent *e) {
     } else if (ev->x < x + blw)
       click = ClkLtSymbol;
     /* 2px right padding */
-    else if (ev->x > selmon->ww - statusw - getsystraywidth() - 2 * sp) {
+    else if (ev->x > selmon->ww - statusw - getsystraywidth()) {
       char *text, *s, ch;
       *lastbutton = '0' + ev->button;
 
-      x = selmon->ww - statusw - getsystraywidth() - 2 * sp;
+      x = selmon->ww - statusw - getsystraywidth();
       click = ClkStatusText;
 
       statuscmdn = 0;
@@ -642,8 +642,7 @@ void buttonpress(XEvent *e) {
           statuscmdn = ch;
         }
       }
-    } else if (ev->x > selmon->ww - m->btw - statusw - getsystraywidth() - 2 * sp &&
-               ev->x < selmon->ww - (m->btw - m->bt * m->tw) - statusw - getsystraywidth() - 2 * sp) { // tasks click event
+    } else if (ev->x > selmon->ww - m->btw - statusw - getsystraywidth() && ev->x < selmon->ww - (m->btw - m->bt * m->tw) - statusw - getsystraywidth()) { // tasks click event
       x += blw;
       c = m->clients;
 
@@ -1017,7 +1016,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
     isCode = 0;
   text = p;
 
-  ret = m->ww - w;
+  ret = m->ww - w - 2 * sp;
   x = m->ww - w - getsystraywidth() - 2 * sp;
 
   drw_setscheme(drw, scheme[LENGTH(colors)]);
@@ -1144,7 +1143,7 @@ void drawbar(Monitor *m) {
 
   // draw tab
   drw_setscheme(drw, scheme[SchemeEmpty]);
-  drw_rect(drw, x, 0, m->ww - tw - stw - x - 2 * sp, bh, 1, 1);
+  drw_rect(drw, x, 0, m->ww - tw - stw - x, bh, 1, 1);
   if ((w = m->ww - tw - stw - x) > bh) {
     if (n > 0) {
       int remainder = w % n;
