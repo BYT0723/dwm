@@ -72,7 +72,9 @@ mpdHandler() {
     1)
         mpc toggle
         ;;
-    2) ;;
+    2)
+        killall mpd
+        ;;
     3)
         $HOME/.dwm/rofi/bin/mpd.sh
         ;;
@@ -82,12 +84,12 @@ mpdHandler() {
 weatherHandler() {
     buttonType=$1
     case "$buttonType" in
-    1)
+    1) ;;
+    2) ;;
+    3)
         # st -i -g 130x40+480+200 -e curl -H "Accept-Language:zh" -s --retry 2 --connect-timeout 2 wttr.in
         xdg-open https://wttr.in/
         ;;
-    2) ;;
-    3) ;;
     esac
 }
 

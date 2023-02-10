@@ -12,7 +12,7 @@ blue=#7aa2f7
 red=#d47d85
 darkblue=#668ee3
 
-# icons initial
+# Icons initial
 if [[ $(getConfProp showIcon) -eq 1 ]]; then
     declare -A icons
     icons["disk"]="﫭 "
@@ -24,6 +24,17 @@ if [[ $(getConfProp showIcon) -eq 1 ]]; then
 fi
 
 weather_update_duration=60
+weather_path="/tmp/.weather"
+
+# Update weather to $weather_path
+function update_weather() {
+    # more look at: https://github.com/chubin/wttr.in
+    # 获取主机使用语言
+    local language=$(cat /etc/locale.conf | awk -F '=' '{print $2}' | awk -F '_' '{print $1}')
+    echo $(curl -H "Accept-Language:"$language -s --connect-timeout 1 "wttr.in?format=%c\[%C\]+%t\n")'?'$(date +'%Y-%m-%d %H:%M') >$weather_path
+    # # use default english
+    # echo $(curl -s --connect-timeout 1 "wttr.in?format=%c\[%C\]+%t\n")'?'$(date +'%Y-%m-%d %H:%M') >$weather_path
+}
 
 function get_bytes {
     # Find active network interface
@@ -59,7 +70,7 @@ old_received_bytes=$received_bytes
 old_transmitted_bytes=$transmitted_bytes
 old_time=$now
 
-#  Output the current memory usage
+# Memory usage
 print_mem() {
     # memory value
     local mem_val=$(free -h | awk '/^内存/ { print $3 }' | sed s/i//g)
@@ -69,7 +80,7 @@ print_mem() {
     printf "${icons[memory]}$mem_val"
 }
 
-# Output the current cpu load
+# CPU average load
 print_cpu() {
     # cpu load value
     local cpu_val=$(grep -o "^[^ ]*" /proc/loadavg)
@@ -84,18 +95,18 @@ print_cpu() {
     fi
 }
 
-# Output current temperature of cpu
+# Temperature of CPU
 print_temp() {
     # test get temperature file
     test -f /sys/class/thermal/thermal_zone0/temp || return 0
     # temperature value
-    temp=$(head -c 2 /sys/class/thermal/thermal_zone0/temp)
+    local temp=$(head -c 2 /sys/class/thermal/thermal_zone0/temp)
 
     # output
     printf "${icons[temp]}${temp}°C"
 }
 
-# Output Disk free space size
+# Disk free space size
 # disk path in variable $disk_root
 print_disk() {
     # root disk space value
@@ -106,7 +117,7 @@ print_disk() {
     printf "${icons[disk]}$disk_root"
 }
 
-# Output current datetime
+# Datetime
 print_date() {
     # colorscheme
     printf "\x01^c$white^^b$black^"
@@ -118,13 +129,14 @@ print_date() {
     fi
 }
 
+# Music Player Daemon
 print_mpd() {
-    # determine whether mpd is started
-    if [[ -z "$(mpc status)" ]]; then
-        return
-    fi
     # determine whether showMpd property is on
     if [[ $(getConfProp showMpd) -eq 0 ]]; then
+        return
+    fi
+    # determine whether mpd is started
+    if [[ -z "$(mpc status)" ]]; then
         return
     fi
 
@@ -140,42 +152,28 @@ print_mpd() {
     printf "${icons[mpd]}$(mpc -f "%title% - %artist%" current) $icon"
 }
 
-update_weather() {
-    # more look at: https://github.com/chubin/wttr.in
-
-    # 获取主机使用语言
-    # language=$(cat /etc/locale.conf | awk -F '=' '{print $2}' | awk -F '_' '{print $1}')
-    # echo $(curl -H "Accept-Language:"$language -s --retry 2 --connect-timeout 2 "wttr.in?format=%c\[%C\]+%t\n")'?'$(date +'%Y-%m-%d %H:%M') >~/.weather
-
-    # default language English
-    echo $(curl -s --retry 2 --connect-timeout 2 "wttr.in?format=%c\[%C\]+%t\n")'?'$(date +'%Y-%m-%d %H:%M') >~/.weather
-}
-
 print_weather() {
-    msg=$(cat ~/.weather)
-    if [[ $msg == "" ]]; then
-        update_weather &
-    fi
-    weather=$(echo $msg | awk -F '?' '{print $1}')
-    date=$(echo $msg | awk -F '?' '{print $2}')
-
+    test -f $weather_path || update_weather
+    local date=$(cat $weather_path | awk -F '?' '{print $2}')
     # 计算两次请求时间间隔
-    duration=$(($(date +%s) - $(date -d "$date" +%s)))
     # 如果时间间隔超过$weather_update_duration秒,则更新天气状态
+    # 不做空判断，防止无网络时频繁请求，导致占用过多资源
+    local duration=$(($(date +%s) - $(date -d "$date" +%s)))
     if [[ $duration > $weather_update_duration ]]; then
-        update_weather &
+        update_weather
     fi
+
     # colorscheme
-    printf "\x07^c$darkblue^^b$grey^$weather"
+    printf "\x07^c$darkblue^^b$grey^$(cat $weather_path | awk -F '?' '{print $1}')"
 }
 
 get_bytes
 
-# Calculates speeds
+# Calculates velocity
 vel_recv="$(get_velocity $received_bytes $old_received_bytes $now)"
 vel_trans="$(get_velocity $transmitted_bytes $old_transmitted_bytes $now)"
 
-# Output network velocity
+# Network velocity
 print_speed() {
     # define the calculated upper and lower symbols
     local recvIcon=" "
@@ -196,7 +194,7 @@ print_speed() {
     fi
 }
 
-xsetroot -name "$(print_mpd)$(print_weather)$(print_speed)$(print_cpu)$(print_mem)$(print_disk)$(print_date)"
+xsetroot -name "$(print_speed)$(print_mpd)$(print_weather)$(print_cpu)$(print_mem)$(print_disk)$(print_date)"
 
 # Update old values to perform new calculation
 old_received_bytes=$received_bytes
