@@ -211,6 +211,7 @@ static const StatusCmd statuscmds[] = {
   {"./.dwm/statuscmd.sh cpuInfo $BUTTON",   4}, // cpu
   {"./.dwm/statuscmd.sh netSpeed $BUTTON",  5}, // speed
   {"./.dwm/statuscmd.sh mpd $BUTTON",       6}, // mpd
+  {"./.dwm/statuscmd.sh weather $BUTTON",   7}, // mpd
 };
 static const char *statuscmd[] = {"/bin/sh", "-c", NULL, NULL};
 

@@ -79,6 +79,18 @@ mpdHandler() {
     esac
 }
 
+weatherHandler() {
+    buttonType=$1
+    case "$buttonType" in
+    1)
+        # st -i -g 130x40+480+200 -e curl -H "Accept-Language:zh" -s --retry 2 --connect-timeout 2 wttr.in
+        xdg-open https://wttr.in/
+        ;;
+    2) ;;
+    3) ;;
+    esac
+}
+
 # route by $cmdType
 case "$cmdType" in
 date)
@@ -98,5 +110,8 @@ netSpeed)
     ;;
 mpd)
     mpdHandler $2
+    ;;
+weather)
+    weatherHandler $2
     ;;
 esac

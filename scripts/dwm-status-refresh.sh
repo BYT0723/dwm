@@ -19,9 +19,11 @@ if [[ $(getConfProp showIcon) -eq 1 ]]; then
     icons["memory"]=" "
     icons["temp"]=" "
     icons["cpu"]=" "
-    icons["netSpeed"]=" "
+    icons["netSpeed"]=" "
     icons["mpd"]=" "
 fi
+
+weather_update_duration=60
 
 function get_bytes {
     # Find active network interface
@@ -133,9 +135,38 @@ print_mpd() {
         icon=""
     fi
     # colorscheme
-    printf "\x06^c$black^^b$blue^"
+    printf "\x06^c$green^^b$black^"
     # output
-    printf "${icons[mpd]}$(mpc current) $icon"
+    printf "${icons[mpd]}$(mpc -f "%title% - %artist%" current) $icon"
+}
+
+update_weather() {
+    # more look at: https://github.com/chubin/wttr.in
+
+    # 获取主机使用语言
+    # language=$(cat /etc/locale.conf | awk -F '=' '{print $2}' | awk -F '_' '{print $1}')
+    # echo $(curl -H "Accept-Language:"$language -s --retry 2 --connect-timeout 2 "wttr.in?format=%c\[%C\]+%t\n")'?'$(date +'%Y-%m-%d %H:%M') >~/.weather
+
+    # default language English
+    echo $(curl -s --retry 2 --connect-timeout 2 "wttr.in?format=%c\[%C\]+%t\n")'?'$(date +'%Y-%m-%d %H:%M') >~/.weather
+}
+
+print_weather() {
+    msg=$(cat ~/.weather)
+    if [[ $msg == "" ]]; then
+        update_weather &
+    fi
+    weather=$(echo $msg | awk -F '?' '{print $1}')
+    date=$(echo $msg | awk -F '?' '{print $2}')
+
+    # 计算两次请求时间间隔
+    duration=$(($(date +%s) - $(date -d "$date" +%s)))
+    # 如果时间间隔超过$weather_update_duration秒,则更新天气状态
+    if [[ $duration > $weather_update_duration ]]; then
+        update_weather &
+    fi
+    # colorscheme
+    printf "\x07^c$darkblue^^b$grey^$weather"
 }
 
 get_bytes
@@ -165,7 +196,7 @@ print_speed() {
     fi
 }
 
-xsetroot -name "$(print_mpd)$(print_speed)$(print_cpu)$(print_mem)$(print_disk)$(print_date)"
+xsetroot -name "$(print_mpd)$(print_weather)$(print_speed)$(print_cpu)$(print_mem)$(print_disk)$(print_date)"
 
 # Update old values to perform new calculation
 old_received_bytes=$received_bytes
