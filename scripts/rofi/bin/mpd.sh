@@ -18,7 +18,6 @@ if [[ -z "$status" ]]; then
     mesg="MPD is Offline"
 else
     prompt="$(mpc -f "%title% - %artist%" current)"
-    # mesg="$(mpc -f "%title%" current) :: $(mpc status | grep "#" | awk '{print $3}')  墳 $(mpc volume | awk -F ':' '{print $2}')"
     mesg="$(mpc status | grep "#" | awk '{print $3}')  墳 $(mpc volume | awk -F ':' '{print $2}')"
 fi
 
@@ -108,13 +107,13 @@ run_cmd() {
     if [[ "$1" == '--on' ]]; then
         mpd
     elif [[ "$1" == '--opt1' ]]; then
-        mpc -q toggle && notify-send -u low "$(mpc status | awk 'NR==2 {print $1}') $(mpc current)"
+        mpc -q toggle && notify-send -u low "$prompt $(mpc status | awk 'NR==2 {print $1}')"
     elif [[ "$1" == '--opt2' ]]; then
         mpc -q stop
     elif [[ "$1" == '--opt3' ]]; then
-        mpc -q prev && notify-send -u low " $(mpc current)"
+        mpc -q prev && notify-send -u low " $prompt"
     elif [[ "$1" == '--opt4' ]]; then
-        mpc -q next && notify-send -u low " $(mpc current)"
+        mpc -q next && notify-send -u low " $prompt"
     elif [[ "$1" == '--opt5' ]]; then
         mpc volume -20 && notify-send -u low " $(mpc volume)"
     elif [[ "$1" == '--opt6' ]]; then

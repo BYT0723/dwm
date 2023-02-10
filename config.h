@@ -51,8 +51,6 @@ static const char *colors[][3] = {
   // tag
   [SchemeTagNorm] = { col_white,    col_black,    col_black},
   [SchemeTagSel]  = { col_black,    col_blue,     col_black},
-  // systray
-  [SchemeSystray] = { col_black,     col_black,    col_black},
   // empty
 	[SchemeEmpty]   = { col_ab_black, col_ab_black, col_black},
 };
@@ -66,8 +64,6 @@ static const unsigned int alphas[][3]      = {
   // tag
   [SchemeTagNorm] = { OPAQUE,     baralpha,   emptyalpha },
   [SchemeTagSel]  = { OPAQUE,     baralpha,   emptyalpha },
-  // systray
-  [SchemeSystray] = { baralpha,   baralpha,   emptyalpha },
   // empty
   [SchemeEmpty]   = { emptyalpha, emptyalpha, emptyalpha },
 };

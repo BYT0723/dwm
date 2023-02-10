@@ -94,7 +94,6 @@ enum {
   SchemeTagNorm,
   SchemeTagSel,
   SchemeEmpty,
-  SchemeSystray
 }; /* color schemes */
 enum {
   NetSupported,
@@ -1101,7 +1100,7 @@ void drawbar(Monitor *m) {
 
   if (showsystray && m == systraytomon(m)) {
     stw = getsystraywidth();
-    drw_setscheme(drw, scheme[SchemeSystray]);
+    drw_setscheme(drw, scheme[SchemeNorm]);
     drw_rect(drw, m->ww - stw, 0, stw, bh, 1, 1);
   }
 
