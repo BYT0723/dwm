@@ -2,6 +2,10 @@
 
 # statusBar
 /bin/bash ~/.dwm/dwm-status.sh &
+# clock notification
+/bin/bash ~/.dwm/alarm.sh &
+# file change monitor
+/bin/bash ~/.dwm/monitor.sh &
 
 # wallpaper
 if [[ -f ~/.dwm/background.sh ]]; then
