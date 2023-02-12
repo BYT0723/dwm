@@ -31,7 +31,7 @@ function update_weather() {
     # more look at: https://github.com/chubin/wttr.in
     # 获取主机使用语言
     local language=$(cat /etc/locale.conf | awk -F '=' '{print $2}' | awk -F '_' '{print $1}')
-    echo $(curl -H "Accept-Language:"$language -s --connect-timeout 1 "wttr.in?format=%c\[%C\]+%t\n")'?'$(date +'%Y-%m-%d %H:%M') >$weather_path
+    echo $(curl -H "Accept-Language:"$language -s --retry 2 --connect-timeout 2 "wttr.in?format=%c\[%C\]+%t\n")'?'$(date +'%Y-%m-%d %H:%M') >$weather_path
     # # use default english
     # echo $(curl -s --connect-timeout 1 "wttr.in?format=%c\[%C\]+%t\n")'?'$(date +'%Y-%m-%d %H:%M') >$weather_path
 }
@@ -163,8 +163,10 @@ print_weather() {
         update_weather
     fi
 
+    weather=$(cat $weather_path | awk -F '?' '{print $1}')
+
     # colorscheme
-    printf "\x07^c$darkblue^^b$grey^$(cat $weather_path | awk -F '?' '{print $1}')"
+    printf "\x07^c$darkblue^^b$grey^$weather"
 }
 
 get_bytes
@@ -194,7 +196,7 @@ print_speed() {
     fi
 }
 
-xsetroot -name "$(print_speed)$(print_mpd)$(print_weather)$(print_cpu)$(print_mem)$(print_disk)$(print_date)"
+xsetroot -name "$(print_weather)$(print_mpd)$(print_speed)$(print_cpu)$(print_mem)$(print_disk)$(print_date)"
 
 # Update old values to perform new calculation
 old_received_bytes=$received_bytes
