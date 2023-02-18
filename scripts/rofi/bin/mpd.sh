@@ -111,9 +111,9 @@ run_cmd() {
     elif [[ "$1" == '--opt2' ]]; then
         mpc -q stop
     elif [[ "$1" == '--opt3' ]]; then
-        mpc -q prev && notify-send -u low " $prompt"
+        mpc -q prev && notify-send -u low " $(mpc -f "%title% - %artist%" current)"
     elif [[ "$1" == '--opt4' ]]; then
-        mpc -q next && notify-send -u low " $prompt"
+        mpc -q next && notify-send -u low " $(mpc -f "%title% - %artist%" current)"
     elif [[ "$1" == '--opt5' ]]; then
         mpc volume -20 && notify-send -u low " $(mpc volume)"
     elif [[ "$1" == '--opt6' ]]; then
