@@ -146,11 +146,12 @@ print_mpd() {
 function update_weather() {
     # more look at: https://github.com/chubin/wttr.in
     # 获取主机使用语言
-    local language="en"
-    # local language=$(cat /etc/locale.conf | awk -F '=' '{print $2}' | awk -F '_' '{print $1}')
-    echo $(curl -H "Accept-Language:"$language -s -m 1 "wttr.in?format=%c\[%C\]+%t\n")'?'$(date +'%Y-%m-%d %H:%M') >$weather_path
-    # # use default english
-    # echo $(curl -s --connect-timeout 1 "wttr.in?format=%c\[%C\]+%t\n")'?'$(date +'%Y-%m-%d %H:%M') >$weather_path
+    # local language="en"
+    local language=$(cat /etc/locale.conf | awk -F '=' '{print $2}' | awk -F '_' '{print $1}')
+    weather=$(curl -H "Accept-Language:"$language -s -m 1 "wttr.in?format=%c\[%C\]+%t\n")
+    if [[ $weather != "" ]]; then
+        echo $weather'?'$(date +'%Y-%m-%d %H:%M') >$weather_path
+    fi
 }
 
 print_weather() {
@@ -158,7 +159,7 @@ print_weather() {
         touch $weather_path
     fi
     local date=$(cat $weather_path | awk -F '?' '{print $2}')
-    if [[ date == "" ]]; then
+    if [[ $date == "" ]]; then
         update_weather &
     fi
     # 计算两次请求时间间隔
