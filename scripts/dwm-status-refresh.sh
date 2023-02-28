@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # statusBar Environment
-source $HOME/.dwm/status-env.sh
+source ~/.dwm/status-env.sh
 
 # colorscheme
 black=#1e222a
@@ -130,6 +130,24 @@ print_mpd() {
         return
     fi
 
+    # task max length
+    maxLen=16
+
+    songName=$(mpc -f "%title% - %artist%" current)
+
+    # to fill task
+    spaceStr="                              "
+    # empty task string
+    spaces=${spaceStr:1:$maxLen}
+
+    # like this
+    # "      songname        "
+    songName=$spaces$songName$spaces
+
+    offset=$(($(date +%s) % $((${#songName} - $maxLen))))
+
+    songName=${songName:$offset:$maxLen}
+
     # calculate mpd play status
     if [[ $(mpc status) == *"[playing]"* ]]; then
         icon=""
@@ -139,7 +157,7 @@ print_mpd() {
     # colorscheme
     printf "\x06^c$green^^b$black^"
     # output
-    printf "${icons[mpd]}$(mpc -f "%title% - %artist%" current) $icon"
+    printf "${icons[mpd]} $songName $icon"
 }
 
 # Update weather to $weather_path
@@ -200,7 +218,7 @@ print_speed() {
     fi
 }
 
-xsetroot -name "$(print_weather)$(print_mpd)$(print_speed)$(print_cpu)$(print_mem)$(print_disk)$(print_date)"
+xsetroot -name "$(print_mpd)$(print_weather)$(print_speed)$(print_cpu)$(print_mem)$(print_disk)$(print_date)"
 
 # Update old values to perform new calculation
 old_received_bytes=$received_bytes
