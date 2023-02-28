@@ -66,17 +66,17 @@ active=''
 urgent=''
 # Repeat
 if [[ ${status} == *"repeat: on"* ]]; then
-    active="-a 7"
+    active="-a 6"
 elif [[ ${status} == *"repeat: off"* ]]; then
-    urgent="-u 7"
+    urgent="-u 6"
 else
     option_7=" Parsing Error"
 fi
 # Random
 if [[ ${status} == *"random: on"* ]]; then
-    [ -n "$active" ] && active+=",8" || active="-a 8"
+    [ -n "$active" ] && active+=",7" || active="-a 7"
 elif [[ ${status} == *"random: off"* ]]; then
-    [ -n "$urgent" ] && urgent+=",8" || urgent="-u 8"
+    [ -n "$urgent" ] && urgent+=",7" || urgent="-u 7"
 else
     option_8=" Parsing Error"
 fi
