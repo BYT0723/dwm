@@ -2,7 +2,7 @@
 
 # Import Current Theme
 type="$HOME/.dwm/rofi/applets/type-1"
-style='style-2.rasi'
+style='style-3.rasi'
 theme="$type/$style"
 
 source ~/.dwm/rofi/bin/util.sh
@@ -119,13 +119,31 @@ run_rofi() {
         opts=("${picomOpt[@]}")
     elif [[ "$1" == ${optId[${firstOpt[2]}]} ]]; then
         prompt='Network'
-        mesg="  $(nmcli connection show -active | grep -E 'eth' | awk '{print $1}')    $(nmcli connection show -active | grep -E 'wifi' | awk '{print $1}')"
-        opts=$(nmcli device wifi list --rescan auto | awk 'NR!=1 {print substr($0,28)}' | awk '{print $7," ",$1}' | awk '!a[$0]++')
+        mesg=""
+        eth="$(nmcli connection show -active | grep -E 'eth' | awk '{print $1}')"
+        wifi="$(nmcli connection show -active | grep -E 'wifi' | awk '{print $1}')"
+        if [ "$eth" != "" ]; then
+            mesg="  $eth"
+        fi
+        if [[ "$wifi" != "" ]]; then
+            if [ "$mesg" != "" ]; then
+                mesg="$mesg
+  $wifi [Connected]"
+            else
+                mesg="  $wifi [Connected]"
+            fi
+        fi
+        opts=$(nmcli device wifi list --rescan auto | awk 'NR!=1 {print substr($0,9)}' | awk '{print $8," ",$2}' | awk '!a[$0]++')
     elif [[ "$1" == ${optId[${firstOpt[3]}]} ]]; then
         prompt='Bluetooth'
-        mesg="Connected:
-$(bluetoothctl devices Connected | awk '{print substr($0,25)}')"
-        opts=$(bluetoothctl devices | awk '{print substr($0,25)}')
+        connected_device=$(bluetoothctl devices Connected | awk '{print substr($0,25)}')
+        if [ "$connected_device" != "" ]; then
+            mesg="Connected:
+$connected_device"
+        else
+            mesg="No device connected"
+        fi
+        opts=$(bluetoothctl devices | awk '{print substr($0,26)}')
     elif [[ "$1" == ${optId[${firstOpt[4]}]} ]]; then
         prompt='Notification'
         mesg="Dunst Notification Manager"

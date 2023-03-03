@@ -10,10 +10,10 @@ static const          int vertpad    = 10;  /* vertical padding of bar */
 static const          int sidepad    = 10;  /* horizontal padding of bar */
 static const          char host[]    = " ";
 
-static const unsigned int gappih    = 19;  /* horiz inner gap between windows */
-static const unsigned int gappiv    = 19;  /* vert inner gap between windows */
-static const unsigned int gappoh    = 19;  /* horiz outer gap between windows and screen edge */
-static const unsigned int gappov    = 19;  /* vert outer gap between windows and screen edge */
+static const unsigned int gappih    = 18;  /* horiz inner gap between windows */
+static const unsigned int gappiv    = 18;  /* vert inner gap between windows */
+static const unsigned int gappoh    = 18;  /* horiz outer gap between windows and screen edge */
+static const unsigned int gappov    = 18;  /* vert outer gap between windows and screen edge */
 static                int smartgaps = 0;   /* 1 means no outer gap when there is only one window */
 
 static const unsigned int systraypinning          = 0;  /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */

@@ -22,21 +22,15 @@ elif [[ ("$theme" == *'type-2'*) || ("$theme" == *'type-4'*) ]]; then
     list_row='1'
 fi
 
-if [[ ("$theme" == *'type-1'*) || ("$theme" == *'type-5'*) ]]; then
-    efonts="JetBrains Mono Nerd Font 14"
-else
-    efonts="JetBrains Mono Nerd Font 24"
-fi
-
 # Options
 layout=$(cat ${theme} | grep 'USE_ICON' | cut -d'=' -f2)
 if [[ "$layout" == 'NO' ]]; then
-    option_1=" Github"
-    option_2=" Youtube"
-    option_3=" Twitter"
-    option_4=" Gmail"
-    option_5=" QQMail"
-    option_6=" 163Mail"
+    option_1="  Github"
+    option_2="  Youtube"
+    option_3="  Twitter"
+    option_4="  Gmail"
+    option_5="  QQMail"
+    option_6="  163Mail"
 else
     option_1=" "
     option_2=" "
