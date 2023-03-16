@@ -9,6 +9,7 @@ static const          int barfontpad = 4;
 static const          int vertpad    = 10;  /* vertical padding of bar */
 static const          int sidepad    = 10;  /* horizontal padding of bar */
 static const          char host[]    = " ";
+static const          int radiustask = 1;
 
 static const unsigned int gappih    = 18;  /* horiz inner gap between windows */
 static const unsigned int gappiv    = 18;  /* vert inner gap between windows */

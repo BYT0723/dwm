@@ -620,7 +620,7 @@ void buttonpress(XEvent *e) {
             ch = *s;
             *s = '\0';
             if (strlen(text) > 0) {
-              x += TEXTW(text) - lrpad + bh;
+              x += TEXTW(text);
             }
             *s = ch;
             if (x >= ev->x)
@@ -634,7 +634,7 @@ void buttonpress(XEvent *e) {
           ch = *s;
           *s = '\0';
           if (strlen(text) > 0) {
-            x += TEXTW(text) - lrpad + bh;
+            x += TEXTW(text);
           }
           *s = ch;
           text = s + 1;
@@ -999,7 +999,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
         isCode = 1;
         text[i] = '\0';
         if (strlen(text) > 0) {
-          w += TEXTW(text) - lrpad + bh;
+          w += TEXTW(text);
         }
         text[i] = '^';
         if (text[++i] == 'f')
@@ -1012,7 +1012,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
     }
   }
   if (!isCode)
-    w += TEXTW(text) - lrpad + bh;
+    w += TEXTW(text);
   else
     isCode = 0;
   text = p;
@@ -1033,8 +1033,11 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
 
       text[i] = '\0';
       if (strlen(text) > 0) {
-        w = TEXTW(text) - lrpad + bh;
-        drw_task(drw, x, 0, w, bh, bh / 2, 0, text, 0);
+        w = TEXTW(text);
+        if (radiustask)
+          drw_task(drw, x, 0, w, bh, lrpad/2, 0, text, 0);
+        else
+          drw_text(drw, x, 0, w, bh, lrpad/2, text, 0);
         x += w;
       }
 
@@ -1080,8 +1083,11 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
   }
 
   if (!isCode) {
-    w = TEXTW(text) - lrpad + bh;
-    drw_task(drw, x, 0, w, bh, bh / 2, 0, text, 0);
+    w = TEXTW(text);
+    if (radiustask)
+      drw_task(drw, x, 0, w, bh, lrpad/2, 0, text, 0);
+    else
+      drw_text(drw, x, 0, w, bh, lrpad/2, text, 0);
   }
 
   drw_setscheme(drw, scheme[SchemeNorm]);
@@ -1102,8 +1108,6 @@ void drawbar(Monitor *m) {
 
   if (showsystray && m == systraytomon(m)) {
     stw = getsystraywidth();
-    drw_setscheme(drw, scheme[SchemeNorm]);
-    drw_rect(drw, m->ww - stw, 0, stw, bh, 1, 1);
   }
 
   /* draw status first so it can be overdrawn by tags later */
@@ -1173,7 +1177,10 @@ void drawbar(Monitor *m) {
           remainder--;
         }
 
-        drw_task(drw, x, 0, tabw, bh, bh / 2, 5, title, 0);
+        if (radiustask)
+          drw_task(drw, x, 0, tabw, bh, lrpad/2, 5, title, 0);
+        else
+          drw_text(drw, x, 0, tabw, bh, lrpad/2, title, 0);
         // 为浮动窗口添加浮动标志
         if (c->isfloating)
           drw_rect(drw, x + bh / 2, boxs, boxw, boxw, c->isfixed, 0);
@@ -2427,8 +2434,8 @@ void togglefloating(const Arg *arg) {
     return;
   selmon->sel->isfloating = !selmon->sel->isfloating || selmon->sel->isfixed;
   if (selmon->sel->isfloating)
-    resize(selmon->sel, selmon->sel->x, selmon->sel->y, selmon->sel->w,
-           selmon->sel->h, 0);
+    resize(selmon->sel, selmon->sel->x, selmon->sel->y, selmon->sel->w,selmon->sel->h, 0);
+
   arrange(selmon);
 }
 
@@ -2735,7 +2742,7 @@ void updatesizehints(Client *c) {
 void updatestatus(void) {
   if (!gettextprop(root, XA_WM_NAME, stext, sizeof(stext))) {
     strcpy(stext, "dwm-" VERSION);
-    statusw = TEXTW(stext) - lrpad + 2;
+    statusw = TEXTW(stext);
   } else {
     char *text, *s, ch;
     statusw = 0;
@@ -2743,12 +2750,12 @@ void updatestatus(void) {
       if ((unsigned char)(*s) < ' ') {
         ch = *s;
         *s = '\0';
-        statusw += TEXTW(text) - lrpad;
+        statusw += TEXTW(text);
         *s = ch;
         text = s + 1;
       }
     }
-    statusw += TEXTW(text) - lrpad + 2;
+    statusw += TEXTW(text);
   }
   drawbar(selmon);
 }
