@@ -569,7 +569,7 @@ void attachstack(Client *c) {
 }
 
 void buttonpress(XEvent *e) {
-  unsigned int i, x, click;
+  unsigned int i, x, stw, click;
   Arg arg = {0};
   Client *c;
   Monitor *m;
@@ -582,6 +582,8 @@ void buttonpress(XEvent *e) {
     selmon = m;
     focus(NULL);
   }
+
+  stw = getsystraywidth();
   if (ev->window == selmon->barwin) {
     i = x = 0;
     x += TEXTW(host);
@@ -602,11 +604,11 @@ void buttonpress(XEvent *e) {
     } else if (ev->x < x + blw)
       click = ClkLtSymbol;
     /* 2px right padding */
-    else if (ev->x > selmon->ww - statusw - getsystraywidth()) {
+    else if (ev->x > selmon->ww - statusw - stw) {
       char *text, *s, ch;
       *lastbutton = '0' + ev->button;
 
-      x = selmon->ww - statusw - getsystraywidth();
+      x = selmon->ww - statusw - stw;
       click = ClkStatusText;
 
       statuscmdn = 0;
@@ -641,7 +643,7 @@ void buttonpress(XEvent *e) {
           statuscmdn = ch;
         }
       }
-    } else if (ev->x > selmon->ww - m->btw - statusw - getsystraywidth() && ev->x < selmon->ww - (m->btw - m->bt * m->tw) - statusw - getsystraywidth()) { // tasks click event
+    } else if (ev->x > selmon->ww - m->btw - statusw - stw && ev->x < selmon->ww - (m->btw - m->bt * m->tw) - statusw - stw) { // tasks click event
       x += blw;
       c = m->clients;
 
