@@ -23,6 +23,7 @@ if [[ $(getConfProp showIcon) -eq 1 ]]; then
     icons["mpd"]=" "
 fi
 
+# seconds
 weather_update_duration=60
 weather_path="/tmp/.weather"
 
@@ -60,6 +61,36 @@ old_received_bytes=$received_bytes
 old_transmitted_bytes=$transmitted_bytes
 old_time=$now
 
+# percent width height sidepad vertpad fg bg
+print_percent() {
+    local percent=$1
+    local width=$2
+    local height=$3
+    local sidepad=$4
+    local vertpad=$5
+    local fg=$6
+    local bg=$7
+
+    printf "^c$fg^^r$sidepad,$vertpad,$width,$height^^c$bg^^r$sidepad,$vertpad,$width,$(echo "$percent*$height" | bc)^^f$((width + sidepad * 2))^"
+}
+
+print_mem_percent() {
+    printf "\x03^c$blue^^b$black^"
+    printf "MEM"
+
+    local fg=$blue
+
+    local total=$(cat /proc/meminfo | awk 'NR==1 {print $2}')
+    local available=$(cat /proc/meminfo | awk 'NR==3 {print $2}')
+
+    local percent=$(echo "scale=2;$available/$total" | bc)
+    if [ $percent -lt 0.1 ]; then
+        fg="#ff0000"
+    fi
+
+    print_percent $percent 10 22 4 2 $fg $black
+}
+
 # Memory usage
 print_mem() {
     # memory value
@@ -70,19 +101,32 @@ print_mem() {
     printf "${icons[memory]}$mem_val"
 }
 
-# CPU average load
 print_cpu() {
     # cpu load value
-    local cpu_val=$(grep -o "^[^ ]*" /proc/loadavg)
+    # local cpu_val=$(grep -o "^[^ ]*" /proc/loadavg)
+    local cpu_percent=$(printf "%2.0f" $(iostat -c 1 2 | awk 'NR==9 {print $1}'))
     # colorscheme
     printf "\x04^c$red^^b$grey^"
     # output
-    printf "${icons[cpu]}$cpu_val"
+    printf "${icons[cpu]}$cpu_percent%%"
 
     # append cpu temperature
     if [[ $(getConfProp showTemp) -eq 1 ]]; then
         printf "  $(print_temp)"
     fi
+}
+
+print_cpu_percent() {
+    local fg=$red
+    printf "\x04^c$fg^^b$grey^"
+    printf "CPU"
+
+    local percent=$(iostat | awk 'NR==4 {print $6}')
+    if [ $percent -lt 10 ]; then
+        fg="#ff0000"
+    fi
+
+    print_percent $(echo "scale=2;$percent/100" | bc) 10 22 4 2 $fg $black
 }
 
 # Temperature of CPU
@@ -110,13 +154,17 @@ print_disk() {
 # Datetime
 print_date() {
     # colorscheme
-    printf "\x01^c$white^^b$black^"
+    printf "\x01^b$black^^c$darkblue^"
+
+    # local weather=$(print_weather)
+    # if [ "$weather" != "" ]; then
+    #     printf "$weather  "
+    # fi
     # output
     if [[ $(getConfProp dateExp) -eq 1 ]]; then
-        printf "$(date '+ %m-%d(%a)  %H:%M')"
-    else
-        printf "$(date '+ %H:%M')"
+        printf "$(date '+ %m/%d(%a)') "
     fi
+    printf "$(date '+ %R')"
 }
 
 # Music Player Daemon
@@ -130,23 +178,22 @@ print_mpd() {
         return
     fi
 
-    # task max length
-    maxLen=16
-
     songName=$(mpc -f "%title% - %artist%" current)
 
-    # to fill task
-    spaceStr="                              "
-    # empty task string
-    spaces=${spaceStr:1:$maxLen}
-
-    # like this
-    # "      songname        "
-    songName=$spaces$songName$spaces
-
-    offset=$(($(date +%s) % $((${#songName} - $maxLen))))
-
-    songName=${songName:$offset:$maxLen}
+    # # task max length
+    # maxLen=16
+    # # to fill task
+    # spaceStr="                              "
+    # # empty task string
+    # spaces=${spaceStr:1:$maxLen}
+    #
+    # # like this
+    # # "      songname        "
+    # songName=$spaces$songName$spaces
+    #
+    # offset=$(($(date +%s) % $((${#songName} - $maxLen))))
+    #
+    # songName=${songName:$offset:$maxLen}
 
     # calculate mpd play status
     if [[ $(mpc status) == *"[playing]"* ]]; then
@@ -166,7 +213,8 @@ function update_weather() {
     # 获取主机使用语言
     # local language="en"
     local language=$(cat /etc/locale.conf | awk -F '=' '{print $2}' | awk -F '_' '{print $1}')
-    weather=$(curl -H "Accept-Language:"$language -s -m 1 "wttr.in?format=%c\[%C\]+%t\n")
+    # weather=$(curl -H "Accept-Language:"$language -s -m 1 "wttr.in?format=%c\[%C\]+%f\n")
+    weather=$(curl -H "Accept-Language:"$language -s -m 1 "wttr.in?format=%c%f\n")
     if [[ $weather != "" ]]; then
         echo $weather'?'$(date +'%Y-%m-%d %H:%M') >$weather_path
     fi
@@ -187,8 +235,7 @@ print_weather() {
         update_weather &
     fi
 
-    # colorscheme
-    printf "\x07^c$darkblue^^b$grey^$(cat $weather_path | awk -F '?' '{print $1}')"
+    echo $(cat $weather_path | awk -F '?' '{print $1}')
 }
 
 get_bytes
@@ -218,7 +265,7 @@ print_speed() {
     fi
 }
 
-xsetroot -name "$(print_mpd)$(print_weather)$(print_speed)$(print_cpu)$(print_mem)$(print_disk)$(print_date)"
+xsetroot -name "$(print_mpd)$(print_speed)$(print_cpu)$(print_mem)$(print_disk)$(print_date)"
 
 # Update old values to perform new calculation
 old_received_bytes=$received_bytes
