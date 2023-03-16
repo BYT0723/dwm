@@ -738,6 +738,7 @@ void clientmessage(XEvent *e) {
   XSetWindowAttributes swa;
   XClientMessageEvent *cme = &e->xclient;
   Client *c = wintoclient(cme->window);
+  XClassHint ch = {"Systray", "systray"};
 
   if (showsystray && cme->window == systray->win &&
       cme->message_type == netatom[NetSystemTrayOP]) {
@@ -753,6 +754,7 @@ void clientmessage(XEvent *e) {
       c->mon = selmon;
       c->next = systray->icons;
       systray->icons = c;
+      XSetClassHint(dpy, c->win, &ch);
       XGetWindowAttributes(dpy, c->win, &wa);
       c->x = c->oldx = c->y = c->oldy = 0;
       c->w = c->oldw = wa.width;
