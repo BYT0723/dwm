@@ -4,4 +4,3 @@ dwm
 *.o
 scripts/configs/proxy.pac
 scripts/configs/trojan-cli.json
-scripts/background.sh

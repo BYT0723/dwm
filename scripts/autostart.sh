@@ -8,9 +8,7 @@
 /bin/bash ~/.dwm/monitor.sh &
 
 # wallpaper
-if [[ -f ~/.dwm/background.sh ]]; then
-    /bin/bash ~/.dwm/background.sh &
-fi
+/bin/bash ~/.dwm/background.sh &
 
 # picom (window composer)
 picom --config ~/.dwm/configs/picom.conf -b --experimental-backends

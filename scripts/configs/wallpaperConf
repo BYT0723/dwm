@@ -1,0 +1,10 @@
+random=0
+
+# video or image
+random_type=video
+
+random_image_dir=/home/walter/Desktop/Wallpapers/common
+
+random_video_dir=/home/walter/Desktop/Wallpapers/video/random
+
+duration=15
