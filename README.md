@@ -44,3 +44,7 @@ dwm-statuscmd-nosignal-status2d-20210402-60bb3df.diff
 dwm-systray-6.3.diff
 dwm-viewontag-20210312-61bb8b2.diff
 ```
+
+## Others
+
+- system-proxy [ privoxy with trojan ] **PAC**

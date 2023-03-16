@@ -34,5 +34,10 @@ sleep 1
 udiskie -tn &
 # input method engine
 fcitx5 -d
-# proxy
-trojan -c ~/.dwm/configs/trojan-cli.json &
+
+# proxy (privoxy with trojan [socks5])
+#
+# 1. cp ./configs/trojan.json /etc/trojan/config.json
+# 2. systemctl start trojan
+# 3. systemctl enable trojan
+# trojan -c ~/.dwm/configs/trojan-cli.json &

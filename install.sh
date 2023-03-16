@@ -46,6 +46,17 @@ fi
 # 如果非animations版本，将无法启用动画效果
 yay -S picom-animations-git
 
-pacman -S mate-power-manager network-manager-applet volumeicon udiskie trojan fcitx5-im
+pacman -S mate-power-manager network-manager-applet volumeicon udiskie fcitx5-im privoxy trojan
 
-yay -S fcitx5-pinyin-custom-pinyin-dictionary
+# theme
+# https://github.com/vinceliuice/WhiteSur-gtk-theme
+
+# proxy
+cp ./scripts/configs/trojan.json /etc/trojan/config.json
+systemctl start trojan
+systemctl enable trojan
+
+cp ./scripts/configs/pac.action /etc/privoxy/pac.action
+echo "actionsfile pac.action" >>/etc/privoxy/config
+systemctl start privoxy
+systemctl enable privoxy
