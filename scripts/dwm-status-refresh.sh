@@ -103,12 +103,13 @@ print_mem() {
 
 print_cpu() {
     # cpu load value
-    # local cpu_val=$(grep -o "^[^ ]*" /proc/loadavg)
-    local cpu_percent=$(printf "%2.0f" $(iostat -c 1 2 | awk 'NR==9 {print $1}'))
+    local cpu_val=$(grep -o "^[^ ]*" /proc/loadavg)
+    # local cpu_percent=$(printf "%2.0f" $(iostat -c 1 2 | awk 'NR==9 {print $1}'))
     # colorscheme
     printf "\x04^c$red^^b$grey^"
     # output
-    printf "${icons[cpu]}$cpu_percent%%"
+    # printf "${icons[cpu]}$cpu_percent%%"
+    printf "${icons[cpu]}$cpu_val"
 
     # append cpu temperature
     if [[ $(getConfProp showTemp) -eq 1 ]]; then
@@ -156,10 +157,10 @@ print_date() {
     # colorscheme
     printf "\x01^b$black^^c$darkblue^"
 
-    # local weather=$(print_weather)
-    # if [ "$weather" != "" ]; then
-    #     printf "$weather  "
-    # fi
+    local weather=$(print_weather)
+    if [ "$weather" != "" ]; then
+        printf "$weather  "
+    fi
     # output
     if [[ $(getConfProp dateExp) -eq 1 ]]; then
         printf "$(date '+ %m/%d(%a)') "
