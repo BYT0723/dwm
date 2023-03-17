@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cmd="xwinwrap -ov -fs -- mpv -wid WID /home/walter/Desktop/Wallpapers/video/random/galshir-ctrl-z.mp4 --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --no-input-default-bindings --input-conf=~/.dwm/configs/wallpaperKeyMap.conf"
+cmd="xwinwrap -ov -fs -- mpv -wid WID /home/walter/Desktop/Wallpapers/video/random/风景.mp4 --mute --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --no-input-default-bindings --input-conf=~/.dwm/configs/wallpaperKeyMap.conf"
 
 conf="$HOME/.dwm/configs/wallpaperConf"
 
@@ -20,7 +20,7 @@ next() {
         len=$(find $(getWallpaperProp random_video_dir) -type f | wc -l)
         filename=$(find $(getWallpaperProp random_video_dir) -type f | awk 'NR=='$(($RANDOM % $len + 1))' {print $0}')
 
-        nohup xwinwrap -ov -fs -- mpv -wid WID "$filename" --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --no-input-default-bindings --input-conf=~/.dwm/configs/wallpaperKeyMap.conf >/dev/null 2>&1 &
+        nohup xwinwrap -ov -fs -- mpv -wid WID "$filename" --mute --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --no-input-default-bindings --input-conf=~/.dwm/configs/wallpaperKeyMap.conf >/dev/null 2>&1 &
         ;;
     "image")
         feh --bg-scale --no-fehbg -z $(getWallpaperProp random_image_dir)
