@@ -70,6 +70,7 @@ run_cmd() {
             mpc -q pause
             amixer set Master mute
             systemctl suspend
+            betterlockscreen -l
         elif [[ $1 == '--logout' ]]; then
             if [[ "$DESKTOP_SESSION" == 'openbox' ]]; then
                 openbox --exit
@@ -96,11 +97,7 @@ $reboot)
     run_cmd --reboot
     ;;
 $lock)
-    if [[ -x '/usr/bin/betterlockscreen' ]]; then
-        betterlockscreen -l
-    elif [[ -x '/usr/bin/i3lock' ]]; then
-        i3lock
-    fi
+    betterlockscreen -l
     ;;
 $suspend)
     run_cmd --suspend
