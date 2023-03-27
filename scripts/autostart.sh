@@ -16,21 +16,11 @@ picom --config ~/.dwm/configs/picom.conf -b --experimental-backends
 # autolock (screen locker)
 xautolock -time 30 -locker betterlockscreen -detectsleep &
 
-# power manager
-mate-power-manager &
+# mate-power-manager &
+# nm-applet &
+# volumeicon &
+# udiskie -tn &
 
-sleep 1
-
-# network manager tray
-nm-applet &
-# volume tray
-volumeicon &
-
-sleep 1
-
-# usb device manager
-udiskie -tn &
-# input method engine
 fcitx5 -d
 
 # proxy (privoxy with trojan [socks5])

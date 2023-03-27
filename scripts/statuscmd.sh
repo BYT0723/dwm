@@ -104,7 +104,7 @@ disk-root)
 memory)
     memoryHandler $2
     ;;
-cpuInfo)
+cpu)
     cpuHandler $2
     ;;
 netSpeed)
