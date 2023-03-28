@@ -93,6 +93,7 @@ enum {
   SchemeHost,
   SchemeTagNorm,
   SchemeTagSel,
+  SchemeSystray,
   SchemeEmpty,
 }; /* color schemes */
 enum {
@@ -1025,7 +1026,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
   drw_setscheme(drw, scheme[LENGTH(colors)]);
   drw->scheme[ColFg] = scheme[SchemeEmpty][ColFg];
   drw->scheme[ColBg] = scheme[SchemeEmpty][ColBg];
-  drw_rect(drw, x, 0, w, bh, 1, 1);
+  drw_rect(drw, x, 0, w + getsystraywidth(), bh, 1, 1);
 
   /* process status text */
   i = -1;
@@ -2778,27 +2779,13 @@ void updatesystray(int updatebar) {
     /* init systray */
     if (!(systray = (Systray *)calloc(1, sizeof(Systray))))
       die("fatal: could not malloc() %u bytes\n", sizeof(Systray));
-
+    systray->win = XCreateSimpleWindow(dpy, root, x - sp, m->by + vp, w, bh, 0, 0, scheme[SchemeSystray][ColBg].pixel);
+    wa.event_mask        = ButtonPressMask | ExposureMask;
     wa.override_redirect = True;
-    wa.event_mask = ButtonPressMask | ExposureMask;
-    wa.background_pixel = 0;
     wa.border_pixel = 0;
-    wa.colormap = cmap;
-    systray->win = XCreateWindow(dpy, root, x - xpad, m->by + ypad, w, bh, 0,
-                                 depth, InputOutput, visual,
-                                 CWOverrideRedirect | CWBackPixel |
-                                     CWBorderPixel | CWColormap | CWEventMask,
-                                 &wa);
     XSelectInput(dpy, systray->win, SubstructureNotifyMask);
-    XChangeProperty(dpy, systray->win, netatom[NetSystemTrayOrientation],
-                    XA_CARDINAL, 32, PropModeReplace,
-                    (unsigned char *)&systrayorientation, 1);
-    XChangeProperty(dpy, systray->win, netatom[NetSystemTrayVisual],
-                    XA_VISUALID, 32, PropModeReplace,
-                    (unsigned char *)&visual->visualid, 1);
-    XChangeProperty(dpy, systray->win, netatom[NetWMWindowType], XA_ATOM, 32,
-                    PropModeReplace,
-                    (unsigned char *)&netatom[NetWMWindowTypeDock], 1);
+    XChangeProperty(dpy, systray->win, netatom[NetSystemTrayOrientation], XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&netatom[NetSystemTrayOrientationHorz], 1);
+    XChangeWindowAttributes(dpy, systray->win, CWEventMask|CWOverrideRedirect|CWBackPixel|CWBorderPixel, &wa);
     XMapRaised(dpy, systray->win);
     XSetSelectionOwner(dpy, netatom[NetSystemTray], systray->win, CurrentTime);
     if (XGetSelectionOwner(dpy, netatom[NetSystemTray]) == systray->win) {
@@ -2814,7 +2801,7 @@ void updatesystray(int updatebar) {
   }
 
   for (w = 0, i = systray->icons; i; i = i->next) {
-    wa.background_pixel = 0;
+    wa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
     XChangeWindowAttributes(dpy, i->win, CWBackPixel, &wa);
     XMapRaised(dpy, i->win);
     w += systrayspacing;

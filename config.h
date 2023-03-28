@@ -54,19 +54,23 @@ static const char *colors[][3] = {
   // tag
   [SchemeTagNorm] = { col_white,    col_black,    col_black},
   [SchemeTagSel]  = { col_black,    col_blue,     col_black},
+  // systray
+  [SchemeSystray] = { col_white,    col_black,    col_black},
   // empty
 	[SchemeEmpty]   = { col_ab_black, col_ab_black, col_black},
 };
 static const unsigned int alphas[][3]      = {
 	/*                    fg          bg          border     */
-	[SchemeNorm]    = { OPAQUE,     OPAQUE,     emptyalpha  },
-	[SchemeSel]     = { OPAQUE,     OPAQUE,     baralpha    },
-	[SchemeHid]     = { OPAQUE,     OPAQUE,     emptyalpha  },
+	[SchemeNorm]    = { OPAQUE,     baralpha,   emptyalpha  },
+	[SchemeSel]     = { OPAQUE,     baralpha,   baralpha    },
+	[SchemeHid]     = { OPAQUE,     baralpha,   emptyalpha  },
   //host
-  [SchemeHost]    = { OPAQUE,     OPAQUE,     emptyalpha },
+  [SchemeHost]    = { OPAQUE,     baralpha,   emptyalpha },
   // tag
   [SchemeTagNorm] = { OPAQUE,     baralpha,   emptyalpha },
   [SchemeTagSel]  = { OPAQUE,     baralpha,   emptyalpha },
+  // systray
+  [SchemeSystray] = { OPAQUE,     baralpha,   emptyalpha },
   // empty
   [SchemeEmpty]   = { emptyalpha, emptyalpha, emptyalpha },
 };
