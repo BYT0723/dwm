@@ -16,8 +16,8 @@ picom --config ~/.dwm/configs/picom.conf -b --experimental-backends
 # autolock (screen locker)
 xautolock -time 30 -locker betterlockscreen -detectsleep &
 
+nm-applet &
 # mate-power-manager &
-# nm-applet &
 # volumeicon &
 # udiskie -tn &
 
