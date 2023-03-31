@@ -66,11 +66,11 @@ print_speed() {
 }
 
 print_core() {
-    printf "$(print_cpu)$(print_temp)$(print_mem)$(print_disk)"
+    printf "$(print_cpu)$(print_mem)$(print_disk)"
 }
 
 print_system_tools() {
-    printf "$(print_volume)$(print_brightness)$(print_battery)"
+    printf "$(print_battery)"
 }
 
 print_other_tools() {

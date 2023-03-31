@@ -62,8 +62,10 @@ print_volume() {
     volume="$(amixer get Master | tail -n1 | sed -r 's/.*\[(.*)%\].*/\1/')"
     status="$(amixer get Master | tail -n1 | sed -r 's/.*\[(.*)\].*/\1/')"
 
-    if [ "$volume" -eq 0 -o "$status" == "off" ]; then
+    if [ "$volume" -eq 0 ]; then
         icon=""
+    elif [ "$status" == "off" ]; then
+        icon="婢"
     else
         icon=""
     fi
@@ -118,15 +120,16 @@ print_cpu() {
     # printf "${icons[cpu]}$cpu_percent%%"
     printf "${icons[cpu]}$cpu_val"
 
+    if [[ $(getConfProp showTemp) -eq 1 ]]; then
+        print_temp
+    fi
 }
 
 print_temp() {
     # append cpu temperature
     if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
-        if [[ $(getConfProp showTemp) -eq 1 ]]; then
-            temp=$(head -c 2 /sys/class/thermal/thermal_zone0/temp)
-            printf "^c$red^${icons[temp]}${temp}°C"
-        fi
+        temp=$(head -c 2 /sys/class/thermal/thermal_zone0/temp)
+        printf "  ${icons[temp]}${temp}°C"
     fi
 }
 
