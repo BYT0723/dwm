@@ -28,8 +28,6 @@ static const Bool viewontag = True; /* Switch view on tag switch */
 static const char *fonts[] = {
   "CaskaydiaCove Nerd Font:style=Bold:size=12",
   "LXGW WenKai Mono:style=Bold:size=13"
-  // "MYuppyGB:style=Medium:size=12",
-  // "Yozai:style=Regular:size=12",
 };
 
 static const char col_black[]   = "#073642";  /*  0: black    */
@@ -63,14 +61,14 @@ static const char *colors[][3] = {
 };
 static const unsigned int alphas[][3]      = {
 	/*                    fg          bg          border     */
-	[SchemeNorm]    = { OPAQUE,     baralpha,   emptyalpha  },
-	[SchemeSel]     = { OPAQUE,     baralpha,   baralpha    },
-	[SchemeHid]     = { OPAQUE,     baralpha,   emptyalpha  },
+	[SchemeNorm]    = { OPAQUE,     OPAQUE,     emptyalpha  },
+	[SchemeSel]     = { OPAQUE,     OPAQUE,     baralpha    },
+	[SchemeHid]     = { OPAQUE,     OPAQUE,     emptyalpha  },
   //host
-  [SchemeHost]    = { OPAQUE,     baralpha,   emptyalpha },
+  [SchemeHost]    = { OPAQUE,     OPAQUE,     emptyalpha },
   // tag
-  [SchemeTagNorm] = { OPAQUE,     baralpha,   emptyalpha },
-  [SchemeTagSel]  = { OPAQUE,     baralpha,   emptyalpha },
+  [SchemeTagNorm] = { OPAQUE,     OPAQUE,     emptyalpha },
+  [SchemeTagSel]  = { OPAQUE,     OPAQUE,     emptyalpha },
   // systray
   [SchemeSystray] = { OPAQUE,     baralpha,   emptyalpha },
   // empty
@@ -106,11 +104,12 @@ static const TaskIcon icons[] = {
   {"Pcmanfm",             NULL,      " "},
   {"Lxappearance",        NULL,      " "},
   {"thunderbird",         NULL,      " "},
+  {"Steam",               NULL,      " "},
 };
 
 /* tagging */
 // static const char *tags[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
-static const char *tags[] = {" ", " ", " ", " ", " ", " ", " ", "8 ", "9 "};
+static const char *tags[] = {" ", " ", " ", " ", " ", " ", " ", " ", "9 "};
 
 static const Rule rules[] = {
   /* xprop(1):
@@ -135,6 +134,10 @@ static const Rule rules[] = {
 
   {"xunlei",              NULL,       NULL,     1 << 6,       1,            -1},
   {"qBittorrent",         NULL,       NULL,     1 << 6,       0,            -1},
+
+  {"Steam",               NULL,       NULL,     1 << 7,       0,            -1},
+  {"steam_app",           NULL,       NULL,     1 << 7,       0,            -1},
+  {"heroic",              NULL,       NULL,     1 << 7,       0,            -1},
 
   // other only floating
   {"Godot_Engine",        NULL,       NULL,     0,            1,            -1},
@@ -179,6 +182,7 @@ static const Layout layouts[] = {
 
 /* key definitions */
 #define MODKEY Mod1Mask
+#define SUPKEY Mod4Mask
 #define TAGKEYS(KEY, TAG)                                                 \
   {MODKEY,                           KEY, view,       {.ui = 1 << TAG}},  \
   {MODKEY | ShiftMask,               KEY, toggleview, {.ui = 1 << TAG}},  \
@@ -285,22 +289,22 @@ static Key keys[] = {
   {MODKEY | ControlMask,          XK_q,                     quit,           {0}},
 
   // gap manager
-  {MODKEY | Mod4Mask,             XK_u,                     incrgaps,       {.i = +1}},
-  {MODKEY | Mod4Mask,             XK_i,                     incrigaps,      {.i = +1}},
-  {MODKEY | Mod4Mask,             XK_o,                     incrogaps,      {.i = +1}},
-  {MODKEY | Mod4Mask,             XK_6,                     incrihgaps,     {.i = +1}},
-  {MODKEY | Mod4Mask,             XK_7,                     incrivgaps,     {.i = +1}},
-  {MODKEY | Mod4Mask,             XK_8,                     incrohgaps,     {.i = +1}},
-  {MODKEY | Mod4Mask,             XK_9,                     incrovgaps,     {.i = +1}},
-  {MODKEY | Mod4Mask,             XK_0,                     togglegaps,     {0}},
-  {MODKEY | Mod4Mask | ShiftMask, XK_u,                     incrgaps,       {.i = -1}},
-  {MODKEY | Mod4Mask | ShiftMask, XK_i,                     incrigaps,      {.i = -1}},
-  {MODKEY | Mod4Mask | ShiftMask, XK_o,                     incrogaps,      {.i = -1}},
-  {MODKEY | Mod4Mask | ShiftMask, XK_6,                     incrihgaps,     {.i = -1}},
-  {MODKEY | Mod4Mask | ShiftMask, XK_7,                     incrivgaps,     {.i = -1}},
-  {MODKEY | Mod4Mask | ShiftMask, XK_8,                     incrohgaps,     {.i = -1}},
-  {MODKEY | Mod4Mask | ShiftMask, XK_9,                     incrovgaps,     {.i = -1}},
-  {MODKEY | Mod4Mask | ShiftMask, XK_0,                     defaultgaps,    {0}},
+  {MODKEY | SUPKEY,               XK_u,                     incrgaps,       {.i = +1}},
+  {MODKEY | SUPKEY,               XK_i,                     incrigaps,      {.i = +1}},
+  {MODKEY | SUPKEY,               XK_o,                     incrogaps,      {.i = +1}},
+  {MODKEY | SUPKEY,               XK_6,                     incrihgaps,     {.i = +1}},
+  {MODKEY | SUPKEY,               XK_7,                     incrivgaps,     {.i = +1}},
+  {MODKEY | SUPKEY,               XK_8,                     incrohgaps,     {.i = +1}},
+  {MODKEY | SUPKEY,               XK_9,                     incrovgaps,     {.i = +1}},
+  {MODKEY | SUPKEY,               XK_0,                     togglegaps,     {0}},
+  {MODKEY | SUPKEY | ShiftMask,   XK_u,                     incrgaps,       {.i = -1}},
+  {MODKEY | SUPKEY | ShiftMask,   XK_i,                     incrigaps,      {.i = -1}},
+  {MODKEY | SUPKEY | ShiftMask,   XK_o,                     incrogaps,      {.i = -1}},
+  {MODKEY | SUPKEY | ShiftMask,   XK_6,                     incrihgaps,     {.i = -1}},
+  {MODKEY | SUPKEY | ShiftMask,   XK_7,                     incrivgaps,     {.i = -1}},
+  {MODKEY | SUPKEY | ShiftMask,   XK_8,                     incrohgaps,     {.i = -1}},
+  {MODKEY | SUPKEY | ShiftMask,   XK_9,                     incrovgaps,     {.i = -1}},
+  {MODKEY | SUPKEY | ShiftMask,   XK_0,                     defaultgaps,    {0}},
 
   TAGKEYS(XK_1, 0)
   TAGKEYS(XK_2, 1)

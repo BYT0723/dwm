@@ -305,8 +305,7 @@ static void restack(Monitor *m);
 static void run(void);
 static void runautostart(void);
 static void scan(void);
-static int sendevent(Window w, Atom proto, int m, long d0, long d1, long d2,
-                     long d3, long d4);
+static int sendevent(Window w, Atom proto, int m, long d0, long d1, long d2, long d3, long d4);
 static void sendmon(Client *c, Monitor *m);
 static void setclientstate(Client *c, long state);
 static void setfocus(Client *c);
@@ -401,7 +400,6 @@ static Monitor *mons, *selmon;
 static Window root, wmcheckwin;
 
 static Systray *systray = NULL;
-static unsigned long systrayorientation = _NET_SYSTEM_TRAY_ORIENTATION_HORZ;
 
 static int useargb = 0;
 static Visual *visual;
@@ -451,8 +449,7 @@ void applyrules(Client *c) {
         (!r->instance || strstr(instance, r->instance))) {
       c->isfloating = r->isfloating;
       c->tags |= r->tags;
-      for (m = mons; m && m->num != r->monitor; m = m->next)
-        ;
+      for (m = mons; m && m->num != r->monitor; m = m->next);
       if (m)
         c->mon = m;
     }
@@ -461,8 +458,7 @@ void applyrules(Client *c) {
     XFree(ch.res_class);
   if (ch.res_name)
     XFree(ch.res_name);
-  c->tags =
-      c->tags & TAGMASK ? c->tags & TAGMASK : c->mon->tagset[c->mon->seltags];
+  c->tags = c->tags & TAGMASK ? c->tags & TAGMASK : c->mon->tagset[c->mon->seltags];
 }
 
 int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact) {
@@ -559,8 +555,7 @@ void attach(Client *c) {
 void attachbottom(Client *c) {
   Client **tc;
   c->next = NULL;
-  for (tc = &c->mon->clients; *tc; tc = &(*tc)->next)
-    ;
+  for (tc = &c->mon->clients; *tc; tc = &(*tc)->next);
   *tc = c;
 }
 
