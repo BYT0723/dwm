@@ -202,8 +202,8 @@ static const char *flameshot[]       = {"flameshot", "gui", NULL};
 static const char *vol_up[]          = {"./.dwm/volume-up.sh", NULL};
 static const char *vol_down[]        = {"./.dwm/volume-down.sh", NULL};
 static const char *vol_toggle[]      = {"./.dwm/volume-toggle.sh", NULL};
-static const char *brightness_up[]   = {"./.dwm/backlight-up.sh", NULL};
-static const char *brightness_down[] = {"./.dwm/backlight-down.sh", NULL};
+static const char *brightness_up[]   = {"./.dwm/brightness-up.sh", NULL};
+static const char *brightness_down[] = {"./.dwm/brightness-down.sh", NULL};
 // don't change or surround it by {}
 static const char *layoutmenu_cmd   = "./.dwm/layoutmenu.sh";
 

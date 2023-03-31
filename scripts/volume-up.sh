@@ -1,5 +1,4 @@
 #!/bin/bash
 
 /usr/bin/amixer -qM set Master 2%+ umute
-
-bash ~/.dwm/dwm-status-refresh.sh
+dunstify -r 3 "墳 "$(amixer get Master | tail -n1 | sed -r 's/.*\[(.*)%\].*/\1/')
