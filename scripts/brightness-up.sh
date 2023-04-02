@@ -1,4 +1,7 @@
 #!/bin/bash
 
+msgTag=2
+
 xbacklight -inc 4
-notify-send -t 1000 -r 2 "󰃟 "$(xbacklight -get)
+
+notify-send -a "changeBrightness" -i display-brightness-symbolic -h string:x-dunst-stack-tag:$msgTag "$(xbacklight -get)"

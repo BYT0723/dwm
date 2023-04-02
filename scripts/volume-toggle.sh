@@ -1,8 +1,12 @@
 #!/bin/bash
 
+msgTag="3"
+volume=$(amixer get Master | tail -n1 | sed -r 's/.*\[(.*)%\].*/\1/')
+status=$(amixer get Master | tail -n1 | sed -r 's/.*\[(.*)\].*/\1/')
+
 amixer sset Master toggle
-if [ "$(amixer get Master | tail -n1 | sed -r 's/.*\[(.*)\].*/\1/')" == "off" ]; then
-    notify-send -t 1000 -r 3 "婢 0"
+if [ "$status" == "off" ]; then
+    notify-send -a "changeVolume" -i audio-volume-high-symbolic -h string:x-dunst-stack-tag:$msgTag -h int:value:"$volume" "${volume}"
 else
-    notify-send -t 1000 -r 3 "墳 "$(amixer get Master | tail -n1 | sed -r 's/.*\[(.*)%\].*/\1/')
+    notify-send -a "changeVolume" -i audio-volume-muted-symbolic -h string:x-dunst-stack-tag:$msgTag "muted"
 fi
