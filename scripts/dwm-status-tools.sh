@@ -138,7 +138,7 @@ function update_weather() {
     # more look at: https://github.com/chubin/wttr.in
     # 获取主机使用语言
     # local language="en"
-    local language=$(cat /etc/locale.conf | awk -F '=' '{print $2}' | awk -F '_' '{print $1}')
+    local language=$(echo $LANG | awk -F '=' '{print $2}' | awk -F '_' '{print $1}')
     # weather=$(curl -H "Accept-Language:"$language -s -m 1 "wttr.in?format=%c\[%C\]+%f\n")
     weather=$(curl -H "Accept-Language:"$language -s -m 1 "wttr.in?format=%c%f\n")
     if [[ $weather != "" ]]; then

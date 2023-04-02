@@ -25,7 +25,9 @@ dateHandler() {
 diskHandler() {
     buttonType=$1
     case "$buttonType" in
-    1) ;;
+    1)
+        notify-send -r 4 "$(df -h)"
+        ;;
     2) ;;
     3) ;;
     esac
@@ -84,7 +86,10 @@ mpdHandler() {
 weatherHandler() {
     buttonType=$1
     case "$buttonType" in
-    1) ;;
+    1)
+        local language=$(echo $LANG | awk -F '=' '{print $2}' | awk -F '_' '{print $1}')
+        notify-send -r 7 "$(curl -H 'Accept-Language:'$language 'wttr.in/?T0')"
+        ;;
     2) ;;
     3)
         # st -i -g 130x40+480+200 -e curl -H "Accept-Language:zh" -s --retry 2 --connect-timeout 2 wttr.in
@@ -97,6 +102,9 @@ weatherHandler() {
 case "$cmdType" in
 date)
     dateHandler $2
+    ;;
+volume)
+    volumeHandler $2
     ;;
 disk-root)
     diskHandler $2

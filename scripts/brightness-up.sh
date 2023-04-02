@@ -1,4 +1,4 @@
 #!/bin/bash
 
 xbacklight -inc 4
-dunstify -r 2 "󰃟 "$(xbacklight -get)
+notify-send -t 1000 -r 2 "󰃟 "$(xbacklight -get)
