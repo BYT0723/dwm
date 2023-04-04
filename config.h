@@ -136,7 +136,7 @@ static const Rule rules[] = {
   {"qBittorrent",         NULL,       NULL,     1 << 6,       0,            -1},
 
   {"Steam",               NULL,       NULL,     1 << 7,       0,            -1},
-  {"steam_app",           NULL,       NULL,     1 << 7,       0,            -1},
+  {"steam",               NULL,       NULL,     1 << 7,       0,            -1},
   {"heroic",              NULL,       NULL,     1 << 7,       0,            -1},
 
   // other only floating
