@@ -2,7 +2,7 @@
 
 cmd="xwinwrap -ov -fs -- mpv -wid WID /home/walter/Desktop/Wallpapers/video/random/风景.mp4 --mute --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --no-input-default-bindings --input-conf=~/.dwm/configs/wallpaperKeyMap.conf"
 
-conf="$HOME/.dwm/configs/wallpaperConf"
+conf="$HOME/.dwm/configs/wallpaper.conf"
 
 getWallpaperProp() {
     echo $(cat $conf | grep "$1=" | tail -n 1 | awk -F '=' '{print $2}')
