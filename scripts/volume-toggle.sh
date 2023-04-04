@@ -1,6 +1,6 @@
 #!/bin/bash
 
-msgTag="3"
+msgTag="volume"
 volume=$(amixer get Master | tail -n1 | sed -r 's/.*\[(.*)%\].*/\1/')
 status=$(amixer get Master | tail -n1 | sed -r 's/.*\[(.*)\].*/\1/')
 

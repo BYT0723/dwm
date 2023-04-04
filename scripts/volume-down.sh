@@ -1,6 +1,6 @@
 #!/bin/bash
 
-msgTag="3"
+msgTag="volume"
 
 /usr/bin/amixer -qM set Master 2%- umute
 
