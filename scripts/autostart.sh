@@ -9,6 +9,9 @@
 # picom (window composer)
 picom --config ~/.dwm/configs/picom.conf -b --experimental-backends
 
+# polkit (require lxsession or lxsession-gtk3)
+lxpolkit &
+
 # autolock (screen locker)
 xautolock -time 30 -locker betterlockscreen -detectsleep &
 
