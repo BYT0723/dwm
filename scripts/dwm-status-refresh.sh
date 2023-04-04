@@ -25,7 +25,7 @@ function get_velocity {
     velKB=$(echo "1000000000*($value-$old_value)/1024/$timediff" | bc)
     if [ $velKB -gt 1000 ]; then
         # echo $(echo "scale=2; $velKB/1024" | bc)M/s
-        printf "%.1fM/s" $(echo "scale=1; $velKB/1024" | bc)
+        printf "%3.1fM/s" $(echo "scale=1; $velKB/1024" | bc)
     else
         # echo ${velKB}K/s
         printf "%3dK/s" ${velKB}
@@ -58,11 +58,7 @@ print_speed() {
     # colorscheme
     printf "\x0b^b$blue^^c$black^"
     # output
-    if [[ $(getConfProp netSpeedExp) -eq 1 ]]; then
-        printf "${icons[netSpeed]}${recvIcon} $vel_recv ${transIcon} $vel_trans"
-    else
-        printf "${icons[netSpeed]}${recvIcon} ${transIcon}"
-    fi
+    printf "${recvIcon} $vel_recv ${transIcon} $vel_trans"
 }
 
 print_core() {
@@ -74,7 +70,7 @@ print_system_tools() {
 }
 
 print_other_tools() {
-    printf "$(print_speed)$(print_mpd)$(print_weather)"
+    printf "$(print_mpd)$(print_speed)$(print_weather)"
 }
 
 xsetroot -name "$(print_other_tools)$(print_core)$(print_system_tools)$(print_date)"

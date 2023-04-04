@@ -1,8 +1,5 @@
 #!/bin/bash
 
-# statusBar Environment
-source ~/.dwm/status-env.sh
-
 # colorscheme
 black=#1e222a
 yellow=#ffff00
@@ -14,15 +11,11 @@ red=#d47d85
 darkblue=#668ee3
 
 # Icons initial
-if [[ $(getConfProp showIcon) -eq 1 ]]; then
-    declare -A icons
-    icons["disk"]="﫭 "
-    icons["memory"]=" "
-    icons["temp"]=" "
-    icons["cpu"]=" "
-    icons["netSpeed"]=" "
-    icons["mpd"]=" "
-fi
+declare -A icons
+icons["disk"]="﫭 "
+icons["memory"]=" "
+icons["cpu"]=" "
+icons["mpd"]=" "
 
 # seconds
 weather_update_duration=60
@@ -32,10 +25,7 @@ weather_path="/tmp/.weather"
 print_date() {
     # colorscheme
     printf "\x01^b$black^^c$darkblue^"
-    if [[ $(getConfProp dateExp) -eq 1 ]]; then
-        printf "%s " $(date '+%m/%d(%a)')
-    fi
-    printf "%s" $(date '+%R')
+    date '+%m/%d(%a) %R'
 }
 
 print_battery() {
@@ -120,16 +110,9 @@ print_cpu() {
     # printf "${icons[cpu]}$cpu_percent%%"
     printf "${icons[cpu]}$cpu_val"
 
-    if [[ $(getConfProp showTemp) -eq 1 ]]; then
-        print_temp
-    fi
-}
-
-print_temp() {
-    # append cpu temperature
     if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
         temp=$(head -c 2 /sys/class/thermal/thermal_zone0/temp)
-        printf "  ${icons[temp]}${temp}°C"
+        printf "  ${temp}°C"
     fi
 }
 
@@ -168,10 +151,6 @@ print_weather() {
 
 # Music Player Daemon
 print_mpd() {
-    # determine whether showMpd property is on
-    if [[ $(getConfProp showMpd) -eq 0 ]]; then
-        return
-    fi
     # determine whether mpd is started
     if [[ -z "$(mpc status)" ]]; then
         return
@@ -179,20 +158,11 @@ print_mpd() {
 
     songName=$(mpc -f "%title% - %artist%" current)
 
-    # # task max length
-    # maxLen=16
-    # # to fill task
-    # spaceStr="                              "
-    # # empty task string
-    # spaces=${spaceStr:1:$maxLen}
-    #
-    # # like this
-    # # "      songname        "
-    # songName=$spaces$songName$spaces
-    #
-    # offset=$(($(date +%s) % $((${#songName} - $maxLen))))
-    #
-    # songName=${songName:$offset:$maxLen}
+    maxLen=16
+
+    if [ ${#songName} -gt $maxLen ]; then
+        songName=${songName:0:$(($maxLen - 2))}'..'
+    fi
 
     # calculate mpd play status
     if [[ $(mpc status) == *"[playing]"* ]]; then
