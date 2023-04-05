@@ -9,14 +9,10 @@ cmdType=$1
 # 3 right button
 buttonType=$2
 
-source $HOME/.dwm/status-env.sh
-
 dateHandler() {
     buttonType=$1
     case "$buttonType" in
-    1)
-        toggleConfProp ${confProperty["dateExp"]}
-        ;;
+    1) ;;
     2) ;;
     3) ;;
     esac
@@ -45,9 +41,7 @@ memoryHandler() {
 cpuHandler() {
     buttonType=$1
     case "$buttonType" in
-    1)
-        toggleConfProp ${confProperty["showTemp"]}
-        ;;
+    1) ;;
     2) ;;
     3)
         alacritty -e htop
@@ -58,9 +52,7 @@ cpuHandler() {
 netSpeedHandler() {
     buttonType=$1
     case "$buttonType" in
-    1)
-        toggleConfProp ${confProperty["netSpeedExp"]}
-        ;;
+    1) ;;
     2) ;;
     3)
         alacritty -e speedtest
