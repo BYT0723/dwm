@@ -79,7 +79,7 @@ weatherHandler() {
     buttonType=$1
     case "$buttonType" in
     1)
-        local language=$(echo $LANG | awk -F '=' '{print $2}' | awk -F '_' '{print $1}')
+        local language=$(echo $LANG | awk -F '_' '{print $1}')
         notify-send -r 7 "$(curl -H 'Accept-Language:'$language 'wttr.in/?T0')"
         ;;
     2) ;;
