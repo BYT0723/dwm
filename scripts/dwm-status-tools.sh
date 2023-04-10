@@ -32,7 +32,7 @@ print_battery() {
     battery_icons=(' ' ' ' ' ' ' ' ' ')
     percent=$(acpi -b | head -n 1 | grep -Eo '[0-9]+%' | sed -r 's/%//g')
 
-    icon=${battery_icons[$(echo $percent"/25" | bc)]}
+    icon=${battery_icons[$(echo $percent"/20 - 1" | bc)]}
 
     # duration=$(acpi -b | awk '{print $5}')
 
