@@ -9,9 +9,11 @@
 
 /*****----- Configuration -----*****/
 configuration {
-	modi:                       "drun";
+	modi:                       "drun,run,window";
     show-icons:                 true;
-    display-drun:               "";
+    display-drun:               " ";
+    display-run:                " ";
+    display-window:             " ";
 	drun-display-format:        "{name}";
 }
 
@@ -83,7 +85,6 @@ entry {
     background-color:            inherit;
     text-color:                  inherit;
     cursor:                      text;
-    placeholder:                 "Search";
     placeholder-color:           inherit;
 }
 
@@ -145,7 +146,7 @@ element selected.normal {
 element-icon {
     background-color:            transparent;
     text-color:                  inherit;
-    size:                        64px;
+    size:                        80px;
     cursor:                      inherit;
 }
 element-text {

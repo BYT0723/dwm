@@ -1,5 +1,5 @@
 /**
- *
+ *cyberpunk
  * Author : Aditya Shakya (adi1090x)
  * Github : @adi1090x
  * 
@@ -9,9 +9,11 @@
 
 /*****----- Configuration -----*****/
 configuration {
-	modi:                       "drun";
+	modi:                       "drun,run,window";
     show-icons:                 true;
-    display-drun:               "";
+    display-drun:               " ";
+    display-run:                " ";
+    display-window:             " ";
 	drun-display-format:        "{name}";
 }
 
@@ -27,7 +29,7 @@ window {
     fullscreen:                  false;
     width:                       750px;
     x-offset:                    0px;
-    y-offset:                    0px;
+    y-offset:                    100px;
 
     enabled:                     true;
     margin:                      0px;
@@ -83,7 +85,7 @@ entry {
     background-color:            inherit;
     text-color:                  inherit;
     cursor:                      text;
-    placeholder:                 "Search";
+    placeholder:                 "";
     placeholder-color:           inherit;
 }
 
@@ -138,14 +140,14 @@ element normal.normal {
 element selected.normal {
     border:                      1px solid;
     border-radius:               4px;
-    border-color:                @selected;
-    background-color:            @background;
+    border-color:                @background;
+    background-color:            @selected;
     text-color:                  @foreground;
 }
 element-icon {
     background-color:            transparent;
     text-color:                  inherit;
-    size:                        32px;
+    size:                        50px;
     cursor:                      inherit;
 }
 element-text {
