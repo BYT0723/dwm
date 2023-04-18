@@ -30,9 +30,11 @@ print_date() {
 
 print_battery() {
     battery_icons=(' ' ' ' ' ' ' ' ' ')
+    # battery_icons=('' '' '' '' '' '' '' '' '' '' '')
+    charging_icons=('')
     percent=$(acpi -b | head -n 1 | grep -Eo '[0-9]+%' | sed -r 's/%//g')
 
-    icon=${battery_icons[$(echo $percent"/20 - 1" | bc)]}
+    icon=${battery_icons[$(echo $percent"/25" | bc)]}
 
     # duration=$(acpi -b | awk '{print $5}')
 
@@ -85,7 +87,7 @@ print_disk() {
     # root disk space value
     local disk_root=$(df -h | grep /dev/sda2 | awk '{print $4}')
     # colorscheme
-    printf "\x06^c$grey^^b$white^"
+    printf "\x06^c$white^^b$grey^"
     # output
     printf "${icons[disk]}$disk_root"
 }

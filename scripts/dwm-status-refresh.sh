@@ -1,7 +1,6 @@
 #!/bin/bash
 
 # statusBar Environment
-source ~/.dwm/status-env.sh
 source ~/.dwm/dwm-status-tools.sh
 
 function get_bytes {
@@ -56,7 +55,7 @@ print_speed() {
         transIcon=""
     fi
     # colorscheme
-    printf "\x0b^b$blue^^c$black^"
+    printf "\x0b^b$black^^c$darkblue^"
     # output
     printf "${recvIcon} $vel_recv ${transIcon} $vel_trans"
 }
