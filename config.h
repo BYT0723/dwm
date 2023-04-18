@@ -55,7 +55,7 @@ static const char *colors[][3] = {
   [SchemeLayout]  = { col_white,    col_black,    col_ab_black },
   // tasks
   [SchemeNorm]    = { col_cyan,     col_black,    col_ab_black },
-  [SchemeSel]     = { col_black,    col_white,    col_black    },
+  [SchemeSel]     = { col_white,    col_black,    col_white    },
   [SchemeHid]     = { col_cyan,     col_ab_black, col_ab_black },
   // systray
   [SchemeSystray] = { col_white,    col_black,    col_black    },
