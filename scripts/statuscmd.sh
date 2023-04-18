@@ -12,9 +12,26 @@ buttonType=$2
 dateHandler() {
     buttonType=$1
     case "$buttonType" in
-    1) ;;
+    1)
+        notify-send -a "Datetime" -h string:x-dunst-stack-tag:datetime "$(cal -s)"
+        ;;
     2) ;;
     3) ;;
+    esac
+}
+
+batteryHandler() {
+    buttonType=$1
+    case "$buttonType" in
+    1)
+        notify-send -a "BatteryInformation" -h string:x-dunst-stack-tag:batteryInformation "$(acpi -i)"
+        ;;
+    2)
+        echo 2 or 3
+        ;;
+    3)
+        echo default
+        ;;
     esac
 }
 
@@ -22,7 +39,7 @@ diskHandler() {
     buttonType=$1
     case "$buttonType" in
     1)
-        notify-send -r 4 "$(df -h)"
+        notify-send -a "DiskInformation" -h string:x-dunst-stack-tag:diskInformation "$(df -h)"
         ;;
     2) ;;
     3) ;;
@@ -77,16 +94,15 @@ mpdHandler() {
 
 weatherHandler() {
     buttonType=$1
+    local language=$(echo $LANG | awk -F '_' '{print $1}')
     case "$buttonType" in
     1)
-        local language=$(echo $LANG | awk -F '_' '{print $1}')
-        notify-send -r 7 "$(curl -H 'Accept-Language:'$language 'wttr.in/?T0')"
+        notify-send -a "CurrentWeather" -h string:x-dunst-stack-tag:currentWeather "$(curl -H 'Accept-Language:'$language 'wttr.in/?T0')"
         ;;
-    2) ;;
-    3)
-        # st -i -g 130x40+480+200 -e curl -H "Accept-Language:zh" -s --retry 2 --connect-timeout 2 wttr.in
-        xdg-open https://wttr.in/
+    2)
+        xdg-open https://wttr.in/?T
         ;;
+    3) ;;
     esac
 }
 
@@ -94,6 +110,9 @@ weatherHandler() {
 case "$cmdType" in
 date)
     dateHandler $2
+    ;;
+battery)
+    batteryHandler $2
     ;;
 volume)
     volumeHandler $2
