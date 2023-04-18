@@ -94,6 +94,7 @@ enum {
   SchemeTagNorm,
   SchemeTagSel,
   SchemeSystray,
+  SchemeLayout,
   SchemeEmpty,
 }; /* color schemes */
 enum {
@@ -1141,7 +1142,7 @@ void drawbar(Monitor *m) {
   }
   // layout symbol
   w = blw = TEXTW(m->ltsymbol);
-  drw_setscheme(drw, scheme[SchemeHid]);
+  drw_setscheme(drw, scheme[SchemeLayout]);
   x = drw_text(drw, x, 0, w, bh, lrpad / 2, m->ltsymbol, 0);
 
   // draw tab
@@ -1546,7 +1547,7 @@ void layoutmenu(const Arg *arg) {
   s = fgets(c, sizeof(c), p);
   pclose(p);
 
-  if (!s || *s == '\0' || c == '\0')
+  if (!s || *s == '\0' || c[0] == '\0')
     return;
 
   i = atoi(c);
@@ -1597,8 +1598,6 @@ void manage(Window w, XWindowAttributes *wa) {
   updatewindowtype(c);
   updatesizehints(c);
   updatewmhints(c);
-  c->x = c->mon->mx + (c->mon->mw - WIDTH(c)) / 2;
-  c->y = c->mon->my + (c->mon->mh - HEIGHT(c)) / 2;
   XSelectInput(dpy, w,
                EnterWindowMask | FocusChangeMask | PropertyChangeMask |
                    StructureNotifyMask);
@@ -1661,7 +1660,7 @@ void monocle(Monitor *m) {
   if (n > 0) /* override layout symbol */
     snprintf(m->ltsymbol, sizeof m->ltsymbol, "[%d]", n);
   for (c = nexttiled(m->clients); c; c = nexttiled(c->next))
-    resize(c, m->wx + gappov, m->wy + gappoh, m->ww - 2 * c->bw - 2 * gappov, m->wh - 2 * c->bw - 2 * gappoh, 0);
+    resize(c, m->wx , m->wy , m->ww - 2 * c->bw, m->wh - 2 * c->bw, 0);
 }
 
 void motionnotify(XEvent *e) {
@@ -1858,14 +1857,14 @@ void resizeclient(Client *c, int x, int y, int w, int h) {
   c->oldh = c->h;
   c->h = wc.height = h;
   wc.border_width = c->bw;
-  // if (((nexttiled(c->mon->clients) == c && !nexttiled(c->next)) ||
-  //      &monocle == c->mon->lt[c->mon->sellt]->arrange) &&
-  //     !c->isfullscreen && !c->isfloating &&
-  //     NULL != c->mon->lt[c->mon->sellt]->arrange) {
-  //   c->w = wc.width += c->bw * 2;
-  //   c->h = wc.height += c->bw * 2;
-  //   wc.border_width = 0;
-  // }
+  if (((nexttiled(c->mon->clients) == c && !nexttiled(c->next)) ||
+       &monocle == c->mon->lt[c->mon->sellt]->arrange) &&
+      !c->isfullscreen && !c->isfloating &&
+      NULL != c->mon->lt[c->mon->sellt]->arrange) {
+    c->w = wc.width += c->bw * 2;
+    c->h = wc.height += c->bw * 2;
+    wc.border_width = 0;
+  }
   XConfigureWindow(dpy, c->win, CWX | CWY | CWWidth | CWHeight | CWBorderWidth,
                    &wc);
   configure(c);

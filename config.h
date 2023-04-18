@@ -11,10 +11,10 @@ static const          int sidepad    = 10;  /* horizontal padding of bar */
 static const          char host[]    = " ";
 static const          int radiustask = 1;
 
-static const unsigned int gappih    = 18;  /* horiz inner gap between windows */
-static const unsigned int gappiv    = 18;  /* vert inner gap between windows */
-static const unsigned int gappoh    = 18;  /* horiz outer gap between windows and screen edge */
-static const unsigned int gappov    = 18;  /* vert outer gap between windows and screen edge */
+static const unsigned int gappih    = 10;  /* horiz inner gap between windows */
+static const unsigned int gappiv    = 10;  /* vert inner gap between windows */
+static const unsigned int gappoh    = 13;  /* horiz outer gap between windows and screen edge */
+static const unsigned int gappov    = 13;  /* vert outer gap between windows and screen edge */
 static                int smartgaps = 0;   /* 1 means no outer gap when there is only one window */
 
 static const unsigned int systraypinning          = 0;  /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
@@ -46,29 +46,35 @@ static const unsigned int baralpha    = 0xd0;
 static const unsigned int borderalpha = OPAQUE;
 static const char *colors[][3] = {
   /*                    fg            bg            border   */
-  [SchemeNorm]    = { col_black,    col_cyan,     col_ab_black },
-  [SchemeSel]     = { col_black,    col_green,    col_blue },
-  [SchemeHid]     = { col_white,    col_black,    col_ab_black },
-  //host
-  [SchemeHost]    = { col_red,      col_black,    col_black},    
+  // host
+  [SchemeHost]    = { col_red,      col_black,    col_black    },
   // tag
-  [SchemeTagNorm] = { col_white,    col_black,    col_black},
-  [SchemeTagSel]  = { col_black,    col_blue,     col_black},
+  [SchemeTagNorm] = { col_white,    col_black,    col_black    },
+  [SchemeTagSel]  = { col_black,    col_blue,     col_black    },
+  // layout
+  [SchemeLayout]  = { col_white,    col_black,    col_ab_black },
+  // tasks
+  [SchemeNorm]    = { col_cyan,     col_black,    col_ab_black },
+  [SchemeSel]     = { col_black,    col_white,    col_black    },
+  [SchemeHid]     = { col_cyan,     col_ab_black, col_ab_black },
   // systray
-  [SchemeSystray] = { col_white,    col_black,    col_black},
+  [SchemeSystray] = { col_white,    col_black,    col_black    },
   // empty
-	[SchemeEmpty]   = { col_ab_black, col_ab_black, col_black},
+	[SchemeEmpty]   = { col_ab_black, col_ab_black, col_black    },
 };
 static const unsigned int alphas[][3]      = {
 	/*                    fg          bg          border     */
-	[SchemeNorm]    = { OPAQUE,     OPAQUE,     emptyalpha  },
-	[SchemeSel]     = { OPAQUE,     OPAQUE,     baralpha    },
-	[SchemeHid]     = { OPAQUE,     OPAQUE,     emptyalpha  },
-  //host
+  // host
   [SchemeHost]    = { OPAQUE,     OPAQUE,     emptyalpha },
   // tag
   [SchemeTagNorm] = { OPAQUE,     OPAQUE,     emptyalpha },
   [SchemeTagSel]  = { OPAQUE,     OPAQUE,     emptyalpha },
+  // layout
+  [SchemeLayout]  = { OPAQUE,     OPAQUE,     emptyalpha },
+  // task
+	[SchemeNorm]    = { OPAQUE,     OPAQUE,     emptyalpha },
+	[SchemeSel]     = { OPAQUE,     OPAQUE,     OPAQUE     },
+	[SchemeHid]     = { OPAQUE,     0x80,       emptyalpha },
   // systray
   [SchemeSystray] = { OPAQUE,     baralpha,   emptyalpha },
   // empty
@@ -94,6 +100,7 @@ static const TaskIcon icons[] = {
   // application
   {"neovide",             NULL,      " "},
   {"TelegramDesktop",     NULL,      " "},
+  {"electronic-wechat",   NULL,      " "},
   {"wechat.exe",          NULL,      " "},
   {"qq",                  NULL,      " "},
   {"qqmusic",             NULL,      " "},
@@ -109,7 +116,7 @@ static const TaskIcon icons[] = {
 
 /* tagging */
 // static const char *tags[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
-static const char *tags[] = {" ", " ", " ", " ", " ", " ", " ", " ", "9 "};
+static const char *tags[] = { " ", " ", " ", " ", " ", " ", " ", " ", " "};
 
 static const Rule rules[] = {
   /* xprop(1):
@@ -120,24 +127,25 @@ static const Rule rules[] = {
   {"firefox",             NULL,       NULL,     1 << 1,       0,            -1},
 
   {"TelegramDesktop",     NULL,       NULL,     1 << 2,       0,            -1},
+  {"electronic-wechat",   NULL,       NULL,     1 << 2,       0,            -1},
   {"wechat.exe",          NULL,       NULL,     1 << 2,       0,            -1},
   {"QQ",                  NULL,       NULL,     1 << 2,       0,            -1},
-  //
-  {"qqmusic",             NULL,       NULL,     1 << 3,       1,            -1},
-  {"netease-cloud-music", NULL,       NULL,     1 << 3,       1,            -1},
-  {"OSD Lyrics",          NULL,       NULL,     1 << 3,       1,            -1},
 
-  {"obs",                 NULL,       NULL,     1 << 4,       0,            -1},
+  {"DBeaver",             NULL,       NULL,     1 << 3,       0,            -1},
+  {"RESP.app",            NULL,       NULL,     1 << 3,       0,            -1},
 
-  {"DBeaver",             NULL,       NULL,     1 << 5,       0,            -1},
-  {"RESP.app",            NULL,       NULL,     1 << 5,       0,            -1},
+  {"xunlei",              NULL,       NULL,     1 << 5,       1,            -1},
+  {"qBittorrent",         NULL,       NULL,     1 << 5,       0,            -1},
 
-  {"xunlei",              NULL,       NULL,     1 << 6,       1,            -1},
-  {"qBittorrent",         NULL,       NULL,     1 << 6,       0,            -1},
+  {"obs",                 NULL,       NULL,     1 << 6,       0,            -1},
 
-  {"Steam",               NULL,       NULL,     1 << 7,       0,            -1},
-  {"steam",               NULL,       NULL,     1 << 7,       0,            -1},
-  {"heroic",              NULL,       NULL,     1 << 7,       0,            -1},
+  {"qqmusic",             NULL,       NULL,     1 << 7,       1,            -1},
+  {"netease-cloud-music", NULL,       NULL,     1 << 7,       1,            -1},
+  {"OSD Lyrics",          NULL,       NULL,     1 << 7,       1,            -1},
+
+  {"Steam",               NULL,       NULL,     1 << 8,       0,            -1},
+  {"steam",               NULL,       NULL,     1 << 8,       0,            -1},
+  {"heroic",              NULL,       NULL,     1 << 8,       0,            -1},
 
   // other only floating
   {"Godot_Engine",        NULL,       NULL,     0,            1,            -1},
@@ -239,11 +247,11 @@ static Key keys[] = {
   {MODKEY,                        XK_n,                     spawn,          {.v = floatcmd}},
   {MODKEY,                        XK_space,                 spawn,          {.v = toggleTouchpad}},
   {MODKEY,                        XK_a,                     spawn,          {.v = flameshot}},
-  {NULL,                          XF86XK_AudioLowerVolume,  spawn,          {.v = vol_down}},
-  {NULL,                          XF86XK_AudioRaiseVolume,  spawn,          {.v = vol_up}},
-  {NULL,                          XF86XK_AudioMute,         spawn,          {.v = vol_toggle}},
-  {NULL,                          XF86XK_MonBrightnessDown, spawn,          {.v = brightness_down}},
-  {NULL,                          XF86XK_MonBrightnessUp,   spawn,          {.v = brightness_up}},
+  {0,                             XF86XK_AudioLowerVolume,  spawn,          {.v = vol_down}},
+  {0,                             XF86XK_AudioRaiseVolume,  spawn,          {.v = vol_up}},
+  {0,                             XF86XK_AudioMute,         spawn,          {.v = vol_toggle}},
+  {0,                             XF86XK_MonBrightnessDown, spawn,          {.v = brightness_down}},
+  {0,                             XF86XK_MonBrightnessUp,   spawn,          {.v = brightness_up}},
   // rofi
   {MODKEY,                        XK_d,                     spawn,          {.v = roficmd}},
   {MODKEY,                        XK_m,                     spawn,          {.v = modulecmd}},
