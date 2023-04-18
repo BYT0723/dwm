@@ -67,11 +67,10 @@ run_cmd() {
         elif [[ $1 == '--reboot' ]]; then
             systemctl reboot
         elif [[ $1 == '--suspend' ]]; then
-            # mpc -q pause
-            # amixer set Master mute
-            # systemctl suspend
-            # betterlockscreen -l
-            dm-tool lock
+            mpc -q pause
+            amixer set Master mute
+            systemctl suspend
+            betterlockscreen -l
         elif [[ $1 == '--logout' ]]; then
             if [[ "$DESKTOP_SESSION" == 'openbox' ]]; then
                 openbox --exit
