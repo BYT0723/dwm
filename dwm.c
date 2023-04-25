@@ -1604,8 +1604,15 @@ void manage(Window w, XWindowAttributes *wa) {
   grabbuttons(c, 0);
   if (!c->isfloating)
     c->isfloating = c->oldstate = trans != None || c->isfixed;
-  if (c->isfloating)
+  if (c->isfloating) {
+    if (c->w > 0.6 * c->mon->mw || c->h > 0.6 * c->mon->mh) {
+      c->w = 0.6 * c->mon->mw;
+      c->h = 0.6 * c->mon->mh;
+    }
+    c->x = (c->mon->mw - c->w) / 2;
+    c->y = (c->mon->mh - c->h) / 2;
     XRaiseWindow(dpy, c->win);
+  }
   attachtop ? attach(c) : attachbottom(c);
   attachstack(c);
   XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32,
