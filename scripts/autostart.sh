@@ -8,7 +8,8 @@
 
 # picom (window composer)
 if [ -z "$(pgrep picom)" ]; then
-    picom --config ~/.dwm/configs/picom.conf -b --experimental-backends
+    # picom --config ~/.dwm/configs/picom.conf -b --experimental-backends
+    picom --config ~/.dwm/configs/picom.conf -b
 fi
 
 # polkit (require lxsession or lxsession-gtk3)

@@ -24,7 +24,7 @@ confPath["picom"]="$HOME/.dwm/configs/picom.conf"
 
 # 定义运行命令的Map
 declare -A applicationCmd
-applicationCmd["picom"]="picom --config $HOME/.dwm/configs/picom.conf -b --experimental-backends"
+applicationCmd["picom"]="picom --config $HOME/.dwm/configs/picom.conf -b"
 
 # Options
 layout=$(cat ${theme} | grep 'USE_ICON' | cut -d'=' -f2)
