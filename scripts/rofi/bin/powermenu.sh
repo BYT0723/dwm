@@ -1,3 +1,3 @@
 #!/bin/bash
 
-/bin/bash ~/.dwm/rofi/scripts/powermenu_t2
+/bin/bash ~/.dwm/rofi/scripts/powermenu_t3
