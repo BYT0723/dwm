@@ -26,16 +26,13 @@ if [ -z "$(pgrep nm-applet)" ]; then
     nm-applet &
 fi
 
+if [ -z "$(pgrep udiskie)" ]; then
+    udiskie -sn &
+fi
+
 # mate-power-manager &
 # volumeicon &
 
 if [ -z "$(pgrep fcitx5)" ]; then
     fcitx5 -d
-fi
-
-sleep 3
-
-# 设置风扇转速为0
-if [ -x nbfc ]; then
-    nbfc set -s 0
 fi
