@@ -84,7 +84,7 @@ mpdHandler() {
         mpc toggle
         ;;
     2)
-        killall mpd
+        mpd --kill
         ;;
     3)
         $HOME/.dwm/rofi/bin/mpd.sh

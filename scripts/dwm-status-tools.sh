@@ -12,7 +12,7 @@ darkblue=#668ee3
 
 # Icons initial
 declare -A icons
-icons["disk"]="﫭 "
+icons["disk"]=" "
 icons["memory"]=" "
 icons["cpu"]=" "
 icons["mpd"]=" "
