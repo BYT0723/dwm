@@ -4,5 +4,5 @@
 while true; do
     bash ~/.dwm/dwm-status-refresh.sh
     # refresh interval
-    sleep 1
+    sleep 2
 done
