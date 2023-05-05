@@ -7,5 +7,27 @@ export DBUS_SESSION_BUS_ADDRESS
 # Displayed screen
 export DISPLAY=:0
 
+printTitle() {
+    case "$1" in
+    "WORK")
+        echo " "
+        ;;
+    "HOME")
+        echo " "
+        ;;
+    "STUDY")
+        echo " "
+        ;;
+    "DIET")
+        echo "󰩰 "
+        ;;
+    *)
+        echo "$1"
+        ;;
+    esac
+}
+
 # send notification
-notify-send -i preferences-system-time-symbolic -u critical "$(date +"%H:%M") $1\n $2"
+notify-send -i preferences-system-time-symbolic -u critical "$(printTitle $1)  $(date +"%H:%M")" $2
+
+canberra-gtk-play -i audio-volume-change
