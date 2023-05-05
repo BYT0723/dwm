@@ -13,7 +13,7 @@ dateHandler() {
     buttonType=$1
     case "$buttonType" in
     1)
-        notify-send -a "Datetime" -h string:x-dunst-stack-tag:datetime "$(cal -s)"
+        notify-send -c status -h string:x-dunst-stack-tag:datetime "$(cal -s)"
         ;;
     2) ;;
     3) ;;
@@ -24,7 +24,7 @@ batteryHandler() {
     buttonType=$1
     case "$buttonType" in
     1)
-        notify-send -a "BatteryInformation" -h string:x-dunst-stack-tag:batteryInformation "$(acpi -i)"
+        notify-send -c status -h string:x-dunst-stack-tag:batteryInformation "$(acpi -i)"
         ;;
     2)
         echo 2 or 3
@@ -39,7 +39,7 @@ diskHandler() {
     buttonType=$1
     case "$buttonType" in
     1)
-        notify-send -a "DiskInformation" -h string:x-dunst-stack-tag:diskInformation "$(df -h)"
+        notify-send -c status -h string:x-dunst-stack-tag:diskInformation "$(df -h)"
         ;;
     2) ;;
     3) ;;
@@ -84,7 +84,7 @@ mpdHandler() {
         mpc toggle
         ;;
     2)
-        mpd --kill
+        killall mpd
         ;;
     3)
         $HOME/.dwm/rofi/bin/mpd.sh
@@ -97,7 +97,7 @@ weatherHandler() {
     local language=$(echo $LANG | awk -F '_' '{print $1}')
     case "$buttonType" in
     1)
-        notify-send -a "CurrentWeather" -h string:x-dunst-stack-tag:currentWeather "$(curl -H 'Accept-Language:'$language 'wttr.in/?T0')"
+        notify-send -c status -h string:x-dunst-stack-tag:currentWeather "$(curl -H 'Accept-Language:'$language 'wttr.in/?T0')"
         ;;
     2)
         xdg-open https://wttr.in/?T
