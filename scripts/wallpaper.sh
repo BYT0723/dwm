@@ -37,14 +37,14 @@ if [[ $Type == "video" ]]; then
         return
     fi
     nohup xwinwrap -ov -fs -- mpv -wid WID "$1" --mute --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --no-input-default-bindings --input-conf=~/.dwm/configs/wallpaperKeyMap.conf >/dev/null 2>&1 &
-    sed -i "s|cmd=.\+|cmd=\"xwinwrap -ov -fs -- mpv -wid WID "$1" --mute --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --no-input-default-bindings --input-conf=~/.dwm/configs/wallpaperKeyMap.conf\"|g" ~/.dwm/background.sh
+    sed -i "s|cmd=.\+|cmd=xwinwrap -ov -fs -- mpv -wid WID "$1" --mute --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --no-input-default-bindings --input-conf=~/.dwm/configs/wallpaperKeyMap.conf|g" ~/.dwm/configs/wallpaper.conf
 elif [[ $Type == "img" ]]; then
     if ! [[ -n $(command -v feh) ]]; then
         echo "set image to wallpaper need feh, install feh package"
         return
     fi
     feh --bg-scale --no-fehbg "$1"
-    sed -i "s|cmd=.\+|cmd=\"feh --no-fehbg --bg-scale "$1"\"|g" ~/.dwm/background.sh
+    sed -i "s|cmd=.\+|cmd=feh --no-fehbg --bg-scale "$1"|g" ~/.dwm/configs/wallpaper.conf
 elif [[ $Type == "page" ]]; then
     if ! [[ -n $(command -v xwinwrap) ]]; then
         echo "set website to wallpaper need xwinwrap, install xwinwrap-git package"

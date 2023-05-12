@@ -2,5 +2,5 @@ dwm
 *.orig
 *.rej
 *.o
-scripts/configs/proxy.pac
-scripts/configs/trojan-cli.json
+scripts/configs/wallpaper.conf
+scripts/configs/wallpaperKeyMap.conf

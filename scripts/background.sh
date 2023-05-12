@@ -1,7 +1,5 @@
 #!/bin/bash
 
-cmd="xwinwrap -ov -fs -- mpv -wid WID /home/walter/Desktop/Wallpapers/video/random/风景.mp4 --mute --no-osc --no-osd-bar --loop-file --player-operation-mode=cplayer --no-input-default-bindings --input-conf=~/.dwm/configs/wallpaperKeyMap.conf"
-
 conf="$HOME/.dwm/configs/wallpaper.conf"
 
 getWallpaperProp() {
@@ -28,11 +26,14 @@ next() {
     esac
 }
 
-if [ $(getWallpaperProp random) -eq 1 ]; then
-    while true; do
-        next
-        sleep $(($(getWallpaperProp duration) * 60))
-    done
-else
-    $cmd
+if [ -f $conf ]; then
+    cmd=$(getWallpaperProp cmd)
+    if [ $(getWallpaperProp random) -eq 1 ]; then
+        while true; do
+            next
+            sleep $(($(getWallpaperProp duration) * 60))
+        done
+    else
+        $cmd
+    fi
 fi
