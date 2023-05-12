@@ -18,10 +18,6 @@ elif [[ ("$theme" == *'type-2'*) || ("$theme" == *'type-4'*) ]]; then
     list_row='1'
 fi
 
-# 定义配置文件位置
-declare -A confPath
-confPath["picom"]="$HOME/.dwm/configs/picom.conf"
-
 # 定义运行命令的Map
 declare -A applicationCmd
 applicationCmd["picom"]="picom --config $HOME/.dwm/configs/picom.conf -b"
@@ -38,7 +34,6 @@ if [[ "$layout" == 'NO' ]]; then
     )
     picomOpt=(
         "蘒 Toggle                       $(icon toggle app picom)"
-        "𧻓 Animation                    $(icon toggle conf picom ^animations bool)"
     )
     notificationOpt=(
         "Pop                            $(dunstctl count history)"
@@ -53,7 +48,6 @@ else
     )
     picomOpt=(
         "蘒$(icon toggle app picom)"
-        "𧻓$(icon toggle conf picom ^animations bool)"
     )
     notificationOpt=(
         "Pop $(dunstctl count history)"
@@ -68,7 +62,6 @@ optId[${firstOpt[2]}]="--opt3"
 optId[${firstOpt[3]}]="--opt4"
 
 optId[${picomOpt[0]}]="--picomOpt1"
-optId[${picomOpt[1]}]="--picomOpt2"
 
 optId[${notificationOpt[0]}]="--notificationOpt1"
 optId[${notificationOpt[1]}]="--notificationOpt2"
@@ -141,9 +134,6 @@ run_cmd() {
     case "$1" in
     ${optId[${picomOpt[0]}]})
         toggleApplication picom
-        ;;
-    ${optId[${picomOpt[1]}]})
-        toggleConf picom ^animations bool
         ;;
     ${optId[${notificationOpt[0]}]})
         for ((i = 0; i < $HistoryPopCount; i++)); do

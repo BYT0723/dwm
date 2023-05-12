@@ -213,11 +213,11 @@ static const char *linkcmd[]         = {"./.dwm/rofi/bin/quicklinks.sh", NULL};
 static const char *modulecmd[]       = {"./.dwm/rofi/bin/module.sh", NULL};
 static const char *toggleTouchpad[]  = {"./.dwm/touchpad-toggle.sh", NULL};
 static const char *flameshot[]       = {"flameshot", "gui", NULL};
-static const char *vol_up[]          = {"./.dwm/volume-up.sh", NULL};
-static const char *vol_down[]        = {"./.dwm/volume-down.sh", NULL};
-static const char *vol_toggle[]      = {"./.dwm/volume-toggle.sh", NULL};
-static const char *brightness_up[]   = {"./.dwm/brightness-up.sh", NULL};
-static const char *brightness_down[] = {"./.dwm/brightness-down.sh", NULL};
+static const char *vol_up[]          = {"./.dwm/volume.sh", "up" , NULL};
+static const char *vol_down[]        = {"./.dwm/volume.sh", "down", NULL};
+static const char *vol_toggle[]      = {"./.dwm/volume.sh", "toggle", NULL};
+static const char *brightness_up[]   = {"./.dwm/brightness.sh", "up", NULL};
+static const char *brightness_down[] = {"./.dwm/brightness.sh", "down", NULL};
 // don't change or surround it by {}
 static const char *layoutmenu_cmd   = "./.dwm/layoutmenu.sh";
 
