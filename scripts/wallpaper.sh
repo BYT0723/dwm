@@ -23,9 +23,6 @@ mp4 | mkv | avi)
 jpg | png)
     Type="img"
     ;;
-html | htm)
-    Type="page"
-    ;;
 *)
     Type="video"
     ;;
@@ -45,12 +42,6 @@ elif [[ $Type == "img" ]]; then
     fi
     feh --bg-scale --no-fehbg "$1"
     sed -i "s|cmd=.\+|cmd=feh --no-fehbg --bg-scale "$1"|g" ~/.dwm/configs/wallpaper.conf
-elif [[ $Type == "page" ]]; then
-    if ! [[ -n $(command -v xwinwrap) ]]; then
-        echo "set website to wallpaper need xwinwrap, install xwinwrap-git package"
-        return
-    fi
-    xwinwrap -ov -g 1920x1080+0+0 -- firefox --safe-model --kiosk --new-window "$1" &
 fi
 
 exit 0

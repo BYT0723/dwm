@@ -55,7 +55,7 @@ print_speed() {
         transIcon=""
     fi
     # colorscheme
-    printf "\x0b^b$black^^c$darkblue^"
+    printf "\x0b^b$grey^^c$white^"
     # output
     printf "${recvIcon} $vel_recv ${transIcon} $vel_trans"
 }
@@ -65,14 +65,14 @@ print_core() {
 }
 
 print_system_tools() {
-    printf "$(print_battery)"
+    printf "$(print_date)$(print_volume)$(print_battery)"
 }
 
 print_other_tools() {
-    printf "$(print_mpd)$(print_speed)$(print_weather)"
+    printf "$(print_speed)$(print_mpd)$(print_weather)"
 }
 
-xsetroot -name "$(print_other_tools)$(print_core)$(print_system_tools)$(print_date)"
+xsetroot -name "$(print_other_tools)$(print_core)$(print_system_tools)"
 
 # Update old values to perform new calculation
 old_received_bytes=$received_bytes

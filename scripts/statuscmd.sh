@@ -106,6 +106,19 @@ weatherHandler() {
     esac
 }
 
+volumeHandler() {
+    buttonType=$1
+    case "$buttonType" in
+    1)
+        ~/.dwm/volume.sh toggle
+        ;;
+    2) ;;
+    3)
+        alacritty -e ncpamixer
+        ;;
+    esac
+}
+
 # route by $cmdType
 case "$cmdType" in
 date)

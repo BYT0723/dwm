@@ -24,7 +24,7 @@ weather_path="/tmp/.weather"
 # Datetime
 print_date() {
     # colorscheme
-    printf "\x01^b$black^^c$darkblue^"
+    printf "\x01^b$green^^c$grey^"
     date '+%m/%d(%a) %R'
 }
 
@@ -39,17 +39,17 @@ print_battery() {
     # duration=$(acpi -b | awk '{print $5}')
 
     if $(acpi -b | head -n 1 | grep --quiet Discharging); then
-        printf "\x02^c$white^^b$black^"
+        printf "\x02^c$white^^b$grey^"
     else
-        printf "\x02^c$yellow^^b$black^"
+        printf "\x02^c$yellow^^b$grey^"
     fi
 
-    # echo "$icon $percent% ($duration)"
-    printf "$icon $percent"
+    # printf "$icon $percent"
+    printf "$icon"
 }
 
 print_volume() {
-    printf "\x03^c$white^^b$black^"
+    printf "\x03^c$white^^b$grey^"
 
     volume="$(amixer get Master | tail -n1 | sed -r 's/.*\[(.*)%\].*/\1/')"
     status="$(amixer get Master | tail -n1 | sed -r 's/.*\[(.*)\].*/\1/')"
@@ -61,7 +61,8 @@ print_volume() {
     else
         icon=""
     fi
-    printf "%s %2d" $icon $volume
+    # printf "%s %2d" $icon $volume
+    printf "%s" $icon
 }
 
 print_brightness() {
@@ -87,7 +88,7 @@ print_disk() {
     # root disk space value
     local disk_root=$(df -h | grep /dev/sda2 | awk '{print $4}')
     # colorscheme
-    printf "\x06^c$white^^b$grey^"
+    printf "\x06^c$white^^b$black^"
     # output
     printf "${icons[disk]}$disk_root"
 }
@@ -106,15 +107,25 @@ print_cpu() {
     # cpu load value
     local cpu_val=$(grep -o "^[^ ]*" /proc/loadavg)
     # local cpu_percent=$(printf "%2.0f" $(iostat -c 1 2 | awk 'NR==9 {print $1}'))
+
     # colorscheme
-    printf "\x08^c$green^^b$grey^"
+    if [ $cpu_val -ge 6.0 ]; then
+        printf "\x08^c$black^^b$red^"
+    else
+        printf "\x08^c$white^^b$black^"
+    fi
     # output
     # printf "${icons[cpu]}$cpu_percent%%"
     printf "${icons[cpu]}$cpu_val"
 
     if [ -f /sys/class/thermal/thermal_zone0/temp ]; then
         temp=$(head -c 2 /sys/class/thermal/thermal_zone0/temp)
-        printf "  ${temp}°C"
+        if [ $temp -ge 70 ]; then
+            printf "\x08^c$black^^b$red^"
+        else
+            printf "\x08^c$white^^b$black^"
+        fi
+        printf " ${temp}°C"
     fi
 }
 
@@ -123,7 +134,7 @@ function update_weather() {
     # more look at: https://github.com/chubin/wttr.in
     # 获取主机使用语言
     # local language="en"
-    local language=$(echo $LANG | awk -F '=' '{print $2}' | awk -F '_' '{print $1}')
+    local language=$(echo $LANG | awk -F '_' '{print $1}')
     # weather=$(curl -H "Accept-Language:"$language -s -m 1 "wttr.in?format=%c\[%C\]+%f\n")
     weather=$(curl -H "Accept-Language:"$language -s -m 1 "wttr.in?format=%c%f\n")
     if [[ $weather != "" ]]; then
@@ -147,7 +158,7 @@ print_weather() {
         update_weather &
     fi
 
-    printf "\x09^c$white^^b$black^"
+    printf "\x09^c$blue^^b$grey^"
     printf "$(cat $weather_path | awk -F '?' '{print $1}')"
 }
 
@@ -166,14 +177,38 @@ print_mpd() {
         songName=${songName:0:$(($maxLen - 2))}'..'
     fi
 
-    # calculate mpd play status
+    # mpd play status
     if [[ $(mpc status) == *"[playing]"* ]]; then
-        icon=""
+        printf "\x0a^c$black^^b$darkblue^"
     else
-        icon=""
+        printf "\x0a^c$green^^b$black^"
     fi
-    # colorscheme
-    printf "\x0a^c$green^^b$black^"
     # output
-    printf "${icons[mpd]} $songName $icon"
+    printf "${icons[mpd]} $songName"
+}
+
+# Only fcitx and fcitx5 are supported
+print_im() {
+    if [ -x fcitx-remote ]; then
+        cmd="fcitx-remote"
+    fi
+    if [ -x fcitx5-remote ]; then
+        cmd="fcitx5-remote"
+    fi
+
+    case "$(fcitx5-remote -n)" in
+    'keyboard-us')
+        im="en"
+        ;;
+    'pinyin')
+        im="cn"
+        ;;
+    'mozc')
+        im="jp"
+        ;;
+    'hangul')
+        im="kr"
+        ;;
+    esac
+    printf "   $im"
 }

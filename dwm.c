@@ -1033,7 +1033,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
       text[i] = '\0';
       if (strlen(text) > 0) {
         w = TEXTW(text);
-        if (radiustask)
+        if (radiusstatus)
           drw_task(drw, x, 0, w, bh, lrpad/2, 0, text, 0);
         else
           drw_text(drw, x, 0, w, bh, lrpad/2, text, 0);
@@ -1083,7 +1083,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
 
   if (!isCode) {
     w = TEXTW(text);
-    if (radiustask)
+    if (radiusstatus)
       drw_task(drw, x, 0, w, bh, lrpad/2, 0, text, 0);
     else
       drw_text(drw, x, 0, w, bh, lrpad/2, text, 0);
@@ -1606,11 +1606,18 @@ void manage(Window w, XWindowAttributes *wa) {
     c->isfloating = c->oldstate = trans != None || c->isfixed;
   if (c->isfloating) {
     if (c->w > 0.6 * c->mon->mw || c->h > 0.6 * c->mon->mh) {
-      c->w = 0.6 * c->mon->mw;
-      c->h = 0.6 * c->mon->mh;
+      if (c->w / c->h >= c->mon->mw / c->mon->mh) {
+        c->h *= (0.6 * c->mon->mw) / c->w;
+        c->w = 0.6 * c->mon->mw;
+      } else {
+        c->w *= (0.6 * c->mon->mh) / c->h;
+        c->h = 0.6 * c->mon->mh;
+      }
     }
-    c->x = (c->mon->mw - c->w) / 2;
-    c->y = (c->mon->mh - c->h) / 2;
+    if (c->x == 0 && c->y == bh) {
+      c->x = (c->mon->mw - c->w) / 2;
+      c->y = (c->mon->mh - c->h) / 2;
+    }
     XRaiseWindow(dpy, c->win);
   }
   attachtop ? attach(c) : attachbottom(c);
