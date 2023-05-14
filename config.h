@@ -48,12 +48,12 @@ static const unsigned int borderalpha = OPAQUE;
 static const char *colors[][3] = {
   /*                    fg            bg            border   */
   // host
-  [SchemeHost]    = { col_red,      col_black,    col_black    },
+  [SchemeHost]    = { col_blue,     col_black,    col_black    },
   // tag
   [SchemeTagNorm] = { col_white,    col_black,    col_black    },
   [SchemeTagSel]  = { col_black,    col_blue,     col_black    },
   // layout
-  [SchemeLayout]  = { col_white,    col_black,    col_ab_black },
+  [SchemeLayout]  = { col_green,    col_black,     col_ab_black },
   // tasks
   [SchemeNorm]    = { col_cyan,     col_black,    col_ab_black },
   [SchemeSel]     = { col_white,    col_black,    col_white    },
