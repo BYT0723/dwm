@@ -205,21 +205,21 @@ static const Layout layouts[] = {
   }
 
 /* commands */
-static const char *termcmd[]         = {"./.dwm/term.sh",                NULL};
-static const char *floatcmd[]        = {"./.dwm/term.sh",                "float",  NULL};
-static const char *roficmd[]         = {"./.dwm/rofi/bin/app.sh",        NULL};
-static const char *powercmd[]        = {"./.dwm/rofi/bin/powermenu.sh",  NULL};
-static const char *mpdcmd[]          = {"./.dwm/rofi/bin/mpd.sh",        NULL};
-static const char *linkcmd[]         = {"./.dwm/rofi/bin/quicklinks.sh", NULL};
-static const char *modulecmd[]       = {"./.dwm/rofi/bin/module.sh",     NULL};
-static const char *toggleTouchpad[]  = {"./.dwm/touchpad-toggle.sh",     NULL};
-static const char *flameshot[]       = {"flameshot",                     "gui",    NULL};
-static const char *vol_up[]          = {"./.dwm/volume.sh",              "up",     NULL};
-static const char *vol_down[]        = {"./.dwm/volume.sh",              "down",   NULL};
-static const char *vol_toggle[]      = {"./.dwm/volume.sh",              "toggle", NULL};
-static const char *brightness_up[]   = {"./.dwm/brightness.sh",          "up",     NULL};
-static const char *brightness_down[] = {"./.dwm/brightness.sh",          "down",   NULL};
-static const char *wallpaper_next[]  = {"./.dwm/wallpaper.sh",           "-n",     NULL};
+static const char *termcmd[]         = {"./.dwm/term.sh",            NULL};
+static const char *floatcmd[]        = {"./.dwm/term.sh",            "float",  NULL};
+static const char *roficmd[]         = {"./.dwm/app.sh",             NULL};
+static const char *powercmd[]        = {"./.dwm/powermenu.sh",       NULL};
+static const char *mpdcmd[]          = {"./.dwm/mpd.sh",             NULL};
+static const char *linkcmd[]         = {"./.dwm/quicklinks.sh",      NULL};
+static const char *modulecmd[]       = {"./.dwm/module.sh",          NULL};
+static const char *toggleTouchpad[]  = {"./.dwm/touchpad-toggle.sh", NULL};
+static const char *flameshot[]       = {"flameshot",                 "gui",    NULL};
+static const char *vol_up[]          = {"./.dwm/volume.sh",          "up",     NULL};
+static const char *vol_down[]        = {"./.dwm/volume.sh",          "down",   NULL};
+static const char *vol_toggle[]      = {"./.dwm/volume.sh",          "toggle", NULL};
+static const char *brightness_up[]   = {"./.dwm/brightness.sh",      "up",     NULL};
+static const char *brightness_down[] = {"./.dwm/brightness.sh",      "down",   NULL};
+static const char *wallpaper_next[]  = {"./.dwm/wallpaper.sh",       "-n",     NULL};
 // don't change or surround it by {}
 static const char *layoutmenu_cmd   = "./.dwm/layoutmenu.sh";
 
