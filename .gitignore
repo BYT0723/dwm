@@ -2,5 +2,3 @@ dwm
 *.orig
 *.rej
 *.o
-scripts/configs/wallpaper.conf
-scripts/configs/wallpaperKeyMap.conf
