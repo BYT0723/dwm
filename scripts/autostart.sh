@@ -4,7 +4,7 @@
 /bin/bash ~/.dwm/dwm-status.sh &
 
 # wallpaper
-/bin/bash ~/.dwm/background.sh &
+/bin/bash ~/.dwm/wallpaper.sh -r &
 
 # picom (window composer)
 if [ -z "$(pgrep picom)" ]; then

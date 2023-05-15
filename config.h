@@ -205,20 +205,21 @@ static const Layout layouts[] = {
   }
 
 /* commands */
-static const char *termcmd[]         = {"./.dwm/term.sh", NULL};
-static const char *floatcmd[]        = {"./.dwm/term.sh", "float", NULL};
-static const char *roficmd[]         = {"./.dwm/rofi/bin/app.sh", NULL};
-static const char *powercmd[]        = {"./.dwm/rofi/bin/powermenu.sh", NULL};
-static const char *mpdcmd[]          = {"./.dwm/rofi/bin/mpd.sh", NULL};
+static const char *termcmd[]         = {"./.dwm/term.sh",                NULL};
+static const char *floatcmd[]        = {"./.dwm/term.sh",                "float",  NULL};
+static const char *roficmd[]         = {"./.dwm/rofi/bin/app.sh",        NULL};
+static const char *powercmd[]        = {"./.dwm/rofi/bin/powermenu.sh",  NULL};
+static const char *mpdcmd[]          = {"./.dwm/rofi/bin/mpd.sh",        NULL};
 static const char *linkcmd[]         = {"./.dwm/rofi/bin/quicklinks.sh", NULL};
-static const char *modulecmd[]       = {"./.dwm/rofi/bin/module.sh", NULL};
-static const char *toggleTouchpad[]  = {"./.dwm/touchpad-toggle.sh", NULL};
-static const char *flameshot[]       = {"flameshot", "gui", NULL};
-static const char *vol_up[]          = {"./.dwm/volume.sh", "up" , NULL};
-static const char *vol_down[]        = {"./.dwm/volume.sh", "down", NULL};
-static const char *vol_toggle[]      = {"./.dwm/volume.sh", "toggle", NULL};
-static const char *brightness_up[]   = {"./.dwm/brightness.sh", "up", NULL};
-static const char *brightness_down[] = {"./.dwm/brightness.sh", "down", NULL};
+static const char *modulecmd[]       = {"./.dwm/rofi/bin/module.sh",     NULL};
+static const char *toggleTouchpad[]  = {"./.dwm/touchpad-toggle.sh",     NULL};
+static const char *flameshot[]       = {"flameshot",                     "gui",    NULL};
+static const char *vol_up[]          = {"./.dwm/volume.sh",              "up",     NULL};
+static const char *vol_down[]        = {"./.dwm/volume.sh",              "down",   NULL};
+static const char *vol_toggle[]      = {"./.dwm/volume.sh",              "toggle", NULL};
+static const char *brightness_up[]   = {"./.dwm/brightness.sh",          "up",     NULL};
+static const char *brightness_down[] = {"./.dwm/brightness.sh",          "down",   NULL};
+static const char *wallpaper_next[]  = {"./.dwm/wallpaper.sh",           "-n",     NULL};
 // don't change or surround it by {}
 static const char *layoutmenu_cmd   = "./.dwm/layoutmenu.sh";
 
@@ -253,6 +254,7 @@ static Key keys[] = {
   {0,                             XF86XK_AudioMute,         spawn,          {.v = vol_toggle}},
   {0,                             XF86XK_MonBrightnessDown, spawn,          {.v = brightness_down}},
   {0,                             XF86XK_MonBrightnessUp,   spawn,          {.v = brightness_up}},
+  {MODKEY | ShiftMask,            XK_n,                     spawn,          {.v = wallpaper_next}},
   // rofi
   {MODKEY,                        XK_d,                     spawn,          {.v = roficmd}},
   {MODKEY,                        XK_m,                     spawn,          {.v = modulecmd}},
