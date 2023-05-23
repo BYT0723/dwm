@@ -22,6 +22,7 @@ static const unsigned int systraypinning          = 0;  /* 0: sloppy systray fol
 static const unsigned int systrayspacing          = 0;  /* systray spacing */
 static const          int systraypinningfailfirst = 1;  /* 1: if pinning fails, display systray on the first monitor, False: display systray on the last monitor*/
 static const          int showsystray             = 1;  /* 0 means no systray */
+static const          int systraypad              = 3;
 
 static const unsigned int attachtop = 0;
 
@@ -87,13 +88,14 @@ static const char *taskWidth = "                    ";
 static const TaskIcon icons[] = {
   /* class                title     icon */
   // default
-  {NULL,                  NULL,      ""},
+  {NULL,                  NULL,      " "},
   // terminal
   {"st-256color",         NULL,      "  "},
   {"Alacritty",           NULL,      "  "},
   // browser
   {"firefox",             NULL,      "  "},
   {"Chromium",            NULL,      "  "},
+  {"google-chrome",       NULL,      "  "},
   // website
   {NULL,                  "YouTube", "  "},
   {NULL,                  "Twitter", "  "},
@@ -112,6 +114,7 @@ static const TaskIcon icons[] = {
   {"Lxappearance",        NULL,      "  "},
   {"thunderbird",         NULL,      "  "},
   {"Steam",               NULL,      "  "},
+  {"Godot_Engine",        NULL,      "  "},
 };
 
 /* tagging */
@@ -132,7 +135,7 @@ static const Rule rules[] = {
   {"QQ",                  NULL,       NULL,     1 << 2,       0,            -1},
 
   {"DBeaver",             NULL,       NULL,     1 << 3,       0,            -1},
-  {"RESP.app",            NULL,       NULL,     1 << 3,       0,            -1},
+  {"resp",                NULL,       NULL,     1 << 3,       0,            -1},
 
   {"xunlei",              NULL,       NULL,     1 << 5,       1,            -1},
   {"qBittorrent",         NULL,       NULL,     1 << 5,       0,            -1},
@@ -222,8 +225,6 @@ static const char *brightness_down[] = {"./.dwm/brightness.sh",      "down",   N
 static const char *wallpaper_next[]  = {"./.dwm/wallpaper.sh",       "-n",     NULL};
 // don't change or surround it by {}
 static const char *layoutmenu_cmd   = "./.dwm/layoutmenu.sh";
-
-// 截图
 
 /* commands spawned when clicking statusbar, the mouse button pressed is
  * exported as BUTTON */

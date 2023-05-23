@@ -1605,16 +1605,7 @@ void manage(Window w, XWindowAttributes *wa) {
   if (!c->isfloating)
     c->isfloating = c->oldstate = trans != None || c->isfixed;
   if (c->isfloating) {
-    if (c->w > 0.6 * c->mon->mw || c->h > 0.6 * c->mon->mh) {
-      if (c->w / c->h >= c->mon->mw / c->mon->mh) {
-        c->h *= (0.6 * c->mon->mw) / c->w;
-        c->w = 0.6 * c->mon->mw;
-      } else {
-        c->w *= (0.6 * c->mon->mh) / c->h;
-        c->h = 0.6 * c->mon->mh;
-      }
-    }
-    if (c->x == 0 && c->y == bh) {
+    if (c->x == 0 && (c->y == bh || c->y == 0)) {
       c->x = (c->mon->mw - c->w) / 2;
       c->y = (c->mon->mh - c->h) / 2;
     }
@@ -2814,7 +2805,7 @@ void updatesystray(int updatebar) {
     XMapRaised(dpy, i->win);
     w += systrayspacing;
     i->x = w;
-    XMoveResizeWindow(dpy, i->win, i->x, 0, i->w, i->h);
+    XMoveResizeWindow(dpy, i->win, i->x, i->y, i->w, i->h);
     w += i->w;
     if (i->mon != m)
       i->mon = m;
@@ -2840,25 +2831,29 @@ void updatesystray(int updatebar) {
 }
 
 void updatesystrayicongeom(Client *i, int w, int h) {
+  int newh = bh - systraypad * 2;
+  if (strstr(i->class,"obs")) 
+    newh -= systraypad * 4;
   if (i) {
-    i->h = bh;
+    i->h = newh;
     if (w == h)
-      i->w = bh;
-    else if (h == bh)
+      i->w = newh;
+    else if (h == newh)
       i->w = w;
     else
-      i->w = (int)((float)bh * ((float)w / (float)h));
+      i->w = (int)((float)newh * ((float)w / (float)h));
     applysizehints(i, &(i->x), &(i->y), &(i->w), &(i->h), False);
     /* force icons into the systray dimensions if they don't want to */
-    if (i->h > bh) {
+    if (i->h > newh) {
       if (i->w == i->h)
-        i->w = bh;
+        i->w = newh;
       else
-        i->w = (int)((float)bh * ((float)i->w / (float)i->h));
-      i->h = bh;
+        i->w = (int)((float)newh * ((float)i->w / (float)i->h));
+      i->h = newh;
     }
-    if (i->w > 2 * bh)
-      i->w = bh;
+    if (i->w > 2 * newh)
+      i->w = newh;
+    i->y = systraypad;
   }
 }
 
