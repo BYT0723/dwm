@@ -2779,6 +2779,7 @@ void updatesystray(int updatebar) {
     if (!(systray = (Systray *)calloc(1, sizeof(Systray))))
       die("fatal: could not malloc() %u bytes\n", sizeof(Systray));
     systray->win = XCreateSimpleWindow(dpy, root, x - sp, m->by + vp, w, bh, 0, 0, scheme[SchemeSystray][ColBg].pixel);
+    wa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
     wa.event_mask        = ButtonPressMask | ExposureMask;
     wa.override_redirect = True;
     wa.border_pixel = 0;
@@ -2832,8 +2833,6 @@ void updatesystray(int updatebar) {
 
 void updatesystrayicongeom(Client *i, int w, int h) {
   int newh = bh - systraypad * 2;
-  if (strstr(i->class,"obs")) 
-    newh -= systraypad * 4;
   if (i) {
     i->h = newh;
     if (w == h)
