@@ -1033,7 +1033,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
       text[i] = '\0';
       if (strlen(text) > 0) {
         w = TEXTW(text);
-        if (radiusstatus)
+        if (statusradius)
           drw_task(drw, x, 0, w, bh, lrpad/2, 0, text, 0);
         else
           drw_text(drw, x, 0, w, bh, lrpad/2, text, 0);
@@ -1083,7 +1083,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
 
   if (!isCode) {
     w = TEXTW(text);
-    if (radiusstatus)
+    if (statusradius)
       drw_task(drw, x, 0, w, bh, lrpad/2, 0, text, 0);
     else
       drw_text(drw, x, 0, w, bh, lrpad/2, text, 0);
@@ -1109,6 +1109,11 @@ void drawbar(Monitor *m) {
     stw = getsystraywidth();
   }
 
+  x = 0;
+  // clean
+  drw_setscheme(drw, scheme[SchemeEmpty]);
+  drw_rect(drw, x, 0, m->ww, bh, 1, 1);
+
   /* draw status first so it can be overdrawn by tags later */
   if (m == selmon) { /* status is only drawn on selected monitor */
     tw = statusw = m->ww - drawstatusbar(m, bh, stext);
@@ -1122,13 +1127,11 @@ void drawbar(Monitor *m) {
     if (c->isurgent)
       urg |= c->tags;
   }
-  x = 0;
 
   // draw host
   w = TEXTW(host);
   drw_setscheme(drw, scheme[SchemeHost]);
-  drw_text(drw, x, 0, w, bh, lrpad / 2, host, 0);
-  x += w;
+  x = drw_text(drw, x, 0, w, bh, lrpad / 2, host, 0);
 
   for (i = 0; i < LENGTH(tags); i++) {
     /* Do not draw vacant tags */
@@ -1146,14 +1149,16 @@ void drawbar(Monitor *m) {
   x = drw_text(drw, x, 0, w, bh, lrpad / 2, m->ltsymbol, 0);
 
   // draw tab
-  drw_setscheme(drw, scheme[SchemeEmpty]);
-  drw_rect(drw, x, 0, m->ww - tw - stw - x, bh, 1, 1);
   if ((w = m->ww - tw - stw - x) > bh) {
     if (n > 0) {
       int remainder = w % n;
       int tabw = TEXTW(taskWidth);
       if (tabw * n >= w)
         tabw = (1.0 / (double)n) * w + 1;
+
+      // 判断task是否居中
+      if (taskcenter) 
+        x += ( w - (tabw * n) ) / 2;
 
       for (c = m->clients; c; c = c->next) {
         if (!ISVISIBLE(c))
@@ -1176,7 +1181,7 @@ void drawbar(Monitor *m) {
           remainder--;
         }
 
-        if (radiustask)
+        if (taskradius)
           drw_task(drw, x, 0, tabw, bh, lrpad/2, 5, title, 0);
         else
           drw_text(drw, x, 0, tabw, bh, lrpad/2, title, 0);

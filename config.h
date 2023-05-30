@@ -9,8 +9,9 @@ static const          int barfontpad   = 6;
 static const          int vertpad      = 6;  /* vertical padding of bar */
 static const          int sidepad      = 6;  /* horizontal padding of bar */
 static const          char host[]      = " ";
-static const          int radiustask   = 1;
-static const          int radiusstatus = 0;
+static const          int taskradius   = 1;
+static const          int taskcenter   = 1;
+static const          int statusradius = 0;
 
 static const unsigned int gappih    = 10;  /* horiz inner gap between windows */
 static const unsigned int gappiv    = 10;  /* vert inner gap between windows */
