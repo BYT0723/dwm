@@ -1034,7 +1034,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
       if (strlen(text) > 0) {
         w = TEXTW(text);
         if (statusradius)
-          drw_task(drw, x, 0, w, bh, lrpad/2, 0, text, 0);
+          drw_tab(drw, x, 0, w, bh, lrpad/2, 0, text, 0);
         else
           drw_text(drw, x, 0, w, bh, lrpad/2, text, 0);
         x += w;
@@ -1084,7 +1084,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
   if (!isCode) {
     w = TEXTW(text);
     if (statusradius)
-      drw_task(drw, x, 0, w, bh, lrpad/2, 0, text, 0);
+      drw_tab(drw, x, 0, w, bh, lrpad/2, 0, text, 0);
     else
       drw_text(drw, x, 0, w, bh, lrpad/2, text, 0);
   }
@@ -1156,8 +1156,8 @@ void drawbar(Monitor *m) {
       if (tabw * n >= w)
         tabw = (1.0 / (double)n) * w + 1;
 
-      // 判断task是否居中
-      if (taskcenter) 
+      // 判断tab是否居中
+      if (tabcenter) 
         x += ( w - (tabw * n) ) / 2;
 
       for (c = m->clients; c; c = c->next) {
@@ -1181,8 +1181,8 @@ void drawbar(Monitor *m) {
           remainder--;
         }
 
-        if (taskradius)
-          drw_task(drw, x, 0, tabw, bh, lrpad/2, 5, title, 0);
+        if (tabradius)
+          drw_tab(drw, x, 0, tabw, bh, lrpad/2, 5, title, 0);
         else
           drw_text(drw, x, 0, tabw, bh, lrpad/2, title, 0);
         // 为浮动窗口添加浮动标志
