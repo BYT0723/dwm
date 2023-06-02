@@ -566,7 +566,7 @@ void attachstack(Client *c) {
 }
 
 void buttonpress(XEvent *e) {
-  unsigned int i, x, stw, click;
+  unsigned int i, x, stw, tstart, tend, click;
   Arg arg = {0};
   Client *c;
   Monitor *m;
@@ -581,6 +581,12 @@ void buttonpress(XEvent *e) {
   }
 
   stw = getsystraywidth();
+
+  tstart = selmon->ww - stw - statusw - m->btw;
+  if (tabcenter) 
+    tstart += (m->btw - m->tw * m->bt) / 2;
+  tend = tstart + m->tw * m->bt;
+
   if (ev->window == selmon->barwin) {
     i = x = 0;
     x += TEXTW(host);
@@ -640,8 +646,9 @@ void buttonpress(XEvent *e) {
           statuscmdn = ch;
         }
       }
-    } else if (ev->x > selmon->ww - m->btw - statusw - stw && ev->x < selmon->ww - (m->btw - m->bt * m->tw) - statusw - stw) { // tasks click event
-      x += blw;
+    } else if (ev->x > tstart && ev->x < tend ) { // tasks click event
+      // x += blw;
+      x = tstart;
       c = m->clients;
 
       if (c) {
