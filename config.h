@@ -103,6 +103,7 @@ static const TaskIcon icons[] = {
   // application
   {"neovide",             NULL,      "  "},
   {"TelegramDesktop",     NULL,      "  "},
+  {"discord",             NULL,      "󰙯  "},
   {"electronic-wechat",   NULL,      "  "},
   {"wechat.exe",          NULL,      "  "},
   {"qq",                  NULL,      "  "},
