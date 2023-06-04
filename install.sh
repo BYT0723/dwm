@@ -25,13 +25,17 @@ subtitle() {
 }
 
 title "安装字体"
-pacman -S ttf-cascadia-code-nerd ttf-jetbrains-mono-nerd ttf-iosevka-nerd wqy-zenhei wqy-microhei
-# # 其他中文字体可添加archlinuxcn源
-# echo "[archlinuxcn]
-# Server = https://repo.archlinuxcn.org/$arch" >>/etc/pacman.conf
-# pacman -S archlinuxcn-keyring archlinuxcn-mirrorlist-git
-# # 建议手动修改/etc/pacman.d/archlinuxcn-mirrorlist, 选择距离更近速度更快的源
-# pacman -S ttf-lxgw-wenkai ttf-lxgw-wenkai-mono ttf-yozai-font ttf-myuppy-gb
+
+#
+# 不建议使用extra源中的nerdfont字体，没有complelte导致部分symbols无法显示
+# 若连接archlinuxcn源困难，可选择extra中的字体包
+# pacman -S ttf-cascadia-code-nerd ttf-jetbrains-mono-nerd ttf-iosevka-nerd wqy-zenhei wqy-microhei
+
+echo "[archlinuxcn]
+Server = https://repo.archlinuxcn.org/$arch" >>/etc/pacman.conf
+pacman -S archlinuxcn-keyring archlinuxcn-mirrorlist-git
+# 建议手动修改/etc/pacman.d/archlinuxcn-mirrorlist, 选择距离更近速度更快的源
+pacman -S nerd-fonts-complete ttf-lxgw-wenkai ttf-lxgw-wenkai-mono ttf-yozai-font ttf-myuppy-gb
 
 title "初始化zsh环境"
 

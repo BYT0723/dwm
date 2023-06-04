@@ -25,7 +25,7 @@ static const          int systraypinningfailfirst = 1;  /* 1: if pinning fails, 
 static const          int showsystray             = 1;  /* 0 means no systray */
 static const          int systraypad              = 3;
 
-static const unsigned int attachtop = 0;
+static const unsigned int attachtop = 0; /* new window is attached to the top of the stack */
 
 static const Bool viewontag = True; /* Switch view on tag switch */
 static const char *fonts[] = {
