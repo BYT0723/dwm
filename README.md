@@ -2,7 +2,7 @@
 
 ## Preview
 
-![preview](./images/dwm-preview.png)
+![preview](https://i.imgur.com/WZxCz6j.jpg)
 
 ## Install
 
@@ -20,9 +20,7 @@ chmod +x install.sh
 
 - picom
 - xautolock
-- mate-power-manager
 - nm-applet
-- volumeicon
 - fcitx5
 - udiskie
 - trojan
