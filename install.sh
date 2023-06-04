@@ -1,60 +1,112 @@
-DIR=$(dirname $0)
+#!/bin/bash
 
-# 编译dwm
-make clean install
+#
+# 本脚本未对xorg进行配置
+# 你需要自行安装你的xorg和驱动程序，并配置完善
+# 否则可能会出现黑屏，键鼠失效等情况
+#
+#
+# 脚本中大量使用了Github的资源，建议使用代理运行
+# 无代理可使用gitee.com替换基本中的github.com
+# 但zimfw的安装可能会失败
 
-# 获取shell脚本
-git clone https://github.com/BYT0723/scripts.git ~/.dwm
+CACHE_DIR=$HOME"/.cache/walter-dwm"
 
-# 安装st
-if ! [[ -n $(command -v st) ]]; then
-    read -p "install st ? (y/n): " flag
-    if [[ $flag == "y" ]]; then
-        git clone https://github.com/BYT0723/st.git
-        cd st
-        make clean install
-        cd ..
-        rm -rf st
-    else
-        echo "Warning: To use a customized terminal, you need to modify the term.sh before start dwm"
-    fi
+if ![ -d "$CACHE_DIR" ]; then
+    mkdir $CACHE_DIR
 fi
 
-# 安装Alacritty
-if ! [[ -n $(command -v alacritty) ]]; then
-    read -p "install alacritty ? (y/n): " flag
-    if [[ $flag == "y" ]]; then
-        sudo pacman -S alacritty
-    else
-        echo "Warning: To use a customized terminal, you need to modify the term.sh before start dwm"
-    fi
+title() {
+    echo -e "\033[32m----------"$*"----------\033[0m"
+}
+
+subtitle() {
+    echo -e "\033[32m-----"$*"\033[0m"
+}
+
+title "安装字体"
+pacman -S ttf-cascadia-code-nerd ttf-jetbrains-mono-nerd ttf-iosevka-nerd wqy-zenhei wqy-microhei
+# # 其他中文字体可添加archlinuxcn源
+# echo "[archlinuxcn]
+# Server = https://repo.archlinuxcn.org/$arch" >>/etc/pacman.conf
+# pacman -S archlinuxcn-keyring archlinuxcn-mirrorlist-git
+# # 建议手动修改/etc/pacman.d/archlinuxcn-mirrorlist, 选择距离更近速度更快的源
+# pacman -S ttf-lxgw-wenkai ttf-lxgw-wenkai-mono ttf-yozai-font ttf-myuppy-gb
+
+title "初始化zsh环境"
+
+title "安装zsh和starship"
+pacman -S zsh starship
+
+title "zimfw"
+curl -fsSL https://raw.githubusercontent.com/zimfw/install/master/install.zsh | zsh
+
+title "克隆dotfile仓库"
+git clone https://github.com/BYT0723/dotfile.git $CACHE_DIR"/dotfile"
+
+title "复制配置文件"
+cp $CACHE_DIR"/dotfile/*" ~/
+title "更新zim以及插件"
+zimfw update
+
+title "安装dwm"
+git clone https://github.com/BYT0723/dwm.git $CACHE_DIR"/dwm"
+cd $CACHE_DIR"/dwm" && make clean install
+title "将 dwm 写入用户的xinitrc"
+if ! [ -f ~/.xinitrc ]; then
+    touch ~/.xinitrc
 fi
+echo "exec dwm >> .dwm.log" >>~/.xinitrc
 
-# clone configuration
-git clone https://github.com/BYT0723/dotfile.git
-cd dotfile
-make install
-cd ..
+title "安装st"
+git clone https://github.com/BYT0723/dwm.git $CACHE_DIR"/st"
+cd $CACHE_DIR"/st" && make clean install
 
-# 安装rofi
-if ! [[ -n $(command -v rofi) ]]; then
-    pacman -S rofi
-fi
+title "安装shell脚本文件"
+git clone https://github.com/BYT0723/scripts ~/.dwm
 
-# 安装picom-animation-git
-# 如果非animations版本，将无法启用动画效果
-pacman -S picom-git
+title "安装脚本所需组件"
+pacman -S rofi picom-git alsa-utils light acpi
 
-pacman -S network-manager-applet udiskie fcitx5-im privoxy trojan
+subtitle "蓝牙"
+pacman -S bluez bluez-utils
 
-# theme
-# git clone https://github.com/vinceliuice/WhiteSur-gtk-theme
+subtitle "网络"
+pacman -S networkmanager network-manager-applet
 
-# proxy
-cp ./scripts/configs/trojan.json /etc/trojan/config.json
-cp ./scripts/configs/pac.action /etc/privoxy/pac.action
-echo "actionsfile pac.action" >>/etc/privoxy/config
-# systemctl start trojan
-# systemctl enable trojan
-# systemctl start privoxy
-# systemctl enable privoxy
+subtitle "通知"
+pacman -S libnotify dunst
+
+subtitle "鉴权"
+pacman -S lxqt-policykit
+
+subtitle "输入法"
+pacman -S fcitx5-im fcitx5-chinese-addons
+# 配置输入法环境变量
+echo "GTK_IM_MODULE=fcitx
+QT_IM_MODULE=fcitx
+XMODIFIERS=@im=fcitx
+SDL_IM_MODULE=fcitx
+GLFW_IM_MODULE=ibus" >>/etc/environment
+
+subtitle "壁纸"
+pacman -S feh xwinwrap-git mpv archlinux-wallpaper
+
+#---------------------------------------------------------------------------#
+
+title "其他组件"
+
+subtitle "浏览器"
+pacman -S firefox surf
+
+subtitle "代理"
+pacman -S trojan
+cp ~/.dwm/configs/trojan.json /etc/trojan/config.json
+systemctl start trojan
+systemctl enable trojan
+
+subtitle "工具"
+pacman -S ranger xclip
+
+subtitle "音乐"
+pacman -S mpd mpc ncmpcpp
