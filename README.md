@@ -4,6 +4,8 @@
 
 ![preview](https://i.imgur.com/WZxCz6j.jpg)
 
+> Tips: 配合 Dwm 运行的大量 shell 被存储在[scripts](https://github.com/BYT0723/scripts)中，建议完整阅读文档并安装依赖，在安装本库 Dwm 配合使用
+
 ## Install
 
 ```shell
@@ -23,7 +25,6 @@ chmod +x install.sh
 - nm-applet
 - fcitx5
 - udiskie
-- trojan
 
 ## Patches
 
