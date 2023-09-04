@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=XSession
+Exec=/usr/local/bin/dwm
+TryExec=/usr/local/bin/dwm
+DesktopNames=DWM
+Name=DWM
+Comment=Dynamic Window Manager
