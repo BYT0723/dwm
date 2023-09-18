@@ -2843,23 +2843,13 @@ void updatesystrayicongeom(Client *i, int w, int h) {
   int newh = bh - systraypad * 2;
   if (i) {
     i->h = newh;
-    if (w == h)
-      i->w = newh;
-    else if (h == newh)
-      i->w = w;
-    else
-      i->w = (int)((float)newh * ((float)w / (float)h));
+    i->w = (int)((float)w * (float)i->h / (float)h);
     applysizehints(i, &(i->x), &(i->y), &(i->w), &(i->h), False);
     /* force icons into the systray dimensions if they don't want to */
     if (i->h > newh) {
-      if (i->w == i->h)
-        i->w = newh;
-      else
-        i->w = (int)((float)newh * ((float)i->w / (float)i->h));
+      i->w = (int)((float)i->w * (float)newh / (float)i->h);
       i->h = newh;
     }
-    if (i->w > 2 * newh)
-      i->w = newh;
     i->y = systraypad;
   }
 }
