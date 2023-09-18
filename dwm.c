@@ -1856,10 +1856,10 @@ void resize(Client *c, int x, int y, int w, int h, int interact) {
 }
 
 void resizebarwin(Monitor *m) {
-  unsigned int w = m->ww;
+  unsigned int w = m->ww - 2 * sp;
   if (showsystray && m == systraytomon(m))
     w -= getsystraywidth();
-  XMoveResizeWindow(dpy, m->barwin, m->wx + sp, m->by + vp, m->ww - 2 * sp, bh);
+  XMoveResizeWindow(dpy, m->barwin, m->wx + sp, m->by + vp, w, bh);
 }
 
 void resizeclient(Client *c, int x, int y, int w, int h) {
@@ -2571,7 +2571,6 @@ void unmapnotify(XEvent *e) {
 }
 
 void updatebars(void) {
-  unsigned int w;
   Monitor *m;
   XSetWindowAttributes wa = {.override_redirect = True,
                              .background_pixel = 0,
@@ -2581,10 +2580,7 @@ void updatebars(void) {
   XClassHint ch = {"dwm", "dwm"};
   for (m = mons; m; m = m->next) {
     if (!m->barwin) {
-      w = m->ww;
-      if (showsystray && m == systraytomon(m))
-        w -= getsystraywidth();
-      m->barwin = XCreateWindow(dpy, root, m->wx + sp, m->by + vp, m->ww - 2 * sp, bh,
+      m->barwin = XCreateWindow(dpy, root, m->wx + sp, m->by + vp, m->ww, bh,
                         0, depth, InputOutput, visual,
                         CWOverrideRedirect | CWBackPixel | CWBorderPixel |
                             CWColormap | CWEventMask,
