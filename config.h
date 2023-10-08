@@ -23,14 +23,15 @@ static const unsigned int systraypinning          = 0;  /* 0: sloppy systray fol
 static const unsigned int systrayspacing          = 4;  /* systray spacing */
 static const          int systraypinningfailfirst = 1;  /* 1: if pinning fails, display systray on the first monitor, False: display systray on the last monitor*/
 static const          int showsystray             = 1;  /* 0 means no systray */
-static const          int systraypad              = 5;
+static const          int systraypad              = 3;
 
 static const unsigned int attachtop = 0; /* new window is attached to the top of the stack */
 
 static const Bool viewontag = True; /* Switch view on tag switch */
 static const char *fonts[] = {
   "CaskaydiaCove Nerd Font:style=Regular:size=12",
-  "LXGW WenKai Mono:style=Bold:size=13"
+  "LXGW WenKai Mono:style=Bold:size=13",
+  "NotoColorEmoji:pixelsize=10:antialias=true:autohint=true"
 };
 
 static const char col_black[]   = "#073642";  /*  0: black    */
@@ -115,7 +116,7 @@ static const TaskIcon icons[] = {
   {"Pcmanfm",             NULL,      "  "},
   {"Lxappearance",        NULL,      "  "},
   {"thunderbird",         NULL,      "  "},
-  {"Steam",               NULL,      "  "},
+  {"steam",               NULL,      "  "},
   {"Godot_Engine",        NULL,      "  "},
 };
 
@@ -148,7 +149,6 @@ static const Rule rules[] = {
   {"netease-cloud-music", NULL,       NULL,     1 << 7,       1,            -1},
   {"OSD Lyrics",          NULL,       NULL,     1 << 7,       1,            -1},
 
-  {"Steam",               NULL,       NULL,     1 << 8,       0,            -1},
   {"steam",               NULL,       NULL,     1 << 8,       0,            -1},
   {"heroic",              NULL,       NULL,     1 << 8,       0,            -1},
 
