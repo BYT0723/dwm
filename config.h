@@ -8,9 +8,9 @@ static const          int topbar       = 1;   /* 0 means bottom bar */
 static const          int barfontpad   = 6;
 static const          int vertpad      = 6;  /* vertical padding of bar */
 static const          int sidepad      = 6;  /* horizontal padding of bar */
-static const          char host[]      = " ";
-static const          int tabradius    = 1;
-static const          int tabcenter    = 1;
+static const          char host[]      = "";
+static const          int tabradius   = 1;
+static const          int tabcenter   = 1;
 static const          int statusradius = 0;
 
 static const unsigned int gappih    = 10;  /* horiz inner gap between windows */
@@ -29,8 +29,9 @@ static const unsigned int attachtop = 0; /* new window is attached to the top of
 
 static const Bool viewontag = True; /* Switch view on tag switch */
 static const char *fonts[] = {
-  "CaskaydiaCove Nerd Font:style=Regular:size=12",
-  "LXGW WenKai Mono:style=Bold:size=13",
+    "Symbols Nerd Font Mono:style=2048-em:size=13",
+    "CaskaydiaCove Nerd Font:style=Regular:size=12",
+    "LXGW WenKai Mono:style=Bold:size=13",
 };
 
 static const char col_black[]   = "#073642";  /*  0: black    */
@@ -89,39 +90,39 @@ static const char *taskWidth = "                    ";
 static const TaskIcon icons[] = {
     /* class                title     icon */
     // default
-    {NULL,                  NULL,      " "},
+    {NULL,                  NULL,      " "},
     // terminal
-    {"st-256color",         NULL,      "  "},
-    {"Alacritty",           NULL,      "  "},
+    {"st-256color",         NULL,      " "},
+    {"Alacritty",           NULL,      " "},
     // browser
-    {"firefox",             NULL,      "  "},
-    {"Chromium",            NULL,      "  "},
-    {"google-chrome",       NULL,      "  "},
+    {"firefox",             NULL,      " "},
+    {"Chromium",            NULL,      " "},
+    {"google-chrome",       NULL,      " "},
     // website
-    {NULL,                  "YouTube", "  "},
-    {NULL,                  "Twitter", "  "},
+    {NULL,                  "YouTube", " "},
+    {NULL,                  "Twitter", " "},
     // application
-    {"neovide",             NULL,      "  "},
-    {"TelegramDesktop",     NULL,      "  "},
-    {"discord",             NULL,      "󰙯  "},
-    {"electronic-wechat",   NULL,      "  "},
-    {"wechat.exe",          NULL,      "  "},
-    {"qq",                  NULL,      "  "},
-    {"qqmusic",             NULL,      "  "},
-    {"netease-cloud-music", NULL,      "  "},
-    {"vlc",                 NULL,      "嗢  "},
-    {"mpv",                 NULL,      "  "},
-    {"DBeaver",             NULL,      "  "},
-    {"Pcmanfm",             NULL,      "  "},
-    {"Lxappearance",        NULL,      "  "},
-    {"thunderbird",         NULL,      "  "},
-    {"steam",               NULL,      "  "},
-    {"Godot_Engine",        NULL,      "  "},
+    {"neovide",             NULL,      " "},
+    {"TelegramDesktop",     NULL,      " "},
+    {"discord",             NULL,      "󰙯 "},
+    {"electronic-wechat",   NULL,      " "},
+    {"wechat.exe",          NULL,      " "},
+    {"qq",                  NULL,      " "},
+    {"qqmusic",             NULL,      " "},
+    {"netease-cloud-music", NULL,      " "},
+    {"vlc",                 NULL,      "󰕼 "},
+    {"mpv",                 NULL,      " "},
+    {"DBeaver",             NULL,      " "},
+    {"Pcmanfm",             NULL,      " "},
+    {"Lxappearance",        NULL,      " "},
+    {"thunderbird",         NULL,      " "},
+    {"steam",               NULL,      " "},
+    {"Godot_Engine",        NULL,      " "},
 };
 
 /* tagging */
 // static const char *tags[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
-static const char *tags[] = { " ", " ", " ", " ", " ", " ", " ", " ", " "};
+static const char *tags[] = { "", "", "", "", "", "", "", "", ""};
 
 static const Rule rules[] = {
     /* xprop(1):
@@ -329,28 +330,30 @@ static Key keys[] = {
 /* button definitions */
 /* click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
 static Button buttons[] = {
-    /* click          event mask  button    function        argument */
+    /* click          event   mask     button          function argument */
     //hostname
-    { ClkHost,              0,     Button1,  spawn,          {.v = roficmd}},
-    { ClkHost,              0,     Button3,  spawn,          {.v = powercmd}},
+	{  ClkHost,       0,      Button1, spawn,          {.v = roficmd}},
+ 	{  ClkHost,       0,      Button3, spawn,          {.v = powercmd}},
     // tag
-    { ClkTagBar,            0,     Button1,  view,           {0}},
-    { ClkTagBar,            0,     Button3,  toggleview,     {0}},
-    { ClkTagBar,       MODKEY,     Button1,  tag,            {0}},
-    { ClkTagBar,       MODKEY,     Button3,  toggletag,      {0}},
+    {  ClkTagBar,     0,      Button1, view,           {0}},
+    {  ClkTagBar,     0,      Button3, toggleview,     {0}},
+    {  ClkTagBar,     MODKEY, Button1, tag,            {0}},
+    {  ClkTagBar,     MODKEY, Button3, toggletag,      {0}},
     // layout
-    { ClkLtSymbol,          0,     Button1,  setlayout,      {0}},
-    { ClkLtSymbol,          0,     Button3,  layoutmenu,     {0}},
+ 	{  ClkLtSymbol,   0,      Button1, setlayout,      {0}},
+	{  ClkLtSymbol,   0,      Button3, layoutmenu,     {0}},
     // task
-    { ClkWinTitle,          0,     Button1,  togglewin,      {0}},
-    { ClkWinTitle,          0,     Button2,  killclient,     {0}},
-    { ClkWinTitle,          0,     Button3,  zoom,           {0}},
+    {  ClkWinTitle,   0,      Button1, togglewin,      {0}},
+    {  ClkWinTitle,   0,      Button2, killclient,     {0}},
+    {  ClkWinTitle,   0,      Button3, zoom,           {0}},
     // status
-    { ClkStatusText,        0,     Button1,  spawn,          {.v = statuscmd}},
-    { ClkStatusText,        0,     Button2,  spawn,          {.v = statuscmd}},
-    { ClkStatusText,        0,     Button3,  spawn,          {.v = statuscmd}},
-    // window client
-    { ClkClientWin,    MODKEY,     Button1,  movemouse,      {0}},
-    { ClkClientWin,    MODKEY,     Button2,  togglefloating, {0}},
-    { ClkClientWin,    MODKEY,     Button3,  resizemouse,    {0}},
+    {  ClkStatusText, 0,      Button1, spawn,          {.v = statuscmd}},
+    {  ClkStatusText, 0,      Button2, spawn,          {.v = statuscmd}},
+    {  ClkStatusText, 0,      Button3, spawn,          {.v = statuscmd}},
+    {  ClkStatusText, 0,      Button4, spawn,          {.v = statuscmd}},
+    {  ClkStatusText, 0,      Button5, spawn,          {.v = statuscmd}},
+    // window         client
+    {  ClkClientWin,  MODKEY, Button1, movemouse,      {0}},
+    {  ClkClientWin,  MODKEY, Button2, togglefloating, {0}},
+    {  ClkClientWin,  MODKEY, Button3, resizemouse,    {0}},
 };
