@@ -940,6 +940,8 @@ void destroynotify(XEvent *e) {
     removesystrayicon(c);
     updatesystray(1);
   }
+  if (selmon->sel && !selmon->sel->neverfocus)
+    setfocus(selmon->sel);
 }
 
 void detach(Client *c) {
