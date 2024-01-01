@@ -13,15 +13,15 @@
 CACHE_DIR=$HOME"/.cache/walter-dwm"
 
 if ![ -d "$CACHE_DIR" ]; then
-    mkdir $CACHE_DIR
+	mkdir $CACHE_DIR
 fi
 
 title() {
-    echo -e "\033[32m----------"$*"----------\033[0m"
+	echo -e "\033[32m----------"$*"----------\033[0m"
 }
 
 subtitle() {
-    echo -e "\033[32m-----"$*"\033[0m"
+	echo -e "\033[32m-----"$*"\033[0m"
 }
 
 title "安装字体"
@@ -31,8 +31,8 @@ title "安装字体"
 # 若连接archlinuxcn源困难，可选择extra中的字体包
 # pacman -S ttf-cascadia-code-nerd ttf-jetbrains-mono-nerd ttf-iosevka-nerd wqy-zenhei wqy-microhei
 
-echo "[archlinuxcn]
-Server = https://repo.archlinuxcn.org/$arch" >>/etc/pacman.conf
+echo '[archlinuxcn]
+Server = https://repo.archlinuxcn.org/$arch' >>/etc/pacman.conf
 pacman -S archlinuxcn-keyring archlinuxcn-mirrorlist-git
 # 建议手动修改/etc/pacman.d/archlinuxcn-mirrorlist, 选择距离更近速度更快的源
 pacman -S nerd-fonts-complete ttf-lxgw-wenkai ttf-lxgw-wenkai-mono ttf-yozai-font ttf-myuppy-gb
@@ -58,7 +58,7 @@ git clone https://github.com/BYT0723/dwm.git $CACHE_DIR"/dwm"
 cd $CACHE_DIR"/dwm" && make clean install
 title "将 dwm 写入用户的xinitrc"
 if ! [ -f ~/.xinitrc ]; then
-    touch ~/.xinitrc
+	touch ~/.xinitrc
 fi
 echo "exec dwm >> .dwm.log" >>~/.xinitrc
 

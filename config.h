@@ -15,23 +15,24 @@ static const          int statusradius = 0;
 
 static const unsigned int gappih    = 10;  /* horiz inner gap between windows */
 static const unsigned int gappiv    = 10;  /* vert inner gap between windows */
-static const unsigned int gappoh    = 13;  /* horiz outer gap between windows and screen edge */
-static const unsigned int gappov    = 13;  /* vert outer gap between windows and screen edge */
+static const unsigned int gappoh    = 19;  /* horiz outer gap between windows and screen edge */
+static const unsigned int gappov    = 10;  /* vert outer gap between windows and screen edge */
 static                int smartgaps = 0;   /* 1 means no outer gap when there is only one window */
 
 static const unsigned int systraypinning          = 0;  /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
-static const unsigned int systrayspacing          = 4;  /* systray spacing */
+static const unsigned int systrayspacing          = 2;  /* systray spacing */
 static const          int systraypinningfailfirst = 1;  /* 1: if pinning fails, display systray on the first monitor, False: display systray on the last monitor*/
 static const          int showsystray             = 1;  /* 0 means no systray */
-static const          int systraypad              = 5;
+static const          int systraypad              = 2;
 
 static const unsigned int attachtop = 0; /* new window is attached to the top of the stack */
 
 static const Bool viewontag = True; /* Switch view on tag switch */
 static const char *fonts[] = {
-    "Symbols Nerd Font Mono:style=2048-em:size=13",
-    "CaskaydiaCove Nerd Font:style=Regular:size=12",
-    "LXGW WenKai Mono:style=Bold:size=13",
+    "Noto Color Emoji:style=Regular:size=11",
+    "Symbols Nerd Font Mono:style=2048-em:size=11",
+    "CaskaydiaCove Nerd Font:style=Regular:size=11",
+    "LXGW WenKai Mono:style=Bold:size=11",
 };
 
 static const char col_black[]   = "#073642";  /*  0: black    */
@@ -56,7 +57,7 @@ static const char *colors[][3] = {
     [SchemeTagNorm] = { col_white,    col_black,    col_black    },
     [SchemeTagSel]  = { col_black,    col_blue,     col_black    },
     // layout
-    [SchemeLayout]  = { col_green,    col_black,     col_ab_black },
+    [SchemeLayout]  = { col_green,    col_black,    col_ab_black },
     // tasks
     [SchemeNorm]    = { col_cyan,     col_black,    col_ab_black },
     [SchemeSel]     = { col_white,    col_black,    col_white    },
@@ -90,9 +91,9 @@ static const char *taskWidth = "                    ";
 static const TaskIcon icons[] = {
     /* class                title     icon */
     // default
-    {NULL,                  NULL,      " "},
+    {NULL,                  NULL,      " "},
     // terminal
-    {"st-256color",         NULL,      " "},
+    {"st",                  NULL,      " "},
     {"Alacritty",           NULL,      " "},
     // browser
     {"firefox",             NULL,      " "},
@@ -100,7 +101,6 @@ static const TaskIcon icons[] = {
     {"google-chrome",       NULL,      " "},
     // website
     {NULL,                  "YouTube", " "},
-    {NULL,                  "Twitter", " "},
     // application
     {"neovide",             NULL,      " "},
     {"TelegramDesktop",     NULL,      " "},
@@ -219,6 +219,7 @@ static const char *mpdcmd[]          = {"./.dwm/mpd.sh",             NULL};
 static const char *linkcmd[]         = {"./.dwm/quicklinks.sh",      NULL};
 static const char *modulecmd[]       = {"./.dwm/module.sh",          NULL};
 static const char *toggleTouchpad[]  = {"./.dwm/touchpad-toggle.sh", NULL};
+static const char *screenshot[]      = {"./.dwm/screenshot.sh",      NULL};
 static const char *flameshot[]       = {"flameshot",                 "gui",    NULL};
 static const char *vol_up[]          = {"./.dwm/volume.sh",          "up",     NULL};
 static const char *vol_down[]        = {"./.dwm/volume.sh",          "down",   NULL};
@@ -252,7 +253,8 @@ static Key keys[] = {
     {MODKEY,                        XK_Return,                spawn,          {.v = termcmd}},
     {MODKEY,                        XK_n,                     spawn,          {.v = floatcmd}},
     {MODKEY,                        XK_space,                 spawn,          {.v = toggleTouchpad}},
-    {MODKEY,                        XK_a,                     spawn,          {.v = flameshot}},
+    {MODKEY,                        XK_a,                     spawn,          {.v = screenshot}},
+    {MODKEY | ShiftMask,            XK_a,                     spawn,          {.v = flameshot}},
     {0,                             XF86XK_AudioLowerVolume,  spawn,          {.v = vol_down}},
     {0,                             XF86XK_AudioRaiseVolume,  spawn,          {.v = vol_up}},
     {0,                             XF86XK_AudioMute,         spawn,          {.v = vol_toggle}},
