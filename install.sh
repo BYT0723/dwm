@@ -70,7 +70,7 @@ title "安装shell脚本文件"
 git clone https://github.com/BYT0723/scripts ~/.dwm
 
 title "安装脚本所需组件"
-pacman -S rofi picom-git alsa-utils light acpi
+bash ~/.dwm/install.sh
 
 subtitle "蓝牙"
 pacman -S bluez bluez-utils
