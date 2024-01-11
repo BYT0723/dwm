@@ -135,7 +135,7 @@ static const Rule rules[] = {
     {"TelegramDesktop",     NULL,       NULL,     1 << 2,       0,            -1},
     {"electronic-wechat",   NULL,       NULL,     1 << 2,       0,            -1},
     {"wechat.exe",          NULL,       NULL,     1 << 2,       0,            -1},
-    {"QQ",                  NULL,       NULL,     1 << 2,       0,            -1},
+    {"qq",                  NULL,       NULL,     1 << 2,       0,            -1},
 
     {"DBeaver",             NULL,       NULL,     1 << 3,       0,            -1},
     {"resp",                NULL,       NULL,     1 << 3,       0,            -1},
