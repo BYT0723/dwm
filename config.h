@@ -13,10 +13,10 @@ static const          int tabradius   = 1;
 static const          int tabcenter   = 1;
 static const          int statusradius = 0;
 
-static const unsigned int gappih    = 10;  /* horiz inner gap between windows */
-static const unsigned int gappiv    = 10;  /* vert inner gap between windows */
-static const unsigned int gappoh    = 19;  /* horiz outer gap between windows and screen edge */
-static const unsigned int gappov    = 10;  /* vert outer gap between windows and screen edge */
+static const unsigned int gappih    = 8;  /* horiz inner gap between windows */
+static const unsigned int gappiv    = 8;  /* vert inner gap between windows */
+static const unsigned int gappoh    = 16;  /* horiz outer gap between windows and screen edge */
+static const unsigned int gappov    = 16;  /* vert outer gap between windows and screen edge */
 static                int smartgaps = 0;   /* 1 means no outer gap when there is only one window */
 
 static const unsigned int systraypinning          = 0;  /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
@@ -135,7 +135,7 @@ static const Rule rules[] = {
     {"TelegramDesktop",     NULL,       NULL,     1 << 2,       0,            -1},
     {"electronic-wechat",   NULL,       NULL,     1 << 2,       0,            -1},
     {"wechat.exe",          NULL,       NULL,     1 << 2,       0,            -1},
-    {"qq",                  NULL,       NULL,     1 << 2,       0,            -1},
+    {"QQ",                  NULL,       NULL,     1 << 2,       0,            -1},
 
     {"DBeaver",             NULL,       NULL,     1 << 3,       0,            -1},
     {"resp",                NULL,       NULL,     1 << 3,       0,            -1},
@@ -220,6 +220,7 @@ static const char *linkcmd[]         = {"./.dwm/quicklinks.sh",      NULL};
 static const char *modulecmd[]       = {"./.dwm/module.sh",          NULL};
 static const char *toggleTouchpad[]  = {"./.dwm/touchpad-toggle.sh", NULL};
 static const char *screenshot[]      = {"./.dwm/screenshot.sh",      NULL};
+static const char *screencast[]      = {"./.dwm/screencast.sh",      NULL};
 static const char *flameshot[]       = {"flameshot",                 "gui",    NULL};
 static const char *vol_up[]          = {"./.dwm/volume.sh",          "up",     NULL};
 static const char *vol_down[]        = {"./.dwm/volume.sh",          "down",   NULL};
@@ -255,6 +256,7 @@ static Key keys[] = {
     {MODKEY,                        XK_space,                 spawn,          {.v = toggleTouchpad}},
     {MODKEY,                        XK_a,                     spawn,          {.v = flameshot}},
     {MODKEY | ShiftMask,            XK_a,                     spawn,          {.v = screenshot}},
+    {MODKEY | ShiftMask,            XK_r,                     spawn,          {.v = screencast}},
     {0,                             XF86XK_AudioLowerVolume,  spawn,          {.v = vol_down}},
     {0,                             XF86XK_AudioRaiseVolume,  spawn,          {.v = vol_up}},
     {0,                             XF86XK_AudioMute,         spawn,          {.v = vol_toggle}},
