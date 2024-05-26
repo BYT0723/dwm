@@ -2356,7 +2356,11 @@ void showhide(Client *c) {
   } else {
     /* hide clients bottom up */
     showhide(c->snext);
-    XMoveWindow(dpy, c->win, WIDTH(c) * -2, c->y);
+    if (c->tags < c->mon->pertag->curtag) {
+      XMoveWindow(dpy, c->win, -c->mon->ww * 3 / 2, c->y);
+    } else {
+      XMoveWindow(dpy, c->win, c->mon->ww * 3 / 2, c->y);
+    }
   }
 }
 
