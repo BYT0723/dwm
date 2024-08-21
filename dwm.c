@@ -2356,9 +2356,9 @@ void showhide(Client *c) {
   } else {
     /* hide clients bottom up */
     showhide(c->snext);
-    if (c->tags < c->mon->pertag->curtag) {
+    if (c->tags < selmon->tagset[selmon->seltags]) {
       XMoveWindow(dpy, c->win, -c->mon->ww * 3 / 2, c->y);
-    } else {
+    } else if (c->tags > selmon->tagset[selmon->seltags]) {
       XMoveWindow(dpy, c->win, c->mon->ww * 3 / 2, c->y);
     }
   }
