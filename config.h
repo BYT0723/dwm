@@ -152,6 +152,9 @@ static const Rule rules[] = {
     {"steam",               NULL,       NULL,     1 << 8,       0,            -1},
     {"heroic",              NULL,       NULL,     1 << 8,       0,            -1},
 
+    // all tags
+    {"bilichat-tui",        NULL,       NULL,     (1<<10)-1,      1,            -1},
+
     // other only floating
     {"Godot_Engine",        NULL,       NULL,     0,            1,            -1},
     {"vlc",                 NULL,       NULL,     0,            1,            -1},
