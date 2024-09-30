@@ -29,8 +29,7 @@ static const unsigned int attachtop = 0; /* new window is attached to the top of
 
 static const Bool viewontag = True; /* Switch view on tag switch */
 static const char *fonts[] = {
-    "Noto Color Emoji:style=Regular:size=11",
-    "Symbols Nerd Font Mono:style=2048-em:size=11",
+    "Symbols Nerd Font Mono:size=11",
     "CaskaydiaCove Nerd Font:style=Regular:size=11",
     "LXGW WenKai Mono:style=Bold:size=11",
 };
