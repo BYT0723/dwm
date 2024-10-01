@@ -1609,7 +1609,7 @@ void manage(Window w, XWindowAttributes *wa) {
   c->y = MAX(c->y,
              ((c->mon->by == c->mon->my) && (c->x + (c->w / 2) >= c->mon->wx) &&
               (c->x + (c->w / 2) < c->mon->wx + c->mon->ww))
-                 ? bh
+                 ? c->mon->my + bh
                  : c->mon->my);
   c->bw = borderpx;
 
@@ -1627,10 +1627,8 @@ void manage(Window w, XWindowAttributes *wa) {
   if (!c->isfloating)
     c->isfloating = c->oldstate = trans != None || c->isfixed;
   if (c->isfloating) {
-    if (c->x == c->mon->mx && (c->y == c->mon->my + bh || c->y == c->mon->my)) {
-      c->x = c->mon->mx + (c->mon->mw - c->w) / 2;
-      c->y = c->mon->my + (c->mon->mh - c->h) / 2;
-    }
+    c->x = c->mon->mx + (c->mon->mw - WIDTH(c)) / 2;
+    c->y = c->mon->my + (c->mon->mh - c->h) / 2;
     XRaiseWindow(dpy, c->win);
   }
   attachtop ? attach(c) : attachbottom(c);
@@ -2356,7 +2354,7 @@ void showhide(Client *c) {
     return;
   if (ISVISIBLE(c)) {
     /* show clients top down */
-    XMoveResizeWindow(dpy, c->win, c->x, c->y, c->w, c->h);
+    XMoveWindow(dpy, c->win, c->x, c->y);
     if ((!c->mon->lt[c->mon->sellt]->arrange || c->isfloating) &&
         !c->isfullscreen)
       resize(c, c->x, c->y, c->w, c->h, 0);
@@ -2365,11 +2363,10 @@ void showhide(Client *c) {
     /* hide clients bottom up */
     showhide(c->snext);
     if (c->tags < selmon->tagset[selmon->seltags]) {
-      // XMoveWindow(dpy, c->win, -c->mon->mw, c->y);
-      XMoveResizeWindow(dpy, c->win, c->mon->mx - 1, c->y, 1, c->h);
+      XMoveWindow(dpy, c->win, -c->w * 3 / 2, c->y);
     } else if (c->tags > selmon->tagset[selmon->seltags]) {
-      // XMoveWindow(dpy, c->win, c->mon->mw, c->y);
-      XMoveResizeWindow(dpy, c->win, c->mon->mx + c->mon->mw, c->y, 1, c->h);
+      XMoveWindow(dpy, c->win, DisplayWidth(dpy, DefaultScreen(dpy)) * 3 / 2,
+                  c->y);
     }
   }
 }
