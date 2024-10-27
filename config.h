@@ -1,7 +1,7 @@
 #include <X11/XF86keysym.h>
 
 /* appearance */
-static const unsigned int borderpx     = 2;   /* border pixel of windows */
+static const unsigned int borderpx     = 0;   /* border pixel of windows */
 static const unsigned int snap         = 32;  /* snap pixel */
 static const          int showbar      = 1;   /* 0 means no bar */
 static const          int topbar       = 1;   /* 0 means bottom bar */
@@ -213,8 +213,6 @@ static const Layout layouts[] = {
   }
 
 /* commands */
-static const char *monitor_next[]    = {"./.dwm/monitor.sh",         "next",   NULL};
-static const char *monitor_prev[]    = {"./.dwm/monitor.sh",         "prev",   NULL};
 static const char *termcmd[]         = {"./.dwm/term.sh",            NULL};
 static const char *floatcmd[]        = {"./.dwm/term.sh",            "float",  NULL};
 static const char *roficmd[]         = {"./.dwm/app.sh",             NULL};
@@ -289,8 +287,6 @@ static Key keys[] = {
     {MODKEY,                        XK_b,                     togglebar,      {0}},
     {MODKEY,                        XK_j,                     focusstackvis,  {.i = +1}},
     {MODKEY,                        XK_k,                     focusstackvis,  {.i = -1}},
-    {MODKEY | ControlMask,          XK_n,                     spawn,          {.v = monitor_next}},
-    {MODKEY | ControlMask,          XK_p,                     spawn,          {.v = monitor_prev}},
     {MODKEY | ShiftMask,            XK_j,                     focusstackhid,  {.i = +1}},
     {MODKEY | ShiftMask,            XK_k,                     focusstackhid,  {.i = -1}},
     {MODKEY | ShiftMask,            XK_s,                     show,           {0}},
@@ -305,8 +301,8 @@ static Key keys[] = {
     {MODKEY | ControlMask,          XK_0,                     toggletag,      {.ui = ~0}},
     {MODKEY,                        XK_comma,                 focusmon,       {.i = -1}},
     {MODKEY,                        XK_period,                focusmon,       {.i = +1}},
-    {MODKEY | ShiftMask,            XK_comma,                 tagmon,         {.i = -1}},
-    {MODKEY | ShiftMask,            XK_period,                tagmon,         {.i = +1}},
+    {MODKEY | ControlMask,          XK_comma,                 tagmon,         {.i = -1}},
+    {MODKEY | ControlMask,          XK_period,                tagmon,         {.i = +1}},
     {MODKEY | ShiftMask,            XK_q,                     killclient,     {0}},
     {MODKEY | ControlMask,          XK_q,                     quit,           {0}},
     // gap manager
