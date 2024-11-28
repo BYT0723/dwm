@@ -15,8 +15,8 @@ static const          int statusradius = 0;
 
 static const unsigned int gappih    = 8;  /* horiz inner gap between windows */
 static const unsigned int gappiv    = 8;  /* vert inner gap between windows */
-static const unsigned int gappoh    = 16;  /* horiz outer gap between windows and screen edge */
-static const unsigned int gappov    = 16;  /* vert outer gap between windows and screen edge */
+static const unsigned int gappoh    = 11;  /* horiz outer gap between windows and screen edge */
+static const unsigned int gappov    = 11;  /* vert outer gap between windows and screen edge */
 static                int smartgaps = 0;   /* 1 means no outer gap when there is only one window */
 
 static const unsigned int systraypinning          = 0;  /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
@@ -247,6 +247,7 @@ static const StatusCmd statuscmds[] = {
     {"./.dwm/statuscmd.sh weather    $BUTTON", 9},
     {"./.dwm/statuscmd.sh mpd        $BUTTON", 10},
     {"./.dwm/statuscmd.sh netSpeed   $BUTTON", 11},
+    {"./.dwm/statuscmd.sh mail       $BUTTON", 12},
 };
 static const char *statuscmd[] = {"/bin/sh", "-c", NULL, NULL};
 
