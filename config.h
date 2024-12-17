@@ -250,6 +250,7 @@ static const StatusCmd statuscmds[] = {
     {"./.dwm/statuscmd.sh mpd        $BUTTON", 10},
     {"./.dwm/statuscmd.sh netSpeed   $BUTTON", 11},
     {"./.dwm/statuscmd.sh mail       $BUTTON", 12},
+    {"./.dwm/statuscmd.sh rss        $BUTTON", 13},
 };
 static const char *statuscmd[] = {"/bin/sh", "-c", NULL, NULL};
 
