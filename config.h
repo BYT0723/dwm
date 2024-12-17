@@ -106,6 +106,7 @@ static const TaskIcon icons[] = {
     {"discord",             NULL,      "󰙯 "},
     {"electronic-wechat",   NULL,      " "},
     {"wechat.exe",          NULL,      " "},
+    {"wechat",              NULL,      " "},
     {"qq",                  NULL,      " "},
     {"qqmusic",             NULL,      " "},
     {"netease-cloud-music", NULL,      " "},
@@ -134,6 +135,7 @@ static const Rule rules[] = {
     {"TelegramDesktop",     NULL,       NULL,     1 << 2,       0,            -1},
     {"electronic-wechat",   NULL,       NULL,     1 << 2,       0,            -1},
     {"wechat.exe",          NULL,       NULL,     1 << 2,       0,            -1},
+    {"wechat",              NULL,       NULL,     1 << 2,       0,            -1},
     {"QQ",                  NULL,       NULL,     1 << 2,       0,            -1},
 
     {"DBeaver",             NULL,       NULL,     1 << 3,       0,            -1},
