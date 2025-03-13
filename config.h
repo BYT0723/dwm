@@ -118,6 +118,7 @@ static const TaskIcon icons[] = {
     {"thunderbird",         NULL,      " "},
     {"steam",               NULL,      " "},
     {"Godot_Engine",        NULL,      " "},
+    {"feishu",              NULL,      " "},
 };
 
 /* tagging */
