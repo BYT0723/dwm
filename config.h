@@ -31,6 +31,7 @@ static const Bool viewontag = True; /* Switch view on tag switch */
 static const char *fonts[] = {
     "Symbols Nerd Font Mono:size=11",
     "CaskaydiaCove Nerd Font:style=Regular:size=11",
+    "Xiaolai Mono SC:style=Regular:size=11",
     "LXGW WenKai Mono:style=Bold:size=11",
 };
 
