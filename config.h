@@ -158,6 +158,7 @@ static const Rule rules[] = {
     {"bilichat-tui",        NULL,       NULL,     (1<<10)-1,      1,            -1},
 
     // other only floating
+    {"float-term",          NULL,       NULL,     0,            1,            -1},
     {"Godot_Engine",        NULL,       NULL,     0,            1,            -1},
     {"vlc",                 NULL,       NULL,     0,            1,            -1},
     {"mpv",                 NULL,       NULL,     0,            1,            -1},
