@@ -1539,6 +1539,9 @@ void keypress(XEvent *e) {
 void killclient(const Arg *arg) {
   if (!selmon->sel)
     return;
+
+	if (selmon->hidsel) selmon->hidsel = 0;
+
   if (!sendevent(selmon->sel->win, wmatom[WMDelete], NoEventMask,
                  wmatom[WMDelete], CurrentTime, 0, 0, 0)) {
     XGrabServer(dpy);
