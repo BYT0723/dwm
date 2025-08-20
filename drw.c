@@ -266,6 +266,9 @@ int drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h,
   } else {
     XSetForeground(drw->dpy, drw->gc,
                    drw->scheme[invert ? ColFg : ColBg].pixel);
+    if (w < lpad) {
+      return x + w;
+    }
     XFillRectangle(drw->dpy, drw->drawable, drw->gc, x, y, w, h);
     d = XftDrawCreate(drw->dpy, drw->drawable, drw->visual, drw->cmap);
     x += lpad;
@@ -391,8 +394,8 @@ int drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h,
 }
 
 int drw_tab(Drw *drw, int x, int y, unsigned int w, unsigned int h,
-             unsigned int lpad, unsigned int lmargin, const char *text,
-             int invert) {
+            unsigned int lpad, unsigned int lmargin, const char *text,
+            int invert) {
   int i, ty, ellipsis_x = 0;
   unsigned int tmpw, ew, ellipsis_w = 0, ellipsis_len;
   XftDraw *d = NULL;
