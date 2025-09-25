@@ -219,42 +219,42 @@ static const Layout layouts[] = {
   }
 
 /* commands */
-static const char *termcmd[]         = {"./.dwm/term.sh",            NULL};
-static const char *floatcmd[]        = {"./.dwm/term.sh",            "float",  NULL};
-static const char *roficmd[]         = {"./.dwm/app.sh",             NULL};
-static const char *powercmd[]        = {"./.dwm/powermenu.sh",       NULL};
-static const char *mpdcmd[]          = {"./.dwm/mpd.sh",             NULL};
-static const char *linkcmd[]         = {"./.dwm/quicklinks.sh",      NULL};
-static const char *modulecmd[]       = {"./.dwm/module.sh",          NULL};
-static const char *toggleTouchpad[]  = {"./.dwm/touchpad-toggle.sh", NULL};
-static const char *screenshot[]      = {"./.dwm/screenshot.sh",      NULL};
-static const char *screencast[]      = {"./.dwm/screencast.sh",      NULL};
-static const char *flameshot[]       = {"flameshot",                 "gui",    NULL};
-static const char *vol_up[]          = {"./.dwm/volume.sh",          "up",     NULL};
-static const char *vol_down[]        = {"./.dwm/volume.sh",          "down",   NULL};
-static const char *vol_toggle[]      = {"./.dwm/volume.sh",          "toggle", NULL};
-static const char *brightness_up[]   = {"./.dwm/brightness.sh",      "up",     NULL};
-static const char *brightness_down[] = {"./.dwm/brightness.sh",      "down",   NULL};
-static const char *wallpaper_next[]  = {"./.dwm/wallpaper.sh",       "-n",     NULL};
+static const char *termcmd[]         = {"./.dwm/dwm-launcher.sh",     "term",       NULL};
+static const char *floatcmd[]        = {"./.dwm/dwm-launcher.sh",     "term",       "float", NULL};
+static const char *roficmd[]         = {"./.dwm/dwm-launcher.sh",     "apps",       NULL};
+static const char *powercmd[]        = {"./.dwm/dwm-launcher.sh",     "powermenu",  NULL};
+static const char *mpdcmd[]          = {"./.dwm/dwm-launcher.sh",     "mpd",        NULL};
+static const char *linkcmd[]         = {"./.dwm/dwm-launcher.sh",     "quicklinks", NULL};
+static const char *modulecmd[]       = {"./.dwm/dwm-launcher.sh",     "modules",    NULL};
+static const char *screenshot[]      = {"./.dwm/dwm-launcher.sh",     "screenshot", NULL};
+static const char *screencast[]      = {"./.dwm/dwm-launcher.sh",     "screencast", NULL};
+static const char *toggleTouchpad[]  = {"./.dwm/tools/touchpad.sh",   "toggle",     NULL};
+static const char *vol_up[]          = {"./.dwm/tools/volume.sh",     "up",         NULL};
+static const char *vol_down[]        = {"./.dwm/tools/volume.sh",     "down",       NULL};
+static const char *vol_toggle[]      = {"./.dwm/tools/volume.sh",     "toggle",     NULL};
+static const char *brightness_up[]   = {"./.dwm/tools/brightness.sh", "up",         NULL};
+static const char *brightness_down[] = {"./.dwm/tools/brightness.sh", "down",       NULL};
+static const char *wallpaper_next[]  = {"./.dwm/tools/wallpaper.sh",  "-n",         NULL};
+static const char *flameshot[]       = {"flameshot",                  "gui",    		NULL};
 // don't change or surround it by {}
-static const char *layoutmenu_cmd   = "./.dwm/layoutmenu.sh";
+static const char *layoutmenu_cmd   = "./.dwm/dwm-layoutmenu.sh";
 
 /* commands spawned when clicking statusbar, the mouse button pressed is
  * exported as BUTTON */
 static const StatusCmd statuscmds[] = {
-    {"./.dwm/statuscmd.sh date       $BUTTON", 1},
-    {"./.dwm/statuscmd.sh battery    $BUTTON", 2},
-    {"./.dwm/statuscmd.sh volume     $BUTTON", 3},
-    {"./.dwm/statuscmd.sh brightness $BUTTON", 4},
-    {"./.dwm/statuscmd.sh wifi       $BUTTON", 5},
-    {"./.dwm/statuscmd.sh disk-root  $BUTTON", 6},
-    {"./.dwm/statuscmd.sh memory     $BUTTON", 7},
-    {"./.dwm/statuscmd.sh cpu        $BUTTON", 8},
-    {"./.dwm/statuscmd.sh weather    $BUTTON", 9},
-    {"./.dwm/statuscmd.sh mpd        $BUTTON", 10},
-    {"./.dwm/statuscmd.sh netSpeed   $BUTTON", 11},
-    {"./.dwm/statuscmd.sh mail       $BUTTON", 12},
-    {"./.dwm/statuscmd.sh rss        $BUTTON", 13},
+    {"./.dwm/dwm-statuscmd.sh date       $BUTTON", 1},
+    {"./.dwm/dwm-statuscmd.sh battery    $BUTTON", 2},
+    {"./.dwm/dwm-statuscmd.sh volume     $BUTTON", 3},
+    {"./.dwm/dwm-statuscmd.sh brightness $BUTTON", 4},
+    {"./.dwm/dwm-statuscmd.sh wifi       $BUTTON", 5},
+    {"./.dwm/dwm-statuscmd.sh disk-root  $BUTTON", 6},
+    {"./.dwm/dwm-statuscmd.sh memory     $BUTTON", 7},
+    {"./.dwm/dwm-statuscmd.sh cpu        $BUTTON", 8},
+    {"./.dwm/dwm-statuscmd.sh weather    $BUTTON", 9},
+    {"./.dwm/dwm-statuscmd.sh mpd        $BUTTON", 10},
+    {"./.dwm/dwm-statuscmd.sh netSpeed   $BUTTON", 11},
+    {"./.dwm/dwm-statuscmd.sh mail       $BUTTON", 12},
+    {"./.dwm/dwm-statuscmd.sh rss        $BUTTON", 13},
 };
 static const char *statuscmd[] = {"/bin/sh", "-c", NULL, NULL};
 
