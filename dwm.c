@@ -1664,9 +1664,7 @@ void maprequest(XEvent *e) {
     updatesystray(1);
   }
 
-  if (!XGetWindowAttributes(dpy, ev->window, &wa))
-    return;
-  if (wa.override_redirect)
+  if (!XGetWindowAttributes(dpy, ev->window, &wa) || wa.override_redirect)
     return;
   if (!wintoclient(ev->window))
     manage(ev->window, &wa);
