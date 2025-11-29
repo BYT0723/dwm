@@ -583,7 +583,7 @@ void buttonpress(XEvent *e) {
   stw = getsystraywidth();
 
   tstart = selmon->ww - stw - statusw - m->btw;
-  if (tabcenter) 
+  if (tab_style&2)
     tstart += (m->btw - m->tw * m->bt) / 2;
   tend = tstart + m->tw * m->bt;
 
@@ -1042,7 +1042,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
       text[i] = '\0';
       if (strlen(text) > 0) {
         w = TEXTW(text);
-        if (statusradius)
+        if (tab_style&1)
           drw_tab(drw, x, 0, w, bh, lrpad/2, 0, text, 0);
         else
           drw_text(drw, x, 0, w, bh, lrpad/2, text, 0);
@@ -1092,7 +1092,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
 
   if (!isCode) {
     w = TEXTW(text);
-    if (statusradius)
+    if (tab_style&1)
       drw_tab(drw, x, 0, w, bh, lrpad/2, 0, text, 0);
     else
       drw_text(drw, x, 0, w, bh, lrpad/2, text, 0);
@@ -1105,7 +1105,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
 }
 
 void drawbar(Monitor *m) {
-  int x, w, tw = 0, stw = 0, n = 0, scm;
+  int x = 0, w, tw = 0, stw = 0, n = 0, scm;
   int boxs = drw->fonts->h / 9;
   int boxw = drw->fonts->h / 6 + 2;
   unsigned int i, occ = 0, urg = 0;
@@ -1118,7 +1118,6 @@ void drawbar(Monitor *m) {
     stw = getsystraywidth();
   }
 
-  x = 0;
   // clean
   drw_setscheme(drw, scheme[SchemeEmpty]);
   drw_rect(drw, x, 0, m->ww, bh, 1, 1);
@@ -1161,12 +1160,12 @@ void drawbar(Monitor *m) {
   if ((w = m->ww - tw - stw - x) > bh) {
     if (n > 0) {
       int remainder = w % n;
-      int tabw = TEXTW(taskWidth);
-      if (tabw * n >= w)
-        tabw = (1.0 / (double)n) * w + 1;
+			int tabw = TEXTW(taskWidth);
+			if (tabw * n >= w || tab_style == 0)
+				tabw = (1.0 / (double)n) * w + 1;
 
       // 判断tab是否居中
-      if (tabcenter) 
+      if (tab_style&2)
         x += ( w - (tabw * n) ) / 2;
 
       for (c = m->clients; c; c = c->next) {
@@ -1181,7 +1180,10 @@ void drawbar(Monitor *m) {
         drw_setscheme(drw, scheme[scm]);
 
         char title[256];
-        wrapclienttitle(c->class, c->name, title);
+				if (tab_style > 0)
+        	wrapclienttitle(c->class, c->name, title);
+				else
+					strcpy(title, c->name);
 
         if (remainder >= 0) {
           if (remainder == 0) {
@@ -1190,7 +1192,7 @@ void drawbar(Monitor *m) {
           remainder--;
         }
 
-        if (tabradius)
+        if (tab_style&1)
           drw_tab(drw, x, 0, tabw, bh, lrpad/2, 5, title, 0);
         else
           drw_text(drw, x, 0, tabw, bh, lrpad/2, title, 0);

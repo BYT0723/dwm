@@ -9,8 +9,7 @@ static const          int barfontpad   = 6;
 static const          int vertpad      = 6;  /* vertical padding of bar */
 static const          int sidepad      = 6;  /* horizontal padding of bar */
 static const          char host[]      = "";
-static const          int tabradius   = 1;
-static const          int tabcenter   = 1;
+static const          int tab_style    = 3;  /* tab style; 0:default 1:radius 2:center 3:radius_center */
 static const          int statusradius = 0;
 
 static const unsigned int gappih    = 8;  /* horiz inner gap between windows */
@@ -29,10 +28,10 @@ static const unsigned int attachtop = 0; /* new window is attached to the top of
 
 static const Bool viewontag = True; /* Switch view on tag switch */
 static const char *fonts[] = {
-    "Symbols Nerd Font Mono:pixelsize=16:antialias=true;autohint=true",
-    "CaskaydiaCove Nerd Font:pixelsize=16:antialias=true;autohint=true",
-    "Xiaolai Mono SC:pixelsize=16:antialias=true;autohint=true",
-    "LXGW WenKai Mono:pixelsize=16:antialias=true;autohint=true",
+    "Symbols Nerd Font Mono:pixelsize=20:antialias=true;autohint=true",
+    "CaskaydiaCove Nerd Font:pixelsize=20:antialias=true;autohint=true",
+    "Xiaolai Mono SC:pixelsize=20:antialias=true;autohint=true",
+    "LXGW WenKai Mono:pixelsize=20:antialias=true;autohint=true",
 };
 
 static const char col_black[]   = "#073642";  /*  0: black    */
