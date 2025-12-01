@@ -1010,8 +1010,11 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
           w += TEXTW(text);
         }
         text[i] = '^';
-        if (text[++i] == 'f')
+				++i;
+        if (text[i] == 'f')
           w += atoi(text + ++i);
+        if (text[i] == '(' || text[i] == ')')
+					w += lrpad/2;
       } else {
         isCode = 0;
         text = text + i + 1;
@@ -1019,10 +1022,9 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
       }
     }
   }
-  if (!isCode)
+  if (!isCode && strlen(text) > 0)
     w += TEXTW(text);
-  else
-    isCode = 0;
+  isCode = 0;
   text = p;
 
   ret = m->ww - w - 2 * sp;
@@ -1042,10 +1044,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
       text[i] = '\0';
       if (strlen(text) > 0) {
         w = TEXTW(text);
-        if (tab_style&1)
-          drw_tab(drw, x, 0, w, bh, lrpad/2, 0, text, 0);
-        else
-          drw_text(drw, x, 0, w, bh, lrpad/2, text, 0);
+        drw_text(drw, x, 0, w, bh, lrpad/2, text, 0);
         x += w;
       }
 
@@ -1068,19 +1067,24 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
           drw->scheme[ColBg] = scheme[SchemeNorm][ColBg];
         } else if (text[i] == 'r') {
           int rx = atoi(text + ++i);
-          while (text[++i] != ',')
-            ;
+          while (text[++i] != ',');
           int ry = atoi(text + ++i);
-          while (text[++i] != ',')
-            ;
+          while (text[++i] != ',');
           int rw = atoi(text + ++i);
-          while (text[++i] != ',')
-            ;
+          while (text[++i] != ',');
           int rh = atoi(text + ++i);
 
           drw_rect(drw, rx + x, ry, rw, rh, 1, 0);
         } else if (text[i] == 'f') {
           x += atoi(text + ++i);
+        } else if (text[i] == '(') {
+    			XSetForeground(drw->dpy, drw->gc, drw->scheme[ColBg].pixel);
+    			XFillArc(drw->dpy, drw->drawable, drw->gc, x, 0, lrpad, bh, 90 * 64, 180 * 64);
+          x += lrpad/2;
+        } else if (text[i] == ')') {
+    			XSetForeground(drw->dpy, drw->gc, drw->scheme[ColBg].pixel);
+    			XFillArc(drw->dpy, drw->drawable, drw->gc, x - lrpad/2, 0, lrpad, bh, 270 * 64, 180 * 64);
+          x += lrpad/2;
         }
       }
 

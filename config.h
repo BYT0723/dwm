@@ -28,10 +28,10 @@ static const unsigned int attachtop = 0; /* new window is attached to the top of
 
 static const Bool viewontag = True; /* Switch view on tag switch */
 static const char *fonts[] = {
-    "Symbols Nerd Font Mono:pixelsize=20:antialias=true;autohint=true",
-    "CaskaydiaCove Nerd Font:pixelsize=20:antialias=true;autohint=true",
-    "Xiaolai Mono SC:pixelsize=20:antialias=true;autohint=true",
-    "LXGW WenKai Mono:pixelsize=20:antialias=true;autohint=true",
+    "Symbols Nerd Font Mono:pixelsize=17:antialias=true;autohint=true",
+    "CaskaydiaCove Nerd Font:pixelsize=17:antialias=true;autohint=true",
+    "Xiaolai Mono SC:pixelsize=17:antialias=true;autohint=true",
+    "LXGW WenKai Mono:pixelsize=17:antialias=true;autohint=true",
 };
 
 static const char col_black[]   = "#073642";  /*  0: black    */
