@@ -632,6 +632,11 @@ void buttonpress(XEvent *e) {
           text = s + 1;
           isCode = !isCode;
         }
+				if (isCode && ((unsigned char)(*s) == '(' || (unsigned char)(*s) == ')')){
+					x += lrpad/2;
+					if (x >= ev->x)
+						break;
+				}
         // statuscmd text width
         if ((unsigned char)(*s) < ' ') {
           ch = *s;
