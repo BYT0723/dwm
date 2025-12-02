@@ -9,7 +9,7 @@ static const          int barfontpad   = 6;
 static const          int vertpad      = 6;  /* vertical padding of bar */
 static const          int sidepad      = 6;  /* horizontal padding of bar */
 static const          char host[]      = "";
-static const          int tab_style    = 3;  /* tab style; 0:default 1:radius 2:center 3:radius_center */
+// static const          int tab_style    = 3;  /* tab style; 0:default 1:radius 2:center 3:radius_center */
 static const          Bool statusradius = True;
 
 static const unsigned int gappih    = 8;  /* horiz inner gap between windows */
@@ -27,6 +27,9 @@ static const          int systraypad              = 2;
 static const unsigned int attachtop = 0; /* new window is attached to the top of the stack */
 
 static const Bool viewontag = True; /* Switch view on tag switch */
+
+#define ICONSIZE (bh - 4) /* or adaptively preserve 2 pixels each side */
+#define ICONSPACING 5 /* space between icon and title */
 static const char *fonts[] = {
     "Symbols Nerd Font Mono:pixelsize=17:antialias=true;autohint=true",
     "CaskaydiaCove Nerd Font:pixelsize=17:antialias=true;autohint=true",
