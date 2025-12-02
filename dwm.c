@@ -265,7 +265,7 @@ static void detach(Client *c);
 static void detachstack(Client *c);
 static Monitor *dirtomon(int dir);
 static void drawbar(Monitor *m);
-static void wrapclienttitle(char *class, char *name, char *title);
+static void wrapclienttitle(Client *c,char *title, size_t sz);
 static void drawbars(void);
 static int drawstatusbar(Monitor *m, int bh, char *text);
 //  static void enternotify(XEvent *e);
@@ -590,8 +590,8 @@ void buttonpress(XEvent *e) {
   stw = getsystraywidth();
 
   tstart = selmon->ww - stw - statusw - m->btw;
-  /* if (tab_style&2) */
-  /*   tstart += (m->btw - m->tw * m->bt) / 2; */
+  if (tab_style&2)
+    tstart += (m->btw - m->tw * m->bt) / 2;
   tend = tstart + m->tw * m->bt;
 
   if (ev->window == selmon->barwin) {
@@ -1108,10 +1108,6 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
 
   if (!isCode) {
     w = TEXTW(text);
-    /* if (tab_style&1) */
-    /*   drw_tab(drw, x, 0, w, bh, lrpad/2, 0, text, 0); */
-    /* else */
-    /*   drw_text(drw, x, 0, w, bh, lrpad/2, text, 0); */
     drw_text(drw, x, 0, w, bh, lrpad/2, text, 0);
   }
 
@@ -1123,7 +1119,6 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
 
 void drawbar(Monitor *m) {
   int x = 0, w, tw = 0, stw = 0, n = 0, scm;
-  int boxs = drw->fonts->h / 9;
   int boxw = drw->fonts->h / 6 + 2;
   unsigned int i, occ = 0, urg = 0;
   Client *c;
@@ -1182,14 +1177,13 @@ void drawbar(Monitor *m) {
   if ((w = m->ww - tw - stw - x) > bh) {
     if (n > 0) {
       int remainder = w % n;
-			int tabw = TEXTW(taskWidth);
-			/* if (tabw * n >= w || tab_style == 0) */
-			if (tabw * n >= w)
+			int tabw = TEXTW(tabWidth);
+			if (tabw * n >= w || tab_style == 0)
 				tabw = (1.0 / (double)n) * w + 1;
 
       // 判断tab是否居中
-      /* if (tab_style&2) */
-      /*   x += ( w - (tabw * n) ) / 2; */
+      if (tab_style&2)
+        x += ( w - (tabw * n) ) / 2;
 
       for (c = m->clients; c; c = c->next) {
         if (!ISVISIBLE(c))
@@ -1202,11 +1196,8 @@ void drawbar(Monitor *m) {
           scm = SchemeNorm;
         drw_setscheme(drw, scheme[scm]);
 
-				/*     char title[256]; */
-				/* if (tab_style > 0) */
-				/*     	wrapclienttitle(c->class, c->name, title); */
-				/* else */
-				/* 	strcpy(title, c->name); */
+				char title[256];
+				wrapclienttitle(c, title,sizeof(title));
 
         if (remainder >= 0) {
           if (remainder == 0) {
@@ -1215,17 +1206,24 @@ void drawbar(Monitor *m) {
           remainder--;
         }
 
-        /* if (tab_style&1) */
-        /*   drw_tab(drw, x, 0, tabw, bh, lrpad / 2 + (m->sel->icon ? m->sel->icw + ICONSPACING : 0), 5 , c->class, 0); */
-        /* else */
-        /*   drw_text(drw, x, 0, tabw, bh, lrpad / 2 + (m->sel->icon ? m->sel->icw + ICONSPACING : 0), c->class, 0); */
-        drw_text(drw, x, 0, tabw, bh, lrpad / 2 + (c->icon ? c->icw + ICONSPACING : 0), c->class, 0);
+				if (tab_style&1) {
+    			XSetForeground(drw->dpy, drw->gc, drw->scheme[ColBg].pixel);
+    			XFillArc(drw->dpy, drw->drawable, drw->gc, x, 0, lrpad, bh, 90 * 64, 180 * 64);
 
-				if (c->icon)
-					drw_pic(drw, x + lrpad / 2, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
+        	drw_text(drw, x+lrpad/2, 0, tabw-lrpad, bh, (c->icon ? c->icw + ICONSPACING : 0), title, 0);
+					if (c->icon)
+						drw_pic(drw, x+lrpad/2, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
+
+    			XFillArc(drw->dpy, drw->drawable, drw->gc, x+tabw-lrpad, 0, lrpad, bh, 270 * 64, 180 * 64);
+				}else{
+        	drw_text(drw, x, 0, tabw, bh, lrpad/2 + (c->icon ? c->icw + ICONSPACING : 0), title, 0);
+					if (c->icon)
+						drw_pic(drw, x+lrpad/2, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
+				}
+
         // 为浮动窗口添加浮动标志
         if (c->isfloating)
-          drw_rect(drw, x + bh / 2, boxs, boxw, boxw, c->isfixed, 0);
+          drw_rect(drw, x + tabw - lrpad/2, (bh-boxw)/2, boxw, boxw, c->isfixed, 0);
         x += tabw;
       }
       m->tw = tabw;
@@ -1247,21 +1245,23 @@ void drawbars(void) {
     updatesystray(0);
 }
 
-void wrapclienttitle(char *class, char *name, char *title) {
-  char buf[256];
+void wrapclienttitle(Client *c,char *title,size_t sz) {
   unsigned int i;
   const char *icon = NULL;
   const TaskIcon *ti = NULL;
 
-  for (i = 0; i < LENGTH(icons); i++) {
-    ti = &icons[i];
-    if ((!ti->class || strstr(class, ti->class)) &&
-        (!ti->title || strstr(name, ti->title))) {
-      icon = ti->icon;
-    }
-  }
-  snprintf(buf, sizeof(buf), "%s%s", icon, name);
-  title = buf;
+	if (!c->icon) {
+		for (i = 0; i < LENGTH(icons); i++) {
+			ti = &icons[i];
+			if ((!ti->class || strstr(c->class, ti->class)) &&
+					(!ti->title || strstr(c->name, ti->title))) {
+				icon = ti->icon;
+			}
+		}
+  	snprintf(title, sz, "%s%s", icon, c->name);
+	}else{
+  	snprintf(title, sz, "%s", c->name);
+	}
 }
 
 //  void enternotify(XEvent *e) {

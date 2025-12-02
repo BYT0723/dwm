@@ -9,7 +9,7 @@ static const          int barfontpad   = 6;
 static const          int vertpad      = 6;  /* vertical padding of bar */
 static const          int sidepad      = 6;  /* horizontal padding of bar */
 static const          char host[]      = "";
-// static const          int tab_style    = 3;  /* tab style; 0:default 1:radius 2:center 3:radius_center */
+static const          int tab_style    = 3;  /* tab style; 0:default 1:radius 2:center 3:radius_center */
 static const          Bool statusradius = True;
 
 static const unsigned int gappih    = 8;  /* horiz inner gap between windows */
@@ -89,7 +89,7 @@ static const unsigned int alphas[][3]      = {
 };
 
 /* task icon */
-static const char *taskWidth = "                    ";
+static const char *tabWidth = "                    ";
 static const TaskIcon icons[] = {
     /* class                title     icon */
     // default
