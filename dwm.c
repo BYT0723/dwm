@@ -84,7 +84,9 @@
 #define VERSION_MINOR 0
 #define XEMBED_EMBEDDED_VERSION (VERSION_MAJOR << 16) | VERSION_MINOR
 
-#define OPAQUE 0xffU
+#define LTAB_START_ANGLE (90 * 64)
+#define RTAB_START_ANGLE (270 * 64)
+#define TAB_ANGLE_SIZE (180 * 64)
 
 /* enums */
 enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
@@ -378,6 +380,7 @@ static int screen;
 static int sw, sh;      /* X display screen geometry width, height */
 static int bh, blw = 0; /* bar geometry */
 static int lrpad;       /* sum of left and right padding for text */
+static int lpad;        /* left padding for text, equal lrpad/2  */
 static int vp;          /* vertical padding for bar */
 static int sp;          /* side padding for bar */
 static int (*xerrorxlib)(Display *, XErrorEvent *);
@@ -640,7 +643,7 @@ void buttonpress(XEvent *e) {
           isCode = !isCode;
         }
 				if (isCode && statusradius && ((unsigned char)(*s) == '(' || (unsigned char)(*s) == ')')){
-					x += lrpad/2;
+					x += lpad;
 					if (x >= ev->x)
 						break;
 				}
@@ -1026,7 +1029,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
         if (text[i] == 'f')
           w += atoi(text + ++i);
         if (statusradius && (text[i] == '(' || text[i] == ')'))
-					w += lrpad/2;
+					w += lpad;
       } else {
         isCode = 0;
         text = text + i + 1;
@@ -1056,7 +1059,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
       text[i] = '\0';
       if (strlen(text) > 0) {
         w = TEXTW(text);
-        drw_text(drw, x, 0, w, bh, lrpad/2, text, 0);
+        drw_text(drw, x, 0, w, bh, lpad, text, 0);
         x += w;
       }
 
@@ -1091,12 +1094,12 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
           x += atoi(text + ++i);
         } else if (text[i] == '(' && statusradius) {
     			XSetForeground(drw->dpy, drw->gc, drw->scheme[ColBg].pixel);
-    			XFillArc(drw->dpy, drw->drawable, drw->gc, x, 0, lrpad, bh, 90 * 64, 180 * 64);
-          x += lrpad/2;
+    			XFillArc(drw->dpy, drw->drawable, drw->gc, x, 0, lrpad, bh, LTAB_START_ANGLE, TAB_ANGLE_SIZE);
+          x += lpad;
         } else if (text[i] == ')' && statusradius) {
     			XSetForeground(drw->dpy, drw->gc, drw->scheme[ColBg].pixel);
-    			XFillArc(drw->dpy, drw->drawable, drw->gc, x - lrpad/2, 0, lrpad, bh, 270 * 64, 180 * 64);
-          x += lrpad/2;
+    			XFillArc(drw->dpy, drw->drawable, drw->gc, x - lpad, 0, lrpad, bh, RTAB_START_ANGLE, TAB_ANGLE_SIZE);
+          x += lpad;
         }
       }
 
@@ -1108,7 +1111,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
 
   if (!isCode) {
     w = TEXTW(text);
-    drw_text(drw, x, 0, w, bh, lrpad/2, text, 0);
+    drw_text(drw, x, 0, w, bh, lpad, text, 0);
   }
 
   drw_setscheme(drw, scheme[SchemeNorm]);
@@ -1151,7 +1154,7 @@ void drawbar(Monitor *m) {
   // draw host
   w = TEXTW(host);
   drw_setscheme(drw, scheme[SchemeHost]);
-  x = drw_text(drw, x, 0, w, bh, lrpad / 2, host, 0);
+  x = drw_text(drw, x, 0, w, bh, lpad, host, 0);
 
   for (i = 0; i < LENGTH(tags); i++) {
     /* Do not draw vacant tags */
@@ -1160,18 +1163,18 @@ void drawbar(Monitor *m) {
     w = TEXTW(tags[i]);
     // 高亮所在的tag
     drw_setscheme(drw, scheme[m->tagset[m->seltags] & 1 << i ? SchemeTagSel : SchemeTagNorm]);
-    drw_text(drw, x, 0, w, bh, lrpad / 2, tags[i], urg & 1 << i);
+    drw_text(drw, x, 0, w, bh, lpad, tags[i], urg & 1 << i);
     x += w;
   }
   // layout symbol
   w = blw = TEXTW(m->ltsymbol);
   drw_setscheme(drw, scheme[SchemeLayout]);
 	if (statusradius) {
-		x = drw_text(drw, x, 0, w-lrpad/2, bh, lrpad / 2, m->ltsymbol, 0);
-		XFillArc(drw->dpy, drw->drawable, drw->gc, x - lrpad/2, 0, lrpad, bh, 270 * 64, 180 * 64);
-		x += lrpad/2;
+		x = drw_text(drw, x, 0, w-lpad, bh, lpad, m->ltsymbol, 0);
+		XFillArc(drw->dpy, drw->drawable, drw->gc, x - lpad, 0, lrpad, bh, 270 * 64, 180 * 64);
+		x += lpad;
 	}else
-		x = drw_text(drw, x, 0, w, bh, lrpad / 2, m->ltsymbol, 0);
+		x = drw_text(drw, x, 0, w, bh, lpad, m->ltsymbol, 0);
 
   // draw tab
   if ((w = m->ww - tw - stw - x) > bh) {
@@ -1208,22 +1211,22 @@ void drawbar(Monitor *m) {
 
 				if (tab_style&1) {
     			XSetForeground(drw->dpy, drw->gc, drw->scheme[ColBg].pixel);
-    			XFillArc(drw->dpy, drw->drawable, drw->gc, x, 0, lrpad, bh, 90 * 64, 180 * 64);
+    			XFillArc(drw->dpy, drw->drawable, drw->gc, x, 0, lrpad, bh, LTAB_START_ANGLE, TAB_ANGLE_SIZE);
 
-        	drw_text(drw, x+lrpad/2, 0, tabw-lrpad, bh, (c->icon ? c->icw + ICONSPACING : 0), title, 0);
+        	drw_text(drw, x+lpad, 0, tabw-lrpad, bh, (c->icon ? c->icw + ICONSPACING : 0), title, 0);
 					if (c->icon)
-						drw_pic(drw, x+lrpad/2, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
+						drw_pic(drw, x+lpad, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
 
-    			XFillArc(drw->dpy, drw->drawable, drw->gc, x+tabw-lrpad, 0, lrpad, bh, 270 * 64, 180 * 64);
+    			XFillArc(drw->dpy, drw->drawable, drw->gc, x+tabw-lrpad, 0, lrpad, bh, RTAB_START_ANGLE, TAB_ANGLE_SIZE);
 				}else{
-        	drw_text(drw, x, 0, tabw, bh, lrpad/2 + (c->icon ? c->icw + ICONSPACING : 0), title, 0);
+        	drw_text(drw, x, 0, tabw, bh, lpad + (c->icon ? c->icw + ICONSPACING : 0), title, 0);
 					if (c->icon)
-						drw_pic(drw, x+lrpad/2, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
+						drw_pic(drw, x+lpad, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
 				}
 
         // 为浮动窗口添加浮动标志
         if (c->isfloating)
-          drw_rect(drw, x + tabw - lrpad/2, (bh-boxw)/2, boxw, boxw, c->isfixed, 0);
+          drw_rect(drw, x + tabw - lpad, (bh-boxw)/2, boxw, boxw, c->isfixed, 0);
         x += tabw;
       }
       m->tw = tabw;
@@ -2353,6 +2356,7 @@ void setup(void) {
   if (!drw_fontset_create(drw, fonts, LENGTH(fonts)))
     die("no fonts could be loaded.");
   lrpad = drw->fonts->h;
+	lpad = lrpad/2;
   bh = drw->fonts->h + barfontpad * 2;
   sp = sidepad;
   vp = (topbar == 1) ? vertpad : -vertpad;
