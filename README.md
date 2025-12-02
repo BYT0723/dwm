@@ -25,6 +25,19 @@ chmod +x install.sh
 - nm-applet
 - fcitx5
 - udiskie
+- imlib (for status bar tab icon)
+
+  Archlinux:
+
+  ```shell
+  sudo pacman -S imlib2
+  ```
+
+  Debian:
+
+  ```shell
+  sudo apt install libimlib2-dev
+  ```
 
 ## Patches
 
