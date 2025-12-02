@@ -632,7 +632,7 @@ void buttonpress(XEvent *e) {
           text = s + 1;
           isCode = !isCode;
         }
-				if (isCode && ((unsigned char)(*s) == '(' || (unsigned char)(*s) == ')')){
+				if (isCode && statusradius && ((unsigned char)(*s) == '(' || (unsigned char)(*s) == ')')){
 					x += lrpad/2;
 					if (x >= ev->x)
 						break;
@@ -1018,7 +1018,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
 				++i;
         if (text[i] == 'f')
           w += atoi(text + ++i);
-        if (text[i] == '(' || text[i] == ')')
+        if (statusradius && (text[i] == '(' || text[i] == ')'))
 					w += lrpad/2;
       } else {
         isCode = 0;
@@ -1082,11 +1082,11 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
           drw_rect(drw, rx + x, ry, rw, rh, 1, 0);
         } else if (text[i] == 'f') {
           x += atoi(text + ++i);
-        } else if (text[i] == '(') {
+        } else if (text[i] == '(' && statusradius) {
     			XSetForeground(drw->dpy, drw->gc, drw->scheme[ColBg].pixel);
     			XFillArc(drw->dpy, drw->drawable, drw->gc, x, 0, lrpad, bh, 90 * 64, 180 * 64);
           x += lrpad/2;
-        } else if (text[i] == ')') {
+        } else if (text[i] == ')' && statusradius) {
     			XSetForeground(drw->dpy, drw->gc, drw->scheme[ColBg].pixel);
     			XFillArc(drw->dpy, drw->drawable, drw->gc, x - lrpad/2, 0, lrpad, bh, 270 * 64, 180 * 64);
           x += lrpad/2;
@@ -1163,9 +1163,12 @@ void drawbar(Monitor *m) {
   // layout symbol
   w = blw = TEXTW(m->ltsymbol);
   drw_setscheme(drw, scheme[SchemeLayout]);
-  x = drw_text(drw, x, 0, w-lrpad/2, bh, lrpad / 2, m->ltsymbol, 0);
-  XFillArc(drw->dpy, drw->drawable, drw->gc, x - lrpad/2, 0, lrpad, bh, 270 * 64, 180 * 64);
-	x += lrpad/2;
+	if (statusradius) {
+		x = drw_text(drw, x, 0, w-lrpad/2, bh, lrpad / 2, m->ltsymbol, 0);
+		XFillArc(drw->dpy, drw->drawable, drw->gc, x - lrpad/2, 0, lrpad, bh, 270 * 64, 180 * 64);
+		x += lrpad/2;
+	}else
+		x = drw_text(drw, x, 0, w, bh, lrpad / 2, m->ltsymbol, 0);
 
   // draw tab
   if ((w = m->ww - tw - stw - x) > bh) {

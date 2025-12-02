@@ -10,7 +10,7 @@ static const          int vertpad      = 6;  /* vertical padding of bar */
 static const          int sidepad      = 6;  /* horizontal padding of bar */
 static const          char host[]      = "";
 static const          int tab_style    = 3;  /* tab style; 0:default 1:radius 2:center 3:radius_center */
-static const          int statusradius = 0;
+static const          Bool statusradius = True;
 
 static const unsigned int gappih    = 8;  /* horiz inner gap between windows */
 static const unsigned int gappiv    = 8;  /* vert inner gap between windows */
