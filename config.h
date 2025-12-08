@@ -29,7 +29,7 @@ static const unsigned int attachtop = 0; /* new window is attached to the top of
 static const Bool viewontag = True; /* Switch view on tag switch */
 
 #define ICONSIZE (bh - 4) /* or adaptively preserve 2 pixels each side */
-#define ICONSPACING 5 /* space between icon and title */
+#define ICONSPACING 6 /* space between icon and title */
 static const char *fonts[] = {
     "Symbols Nerd Font Mono:pixelsize=17:antialias=true;autohint=true",
     "CaskaydiaCove Nerd Font:pixelsize=17:antialias=true;autohint=true",
