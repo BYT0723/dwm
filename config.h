@@ -49,6 +49,7 @@ static const char col_white[]   = "#eee8d5";  /*  7: white    */
 static const char col_ab_black[]   = "#000000";
 
 static const unsigned int emptyalpha  = 0x00;
+static const unsigned int hidalpha    = 0x80;
 static const unsigned int baralpha    = 0xd0;
 static const unsigned int borderalpha = OPAQUE;
 static const char *colors[][3] = {
@@ -81,7 +82,7 @@ static const unsigned int alphas[][3]      = {
     // task
     [SchemeNorm]    = { OPAQUE,     OPAQUE,     emptyalpha },
     [SchemeSel]     = { OPAQUE,     OPAQUE,     OPAQUE     },
-    [SchemeHid]     = { OPAQUE,     0x80,       emptyalpha },
+    [SchemeHid]     = { OPAQUE,     hidalpha,   emptyalpha },
     // systray
     [SchemeSystray] = { OPAQUE,     baralpha,   emptyalpha },
     // empty

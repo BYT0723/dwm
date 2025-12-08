@@ -26,7 +26,6 @@
 #include <X11/Xutil.h>
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
-#include <errno.h>
 #include <locale.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -279,7 +278,7 @@ static void focusstackvis(const Arg *arg);
 static void focusstackhid(const Arg *arg);
 static void focusstack(int inc, int vis);
 static Atom getatomprop(Client *c, Atom prop);
-static Picture geticonprop(Window w, unsigned int *icw, unsigned int *ich);
+static Picture geticonprop(Window w, unsigned int *icw, unsigned int *ich, unsigned int alpha);
 static int getrootptr(int *x, int *y);
 static long getstate(Window w);
 static int gettextprop(Window w, Atom atom, char *text, unsigned int size);
@@ -1416,21 +1415,22 @@ Atom getatomprop(Client *c, Atom prop) {
   return atom;
 }
 
-static uint32_t prealpha(uint32_t p) {
-	uint8_t a = p >> 24u;
+static uint32_t prealpha(uint32_t p, uint32_t custom_alpha) {
+	// 取像素点alpha和自定义alpha中的较小值
+	uint8_t a = MIN(p >> 24u, custom_alpha);
 	uint32_t rb = (a * (p & 0xFF00FFu)) >> 8u;
 	uint32_t g = (a * (p & 0x00FF00u)) >> 8u;
 	return (rb & 0xFF00FFu) | (g & 0x00FF00u) | (a << 24u);
 }
 
-Picture geticonprop(Window win, unsigned int *picw, unsigned int *pich) {
+Picture geticonprop(Window win, unsigned int *picw, unsigned int *pich, unsigned int alpha) {
 	int format;
 	unsigned long n, extra, *p = NULL;
 	Atom real;
 
-	if (XGetWindowProperty(dpy, win, netatom[NetWMIcon], 0L, LONG_MAX, False, AnyPropertyType, 
+	if (XGetWindowProperty(dpy, win, netatom[NetWMIcon], 0L, LONG_MAX, False, AnyPropertyType,
 						   &real, &format, &n, &extra, (unsigned char **)&p) != Success)
-		return None; 
+		return None;
 	if (n == 0 || format != 32) { XFree(p); return None; }
 
 	unsigned long *bstp = NULL;
@@ -1467,7 +1467,7 @@ Picture geticonprop(Window win, unsigned int *picw, unsigned int *pich) {
 	*picw = icw; *pich = ich;
 
 	uint32_t i, *bstp32 = (uint32_t *)bstp;
-	for (sz = w * h, i = 0; i < sz; ++i) bstp32[i] = prealpha(bstp[i]);
+	for (sz = w * h, i = 0; i < sz; ++i) bstp32[i] = prealpha(bstp[i], alpha);
 
 	Picture ret = drw_picture_create_resized(drw, (char *)bstp, w, h, icw, ich);
 	XFree(p);
@@ -1591,6 +1591,8 @@ void hidewin(Client *c) {
   XSelectInput(dpy, w, ca.your_event_mask & ~StructureNotifyMask);
   XUnmapWindow(dpy, w);
   setclientstate(c, IconicState);
+	// 在设置IconicState后再更新tab icon, 在updateicon中会根据client state设置不同的alpha
+	updateicon(c);
   XSelectInput(dpy, root, ra.your_event_mask);
   XSelectInput(dpy, w, ca.your_event_mask);
   XUngrabServer(dpy);
@@ -3017,6 +3019,8 @@ void showwin(Client *c) {
 
   XMapWindow(dpy, c->win);
   setclientstate(c, NormalState);
+	// 在设置NormalState后再更新tab icon, 在updateicon中会根据client state设置不同的alpha
+	updateicon(c);
   arrange(c->mon);
 }
 
@@ -3029,7 +3033,10 @@ void updatetitle(Client *c) {
 
 void updateicon(Client *c) {
 	freeicon(c);
-	c->icon = geticonprop(c->win, &c->icw, &c->ich);
+	if (HIDDEN(c))
+		c->icon = geticonprop(c->win, &c->icw, &c->ich, hidalpha);
+	else
+		c->icon = geticonprop(c->win, &c->icw, &c->ich, OPAQUE);
 }
 
 
