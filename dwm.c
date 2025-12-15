@@ -1212,15 +1212,19 @@ void drawbar(Monitor *m) {
     			XSetForeground(drw->dpy, drw->gc, drw->scheme[ColBg].pixel);
     			XFillArc(drw->dpy, drw->drawable, drw->gc, x, 0, lrpad, bh, LTAB_START_ANGLE, TAB_ANGLE_SIZE);
 
-        	drw_text(drw, x+lpad, 0, tabw-lrpad, bh, (c->icon ? c->icw + ICONSPACING : 0), title, 0);
-					if (c->icon)
+					if (c->icon && tabw-lrpad >= c->icw + ICONSPACING) {
+        		drw_text(drw, x+lpad, 0, tabw-lrpad, bh, c->icw + ICONSPACING, title, 0);
 						drw_pic(drw, x+lpad, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
+					} else
+        		drw_text(drw, x+lpad, 0, tabw-lrpad, bh, 0, title, 0);
 
     			XFillArc(drw->dpy, drw->drawable, drw->gc, x+tabw-lrpad, 0, lrpad, bh, RTAB_START_ANGLE, TAB_ANGLE_SIZE);
 				}else{
-        	drw_text(drw, x, 0, tabw, bh, lpad + (c->icon ? c->icw + ICONSPACING : 0), title, 0);
-					if (c->icon)
+					if (c->icon && tabw-lrpad >= c->icw + ICONSPACING) {
+        		drw_text(drw, x, 0, tabw, bh, lpad + c->icw + ICONSPACING , title, 0);
 						drw_pic(drw, x+lpad, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
+					} else
+        		drw_text(drw, x, 0, tabw, bh, lpad + 0, title, 0);
 				}
 
         // 为浮动窗口添加浮动标志
