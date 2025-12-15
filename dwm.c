@@ -1185,7 +1185,7 @@ void drawbar(Monitor *m) {
 
       // 判断tab是否居中
       if (tab_style&2)
-        x += ( w - (tabw * n) ) / 2;
+        x += MAX((w-(tabw * n))/2, 0);
 
       for (c = m->clients; c; c = c->next) {
         if (!ISVISIBLE(c))
@@ -2357,8 +2357,11 @@ void setup(void) {
   drw = drw_create(dpy, screen, root, sw, sh, visual, depth, cmap);
   if (!drw_fontset_create(drw, fonts, LENGTH(fonts)))
     die("no fonts could be loaded.");
-  lrpad = drw->fonts->h;
-	lpad = lrpad/2;
+	/*  lrpad = drw->fonts->h; */
+	/* lpad = lrpad/2; */
+
+	lpad = drw->fonts->h/2;
+	lrpad = lpad * 2;
   bh = drw->fonts->h + barfontpad * 2;
   sp = sidepad;
   vp = (topbar == 1) ? vertpad : -vertpad;
