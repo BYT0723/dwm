@@ -6,16 +6,16 @@ static const unsigned int snap         = 32;  /* snap pixel */
 static const          int showbar      = 1;   /* 0 means no bar */
 static const          int topbar       = 1;   /* 0 means bottom bar */
 static const          int barfontpad   = 6;
-static const          int vertpad      = 6;  /* vertical padding of bar */
-static const          int sidepad      = 6;  /* horizontal padding of bar */
+static const          int vertpad      = 3;  /* vertical padding of bar */
+static const          int sidepad      = 3;  /* horizontal padding of bar */
 static const          char host[]      = "";
 static const          int tab_style    = 3;  /* tab style; 0:default 1:radius 2:center 3:radius_center */
 static const          Bool statusradius = True;
 
 static const unsigned int gappih    = 8;  /* horiz inner gap between windows */
 static const unsigned int gappiv    = 8;  /* vert inner gap between windows */
-static const unsigned int gappoh    = 11;  /* horiz outer gap between windows and screen edge */
-static const unsigned int gappov    = 11;  /* vert outer gap between windows and screen edge */
+static const unsigned int gappoh    = 8;  /* horiz outer gap between windows and screen edge */
+static const unsigned int gappov    = 8;  /* vert outer gap between windows and screen edge */
 static                int smartgaps = 0;   /* 1 means no outer gap when there is only one window */
 
 static const unsigned int systraypinning          = 0;  /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
