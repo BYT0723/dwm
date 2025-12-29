@@ -96,6 +96,7 @@ enum {
   SchemeHost,
   SchemeTagNorm,
   SchemeTagSel,
+	SchemeStatus,
   SchemeSystray,
   SchemeLayout,
   SchemeEmpty,
@@ -1068,17 +1069,17 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
           char buf[8];
           memcpy(buf, (char *)text + i + 1, 7);
           buf[7] = '\0';
-          drw_clr_create(drw, &drw->scheme[ColFg], buf, alphas[SchemeNorm][0]);
+          drw_clr_create(drw, &drw->scheme[ColFg], buf, alphas[SchemeStatus][0]);
           i += 7;
         } else if (text[i] == 'b') {
           char buf[8];
           memcpy(buf, (char *)text + i + 1, 7);
           buf[7] = '\0';
-          drw_clr_create(drw, &drw->scheme[ColBg], buf, alphas[SchemeNorm][1]);
+          drw_clr_create(drw, &drw->scheme[ColBg], buf, alphas[SchemeStatus][1]);
           i += 7;
         } else if (text[i] == 'd') {
-          drw->scheme[ColFg] = scheme[SchemeNorm][ColFg];
-          drw->scheme[ColBg] = scheme[SchemeNorm][ColBg];
+          drw->scheme[ColFg] = scheme[SchemeStatus][ColFg];
+          drw->scheme[ColBg] = scheme[SchemeStatus][ColBg];
         } else if (text[i] == 'r') {
           int rx = atoi(text + ++i);
           while (text[++i] != ',');
@@ -3040,10 +3041,15 @@ void updatetitle(Client *c) {
 
 void updateicon(Client *c) {
 	freeicon(c);
+
+  Monitor *m;
+	int scm = SchemeNorm;
+  for (m = mons; m; m = m->next)
+			if(m->sel == c)
+				scm = SchemeSel;
 	if (HIDDEN(c))
-		c->icon = geticonprop(c->win, &c->icw, &c->ich, hidalpha);
-	else
-		c->icon = geticonprop(c->win, &c->icw, &c->ich, OPAQUE);
+		scm = SchemeHid;
+	c->icon = geticonprop(c->win, &c->icw, &c->ich, alphas[scm][1]);
 }
 
 
