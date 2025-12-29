@@ -1387,7 +1387,10 @@ void focusstack(int inc, int hid) {
           c = i;
   }
   if (c) {
+		i = selmon->sel;
     focus(c);
+		if (i) updateicon(i);
+		updateicon(c);
     restack(selmon);
 
     if (HIDDEN(c)) {
@@ -1683,7 +1686,6 @@ void manage(Window w, XWindowAttributes *wa) {
   c->oldbw = wa->border_width;
   c->cfact = 1.0;
 
-	updateicon(c);
   updatetitle(c);
   if (XGetTransientForHint(dpy, w, &trans) && (t = wintoclient(trans))) {
     c->mon = t->mon;
@@ -2469,6 +2471,7 @@ void showhide(Client *c) {
     else if (c->tags > selmon->tagset[selmon->seltags])
       XMoveWindow(dpy, c->win, XScreenOfDisplay(dpy, screen)->width * 3/2, c->y);
   }
+	updateicon(c);
 }
 
 void sigchld(int unused) {
@@ -3027,8 +3030,6 @@ void showwin(Client *c) {
 
   XMapWindow(dpy, c->win);
   setclientstate(c, NormalState);
-	// 在设置NormalState后再更新tab icon, 在updateicon中会根据client state设置不同的alpha
-	updateicon(c);
   arrange(c->mon);
 }
 

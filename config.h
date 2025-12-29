@@ -49,7 +49,7 @@ static const char col_white[]   = "#eee8d5";  /*  7: white    */
 static const char col_ab_black[]   = "#000000";
 
 static const unsigned int emptyalpha  = 0x00;
-static const unsigned int curalpha    = 0x50;
+static const unsigned int curalpha    = 0xec;
 static const unsigned int hidalpha    = 0x80;
 static const char *colors[][3] = {
     /*                    fg            bg            border   */
