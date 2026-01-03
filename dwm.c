@@ -590,7 +590,7 @@ void buttonpress(XEvent *e) {
     focus(NULL);
   }
 
-  stw = getsystraywidth();
+  stw = systraytomon(selmon) == selmon ? getsystraywidth() : 0;
 
   tstart = selmon->ww - stw - statusw - m->btw;
   if (tab_style&2)
@@ -1043,7 +1043,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
   text = p;
 
   ret = m->ww - w - 2 * sp;
-  x = m->ww - w - getsystraywidth() - 2 * sp;
+	x = systraytomon(m) == selmon ? ret-getsystraywidth() : ret;
 
   drw_setscheme(drw, scheme[LENGTH(colors)]);
   drw->scheme[ColFg] = scheme[SchemeEmpty][ColFg];
@@ -2542,8 +2542,7 @@ void togglebar(const Arg *arg) {
   selmon->showbar = selmon->pertag->showbars[selmon->pertag->curtag] =
       !selmon->showbar;
   updatebarpos(selmon);
-  XMoveResizeWindow(dpy, selmon->barwin, selmon->wx + sp, selmon->by + vp,
-                    selmon->ww - 2 * sp - getsystraywidth(), bh);
+  XMoveResizeWindow(dpy, selmon->barwin, selmon->wx + sp, selmon->by + vp, selmon->ww - 2 * sp - (systraytomon(selmon) == selmon ? getsystraywidth() : 0), bh);
   if (showsystray) {
     XWindowChanges wc;
     if (!selmon->showbar)
