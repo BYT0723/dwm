@@ -1719,12 +1719,13 @@ void manage(Window w, XWindowAttributes *wa) {
                EnterWindowMask | FocusChangeMask | PropertyChangeMask |
                    StructureNotifyMask);
   grabbuttons(c, 0);
-  if (!c->isfloating)
+  if (!c->isfloating){
     c->isfloating = c->oldstate = trans != None || c->isfixed;
-  if (c->isfloating) {
-    if (c->x == 0 && (c->y == bh || c->y == 0)) {
-      c->x = (c->mon->mw - c->w) / 2;
-      c->y = (c->mon->mh - c->h) / 2;
+	} else {
+		// 如果窗口在默认起点，则显示在monitor中间
+    if (c->x == c->mon->mx && (c->y == c->mon->my + bh || c->y == c->mon->my)) {
+      c->x = c->mon->mx + (c->mon->mw - c->w) / 2;
+      c->y = c->mon->my + (c->mon->mh - c->h) / 2;
     }
     XRaiseWindow(dpy, c->win);
   }
