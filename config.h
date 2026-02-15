@@ -9,7 +9,18 @@ static const          int barfontpad   = 6;
 static const          int vertpad      = 3;  /* vertical padding of bar */
 static const          int sidepad      = 3;  /* horizontal padding of bar */
 static const          char host[]      = "";
-static const          int tab_style    = 3;  /* tab style; 0:default 1:radius 2:center 3:radius_center */
+
+/* tab style; 0:default 1:radius 2:center 3:radius_center
+ * 0 0 0 0 0 0 0 0
+ * bit1: radius
+ * bit2: center
+ * bit3: custom_width
+ */
+#define TAB_RADIUS       0x01
+#define TAB_CENTER       0x02
+#define TAB_CUSTOM_WIDTH 0x04
+
+static const          int tab_style     = TAB_RADIUS | TAB_CENTER | TAB_CUSTOM_WIDTH;
 static const          Bool statusradius = True;
 
 static const unsigned int gappih    = 8;  /* horiz inner gap between windows */

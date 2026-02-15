@@ -593,7 +593,7 @@ void buttonpress(XEvent *e) {
   stw = systraytomon(selmon) == selmon ? getsystraywidth() : 0;
 
   tstart = selmon->ww - stw - statusw - m->btw;
-  if (tab_style&2)
+  if (tab_style&TAB_CENTER)
     tstart += (m->btw - m->tw * m->bt) / 2;
   tend = tstart + m->tw * m->bt;
 
@@ -1181,11 +1181,11 @@ void drawbar(Monitor *m) {
     if (n > 0) {
       int remainder = w % n;
 			int tabw = TEXTW(tabWidth);
-			if (tabw * n >= w || tab_style == 0)
+			if (tabw * n >= w || ((tab_style&TAB_CUSTOM_WIDTH) != TAB_CUSTOM_WIDTH))
 				tabw = (1.0 / (double)n) * w + 1;
 
       // 判断tab是否居中
-      if (tab_style&2)
+      if (tab_style&TAB_CENTER)
         x += MAX((w-(tabw * n))/2, 0);
 
       for (c = m->clients; c; c = c->next) {
@@ -1209,7 +1209,7 @@ void drawbar(Monitor *m) {
           remainder--;
         }
 
-				if (tab_style&1) {
+				if (tab_style&TAB_RADIUS) {
     			XSetForeground(drw->dpy, drw->gc, drw->scheme[ColBg].pixel);
     			XFillArc(drw->dpy, drw->drawable, drw->gc, x, 0, lrpad, bh, LTAB_START_ANGLE, TAB_ANGLE_SIZE);
 
