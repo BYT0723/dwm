@@ -1400,8 +1400,8 @@ void focusstack(int inc, int hid) {
 }
 
 Atom getatomprop(Client *c, Atom prop) {
-  int di;
-  unsigned long dl;
+	int format;
+  unsigned long nitems,dl;
   unsigned char *p = NULL;
   Atom da, atom = None;
 
@@ -1411,10 +1411,9 @@ Atom getatomprop(Client *c, Atom prop) {
   if (prop == xatom[XembedInfo])
     req = xatom[XembedInfo];
 
-  if (XGetWindowProperty(dpy, c->win, prop, 0L, sizeof atom, False, req, &da,
-                         &di, &dl, &dl, &p) == Success &&
-      p) {
-    atom = *(Atom *)p;
+  if (XGetWindowProperty(dpy, c->win, prop, 0L, sizeof atom, False, req, &da, &format, &nitems, &dl, &p) == Success && p) {
+		if (nitems > 0 && format == 32)
+    	atom = *(long *)p;
     if (da == xatom[XembedInfo] && dl == 2)
       atom = ((Atom *)p)[1];
     XFree(p);
@@ -1497,12 +1496,10 @@ long getstate(Window w) {
   unsigned long n, extra;
   Atom real;
 
-  if (XGetWindowProperty(dpy, w, wmatom[WMState], 0L, 2L, False,
-                         wmatom[WMState], &real, &format, &n, &extra,
-                         (unsigned char **)&p) != Success)
+  if (XGetWindowProperty(dpy, w, wmatom[WMState], 0L, 2L, False, wmatom[WMState], &real, &format, &n, &extra, &p) != Success)
     return -1;
-  if (n != 0)
-    result = *p;
+  if (n != 0 && format == 32)
+    result = *(long *)p;
   XFree(p);
   return result;
 }
@@ -2253,11 +2250,10 @@ int sendevent(Window w, Atom proto, int mask, long d0, long d1, long d2,
 }
 
 void setfocus(Client *c) {
-  if (!c->neverfocus) {
+  if (!c->neverfocus)
     XSetInputFocus(dpy, c->win, RevertToPointerRoot, CurrentTime);
-    XChangeProperty(dpy, root, netatom[NetActiveWindow], XA_WINDOW, 32,
-                    PropModeReplace, (unsigned char *)&(c->win), 1);
-  }
+	XChangeProperty(dpy, root, netatom[NetActiveWindow], XA_WINDOW, 32,
+									PropModeReplace, (unsigned char *)&(c->win), 1);
   sendevent(c->win, wmatom[WMTakeFocus], NoEventMask, wmatom[WMTakeFocus],
             CurrentTime, 0, 0, 0);
 }
