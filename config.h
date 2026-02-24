@@ -255,25 +255,8 @@ static const char *wallpaper_next[]  = {"./.dwm/tools/wallpaper.sh",  "-n",     
 static const char *flameshot[]       = {"flameshot",                  "gui",    		NULL};
 // don't change or surround it by {}
 static const char *layoutmenu_cmd   = "./.dwm/dwm-layoutmenu.sh";
-
-/* commands spawned when clicking statusbar, the mouse button pressed is
- * exported as BUTTON */
-static const StatusCmd statuscmds[] = {
-    {"./.dwm/dwm-statuscmd.sh date       $BUTTON", 1},
-    {"./.dwm/dwm-statuscmd.sh battery    $BUTTON", 2},
-    {"./.dwm/dwm-statuscmd.sh volume     $BUTTON", 3},
-    {"./.dwm/dwm-statuscmd.sh brightness $BUTTON", 4},
-    {"./.dwm/dwm-statuscmd.sh wifi       $BUTTON", 5},
-    {"./.dwm/dwm-statuscmd.sh disk-root  $BUTTON", 6},
-    {"./.dwm/dwm-statuscmd.sh memory     $BUTTON", 7},
-    {"./.dwm/dwm-statuscmd.sh cpu        $BUTTON", 8},
-    {"./.dwm/dwm-statuscmd.sh weather    $BUTTON", 9},
-    {"./.dwm/dwm-statuscmd.sh mpd        $BUTTON", 10},
-    {"./.dwm/dwm-statuscmd.sh netSpeed   $BUTTON", 11},
-    {"./.dwm/dwm-statuscmd.sh mail       $BUTTON", 12},
-    {"./.dwm/dwm-statuscmd.sh rss        $BUTTON", 13},
-};
-static const char *statuscmd[] = {"/bin/sh", "-c", NULL, NULL};
+// status click event command
+static const char *statuscmd[] = {"/bin/sh", "-c", "./.dwm/dwm-statuscmd.sh $INDEX $BUTTON", NULL};
 
 static Key keys[] = {
     /* modifier                     key         function        argument */
@@ -363,16 +346,16 @@ static Key keys[] = {
 static Button buttons[] = {
     /* click          event   mask     button          function argument */
     //hostname
-	{  ClkHost,       0,      Button1, spawn,          {.v = roficmd}},
- 	{  ClkHost,       0,      Button3, spawn,          {.v = powercmd}},
+		{  ClkHost,       0,      Button1, spawn,          {.v = roficmd}},
+ 		{  ClkHost,       0,      Button3, spawn,          {.v = powercmd}},
     // tag
     {  ClkTagBar,     0,      Button1, view,           {0}},
     {  ClkTagBar,     0,      Button3, toggleview,     {0}},
     {  ClkTagBar,     MODKEY, Button1, tag,            {0}},
     {  ClkTagBar,     MODKEY, Button3, toggletag,      {0}},
     // layout
- 	{  ClkLtSymbol,   0,      Button1, setlayout,      {0}},
-	{  ClkLtSymbol,   0,      Button3, layoutmenu,     {0}},
+		{  ClkLtSymbol,   0,      Button1, setlayout,      {0}},
+		{  ClkLtSymbol,   0,      Button3, layoutmenu,     {0}},
     // task
     {  ClkWinTitle,   0,      Button1, togglewin,      {0}},
     {  ClkWinTitle,   0,      Button2, killclient,     {0}},

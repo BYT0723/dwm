@@ -241,7 +241,6 @@ struct Systray {
 
 typedef struct {
   const char *cmd;
-  int id;
 } StatusCmd;
 
 /* function declarations */
@@ -2487,15 +2486,10 @@ void spawn(const Arg *arg) {
     if (dpy)
       close(ConnectionNumber(dpy));
     if (arg->v == statuscmd) {
-      for (int i = 0; i < LENGTH(statuscmds); i++) {
-        if (statuscmdn == statuscmds[i].id) {
-          statuscmd[2] = statuscmds[i].cmd;
-          setenv("BUTTON", lastbutton, 1);
-          break;
-        }
-      }
-      if (!statuscmd[2])
-        exit(EXIT_SUCCESS);
+			char index[8];
+			snprintf(index, sizeof(index), "%d", statuscmdn);
+			setenv("INDEX", index, 1);
+      setenv("BUTTON", lastbutton, 1);
     }
     setsid();
     execvp(((char **)arg->v)[0], (char **)arg->v);
