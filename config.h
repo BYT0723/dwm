@@ -243,6 +243,7 @@ static const char *powercmd[]        = {"./.dwm/dwm-launcher.sh",     "powermenu
 static const char *mpdcmd[]          = {"./.dwm/dwm-launcher.sh",     "mpd",        NULL};
 static const char *linkcmd[]         = {"./.dwm/dwm-launcher.sh",     "quicklinks", NULL};
 static const char *modulecmd[]       = {"./.dwm/dwm-launcher.sh",     "modules",    NULL};
+static const char *wallpapercmd[]    = {"./.dwm/dwm-launcher.sh",     "wallpaper",  NULL};
 static const char *screenshot[]      = {"./.dwm/dwm-launcher.sh",     "screenshot", NULL};
 static const char *screencast[]      = {"./.dwm/dwm-launcher.sh",     "screencast", NULL};
 static const char *conkycmd[]        = {"./.dwm/dwm-launcher.sh",     "conky",      NULL};
@@ -252,7 +253,6 @@ static const char *vol_down[]        = {"./.dwm/tools/volume.sh",     "down",   
 static const char *vol_toggle[]      = {"./.dwm/tools/volume.sh",     "toggle",     NULL};
 static const char *brightness_up[]   = {"./.dwm/tools/brightness.sh", "up",         NULL};
 static const char *brightness_down[] = {"./.dwm/tools/brightness.sh", "down",       NULL};
-static const char *wallpaper_next[]  = {"./.dwm/tools/wallpaper.sh",  "-n",         NULL};
 static const char *flameshot[]       = {"flameshot",                  "gui",    		NULL};
 // don't change or surround it by {}
 static const char *layoutmenu_cmd   = "./.dwm/dwm-layoutmenu.sh";
@@ -274,10 +274,10 @@ static Key keys[] = {
     {0,                             XF86XK_AudioMute,         spawn,          {.v = vol_toggle}},
     {0,                             XF86XK_MonBrightnessDown, spawn,          {.v = brightness_down}},
     {0,                             XF86XK_MonBrightnessUp,   spawn,          {.v = brightness_up}},
-    {MODKEY | ShiftMask,            XK_n,                     spawn,          {.v = wallpaper_next}},
     // rofi
     {MODKEY,                        XK_d,                     spawn,          {.v = roficmd}},
     {MODKEY,                        XK_m,                     spawn,          {.v = modulecmd}},
+    {MODKEY,                        XK_w,                     spawn,          {.v = wallpapercmd}},
     {MODKEY | ShiftMask,            XK_m,                     spawn,          {.v = mpdcmd}},
     {MODKEY | ControlMask,          XK_m,                     spawn,          {.v = powercmd}},
     {MODKEY | ShiftMask,            XK_l,                     spawn,          {.v = linkcmd}},
