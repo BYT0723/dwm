@@ -63,6 +63,10 @@
 #define HEIGHT(X) ((X)->h + 2 * (X)->bw)
 #define TAGMASK ((1 << LENGTH(tags)) - 1)
 #define TEXTW(X) (drw_fontset_getwidth(drw, (X)) + lrpad)
+#define INMON(m, x, y) \
+    ((m) && \
+     (x) >= (m)->mx && (x) < (m)->mx + (m)->mw && \
+     (y) >= (m)->my && (y) < (m)->my + (m)->mh)
 
 #define OPAQUE 0xffU
 
@@ -209,6 +213,7 @@ struct Monitor {
   int showbar;
   int topbar;
   int hidsel;
+	int last_mouse_pos[2];
   Client *clients;
   Client *sel;
   Client *stack;
@@ -1343,6 +1348,31 @@ void focusmon(const Arg *arg) {
   if ((m = dirtomon(arg->i)) == selmon)
     return;
   unfocus(selmon->sel, 0);
+
+	Window root_return, child_return;
+	int root_x, root_y, win_x, win_y;
+	unsigned int mask;
+
+	if (XQueryPointer(dpy, root, &root_return, &child_return, &root_x, &root_y, &win_x, &win_y, &mask)) {
+		/* 记录旧 monitor 鼠标位置 */
+		if (INMON(selmon, root_x, root_y)) {
+			selmon->last_mouse_pos[0] = root_x;
+			selmon->last_mouse_pos[1] = root_y;
+		} else {
+			selmon->last_mouse_pos[0] = selmon->mx + selmon->mw/2;
+			selmon->last_mouse_pos[1] = selmon->my + selmon->mh/2;
+		}
+		/* 如果不在新 monitor，则warp */
+		if (!INMON(m, root_x, root_y)) {
+			int tx = m->last_mouse_pos[0];
+			int ty = m->last_mouse_pos[1];
+			if (!INMON(m, tx, ty)) {
+				tx = m->mx + m->mw/2;
+				ty = m->my + m->mh/2;
+			}
+			XWarpPointer(dpy, None, root, 0, 0, 0, 0, tx, ty);
+		}
+	}
   selmon = m;
   focus(NULL);
 }
@@ -2005,8 +2035,7 @@ void resizemouse(const Arg *arg) {
   if (XGrabPointer(dpy, root, False, MOUSEMASK, GrabModeAsync, GrabModeAsync,
                    None, cursor[CurResize]->cursor, CurrentTime) != GrabSuccess)
     return;
-  XWarpPointer(dpy, None, c->win, 0, 0, 0, 0, c->w + c->bw - 1,
-               c->h + c->bw - 1);
+  XWarpPointer(dpy, None, c->win, 0, 0, 0, 0, c->w + c->bw - 1, c->h + c->bw - 1);
   do {
     XMaskEvent(dpy, MOUSEMASK | ExposureMask | SubstructureRedirectMask, &ev);
     switch (ev.type) {
@@ -2035,8 +2064,7 @@ void resizemouse(const Arg *arg) {
       break;
     }
   } while (ev.type != ButtonRelease);
-  XWarpPointer(dpy, None, c->win, 0, 0, 0, 0, c->w + c->bw - 1,
-               c->h + c->bw - 1);
+  XWarpPointer(dpy, None, c->win, 0, 0, 0, 0, c->w + c->bw - 1, c->h + c->bw - 1);
   XUngrabPointer(dpy, CurrentTime);
   while (XCheckMaskEvent(dpy, EnterWindowMask, &ev))
     ;
@@ -2356,11 +2384,13 @@ void setup(void) {
   drw = drw_create(dpy, screen, root, sw, sh, visual, depth, cmap);
   if (!drw_fontset_create(drw, fonts, LENGTH(fonts)))
     die("no fonts could be loaded.");
+
+	// NOTE: 使用下面的方法是因为四舍五入会导致statu text计算时出现裂缝
 	/*  lrpad = drw->fonts->h; */
 	/* lpad = lrpad/2; */
-
 	lpad = drw->fonts->h/2;
 	lrpad = lpad * 2;
+
   bh = drw->fonts->h + barfontpad * 2;
   sp = sidepad;
   vp = (topbar == 1) ? vertpad : -vertpad;
