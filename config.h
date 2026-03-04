@@ -44,8 +44,8 @@ static const Bool viewontag = True; /* Switch view on tag switch */
 static const char *fonts[] = {
     "Symbols Nerd Font Mono:pixelsize=16:antialias=true;autohint=true",
     "CaskaydiaCove Nerd Font:pixelsize=16:antialias=true;autohint=true",
-    "Xiaolai Mono SC:pixelsize=16:antialias=true;autohint=true",
-    "LXGW WenKai Mono:pixelsize=16:antialias=true;autohint=true",
+    "Noto Sans Mono CJK SC:pixelsize=16:antialias=true;autohint=true",
+    // "LXGW WenKai Mono:pixelsize=16:antialias=true;autohint=true",
 };
 
 static const char col_black[]   = "#073642";  /*  0: black    */
