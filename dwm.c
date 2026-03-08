@@ -428,7 +428,6 @@ struct Pertag {
   const Layout
       *ltidxs[LENGTH(tags) + 1][2];    /* matrix of tags and layouts indexes  */
   int showbars[LENGTH(tags) + 1];      /* display bar for the current tag */
-  int showextrabars[LENGTH(tags) + 1]; /* display bar for the current tag */
 };
 
 /* compile-time check if all tags fit into an unsigned int bit array. */
@@ -1717,17 +1716,9 @@ void manage(Window w, XWindowAttributes *wa) {
     applyrules(c);
   }
 
-  if (c->x + WIDTH(c) > c->mon->mx + c->mon->mw)
-    c->x = c->mon->mx + c->mon->mw - WIDTH(c);
-  if (c->y + HEIGHT(c) > c->mon->my + c->mon->mh)
-    c->y = c->mon->my + c->mon->mh - HEIGHT(c);
-  c->x = MAX(c->x, c->mon->mx);
-  /* only fix client y-offset, if the client center might cover the bar */
-  c->y = MAX(c->y,
-             ((c->mon->by == c->mon->my) && (c->x + (c->w / 2) >= c->mon->wx) &&
-              (c->x + (c->w / 2) < c->mon->wx + c->mon->ww))
-                 ? c->mon->my + bh
-                 : c->mon->my);
+	// set x in [mon->mx, mon->mx + mon->mw] | y in [mon->my, mon->my + mon->mh]
+	c->x = MAX(MIN(c->x ,c->mon->mx + c->mon->mw - WIDTH(c)), c->mon->mx);
+	c->y = MAX(MIN(c->y, c->mon->my + c->mon->mh - HEIGHT(c)), c->mon->my);
   c->bw = borderpx;
 
   wc.border_width = c->bw;
@@ -1741,14 +1732,14 @@ void manage(Window w, XWindowAttributes *wa) {
                EnterWindowMask | FocusChangeMask | PropertyChangeMask |
                    StructureNotifyMask);
   grabbuttons(c, 0);
-  if (!c->isfloating){
+  if (!c->isfloating)
     c->isfloating = c->oldstate = trans != None || c->isfixed;
-	} else {
-		// 如果窗口在默认起点，则显示在monitor中间
-    if (c->x == c->mon->mx && (c->y == c->mon->my + bh || c->y == c->mon->my)) {
-      c->x = c->mon->mx + (c->mon->mw - c->w) / 2;
-      c->y = c->mon->my + (c->mon->mh - c->h) / 2;
-    }
+	if (c->isfloating) {
+		// 当默认窗口位置，边框贴近屏幕边缘，将窗口移动到屏幕中心
+		// x = mon_x + (mon_w - cli_w) / 2
+		// y = mon_y + (mon_y - cli_h) / 2
+		c->x = (c->x == c->mon->mx || c->x + c->w == c->mon->mx + c->mon->mw) ? c->mon->mx+(c->mon->mw - c->w)/2 : c->x;
+		c->y = (c->y == c->mon->my + bh || c->y == c->mon->my || c->y + c->h == c->mon->my + c->mon->mh) ? c->mon->my+(c->mon->mh - c->h)/2 : c->y;
     XRaiseWindow(dpy, c->win);
   }
   attachtop ? attach(c) : attachbottom(c);
