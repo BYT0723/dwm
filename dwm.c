@@ -2479,10 +2479,16 @@ void showhide(Client *c) {
   } else {
     /* hide clients bottom up */
     showhide(c->snext);
+
+  	static XWindowAttributes ra;
+		XGetWindowAttributes(dpy, root, &ra);
+
     if (c->tags < selmon->tagset[selmon->seltags])
+			// move to left
       XMoveWindow(dpy, c->win, -c->w * 3/2, c->y);
     else if (c->tags > selmon->tagset[selmon->seltags])
-      XMoveWindow(dpy, c->win, XScreenOfDisplay(dpy, screen)->width * 3/2, c->y);
+			// move to right
+      XMoveWindow(dpy, c->win, ra.width * 3/2, c->y);
   }
 	updateicon(c);
 }
