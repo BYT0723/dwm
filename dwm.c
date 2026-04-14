@@ -1711,14 +1711,14 @@ void loadxrdb() {
 				XrmGetResource(xrdb, "dwm.col_theme", NULL, &type, &value);
 
 				if (value.addr != NULL && strcmp((char *)value.addr, "light") == 0) {
-					XRDB_LOAD_COLOR("dwm.col_bright_black", col_black);
-					XRDB_LOAD_COLOR("dwm.col_bright_red", col_red);
-					XRDB_LOAD_COLOR("dwm.col_bright_green", col_green);
-					XRDB_LOAD_COLOR("dwm.col_bright_yellow", col_yellow);
-					XRDB_LOAD_COLOR("dwm.col_bright_blue", col_blue);
-					XRDB_LOAD_COLOR("dwm.col_bright_magenta", col_magenta);
-					XRDB_LOAD_COLOR("dwm.col_bright_cyan", col_cyan);
-					XRDB_LOAD_COLOR("dwm.col_bright_white", col_white);
+					XRDB_LOAD_COLOR("dwm.col_light_black", col_black);
+					XRDB_LOAD_COLOR("dwm.col_light_red", col_red);
+					XRDB_LOAD_COLOR("dwm.col_light_green", col_green);
+					XRDB_LOAD_COLOR("dwm.col_light_yellow", col_yellow);
+					XRDB_LOAD_COLOR("dwm.col_light_blue", col_blue);
+					XRDB_LOAD_COLOR("dwm.col_light_magenta", col_magenta);
+					XRDB_LOAD_COLOR("dwm.col_light_cyan", col_cyan);
+					XRDB_LOAD_COLOR("dwm.col_light_white", col_white);
 				} else {
 					XRDB_LOAD_COLOR("dwm.col_black", col_black);
 					XRDB_LOAD_COLOR("dwm.col_red", col_red);
