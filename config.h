@@ -48,21 +48,16 @@ static const char *fonts[] = {
     // "LXGW WenKai Mono:pixelsize=16:antialias=true;autohint=true",
 };
 
-static char col_theme[]   = "dark";
-static char col_black[]   = "#073642";  /*  0: black    */
-static char col_red[]     = "#dc322f";  /*  1: red      */
-static char col_green[]   = "#859900";  /*  2: green    */
-static char col_yellow[]  = "#b58900";  /*  3: yellow   */
-static char col_blue[]    = "#268bd2";  /*  4: blue     */
-static char col_magenta[] = "#d33682";  /*  5: magenta  */
-static char col_cyan[]    = "#2aa198";  /*  6: cyan     */
-static char col_white[]   = "#eee8d5";  /*  7: white    */
-
-static char col_ab_black[]   = "#000000";
-
-static const unsigned int emptyalpha  = 0x00;
-static const unsigned int curalpha    = 0xec;
-static const unsigned int hidalpha    = 0x80;
+static char col_theme[]    = "dark";
+static char col_black[]    = "#073642";  /*  0: black    */
+static char col_red[]      = "#dc322f";  /*  1: red      */
+static char col_green[]    = "#859900";  /*  2: green    */
+static char col_yellow[]   = "#b58900";  /*  3: yellow   */
+static char col_blue[]     = "#268bd2";  /*  4: blue     */
+static char col_magenta[]  = "#d33682";  /*  5: magenta  */
+static char col_cyan[]     = "#2aa198";  /*  6: cyan     */
+static char col_white[]    = "#eee8d5";  /*  7: white    */
+static char col_ab_black[] = "#000000";
 static const char *colors[][3] = {
     /*                    fg            bg            border   */
     // host
@@ -83,6 +78,12 @@ static const char *colors[][3] = {
     // empty
     [SchemeEmpty]   = { col_ab_black,  col_ab_black, col_black    },
 };
+
+#define OPAQUE 0xffU
+static const unsigned int emptyalpha  = 0x00;
+static const unsigned int curalpha    = 0xec;
+static const unsigned int hidalpha    = 0x80;
+
 static const unsigned int alphas[][3]      = {
     /*                    fg        bg          border     */
     // host
