@@ -65,12 +65,6 @@
 #define HEIGHT(X) ((X)->h + 2 * (X)->bw)
 #define TAGMASK ((1 << LENGTH(tags)) - 1)
 #define TEXTW(X) (drw_fontset_getwidth(drw, (X)) + lrpad)
-#define XRDB_LOAD_FIELD(R,V)    if (XrmGetResource(xrdb, R, "*", &type, &value) == True) { \
-																	if (value.addr != NULL) { \
-																			strncpy(V, value.addr, sizeof(V) - 1); \
-																			V[sizeof(V) - 1] = '\0'; \
-																	} \
-                                }
 #define XRDB_LOAD_COLOR(R,V)    if (XrmGetResource(xrdb, R, NULL, &type, &value) == True) { \
                                   if (value.addr != NULL && strnlen(value.addr, 8) == 7 && value.addr[0] == '#') { \
                                     int i = 1; \
@@ -371,7 +365,7 @@ static int updategeom(void);
 static void updatenumlockmask(void);
 static void updatesizehints(Client *c);
 static void updatestatus(void);
-static void updatesystray(int updatebar);
+static void updatesystray(int flag);
 static void updatesystrayicongeom(Client *i, int w, int h);
 static void updatesystrayiconstate(Client *i, XPropertyEvent *ev);
 static void updatetitle(Client *c);
@@ -1700,7 +1694,7 @@ void killclient(const Arg *arg) {
 
 void loadxrdb() {
   Display *display;
-  char * resm;
+  char *resm;
   XrmDatabase xrdb;
   char *type;
   XrmValue value;
@@ -1714,9 +1708,9 @@ void loadxrdb() {
       xrdb = XrmGetStringDatabase(resm);
 
       if (xrdb != NULL) {
-				XRDB_LOAD_FIELD("dwm.col_theme", col_theme);
+				XrmGetResource(xrdb, "dwm.col_theme", NULL, &type, &value);
 
-				if (strcmp(col_theme, "light")) {
+				if (value.addr != NULL && strcmp((char *)value.addr, "light") == 0) {
 					XRDB_LOAD_COLOR("dwm.col_bright_black", col_black);
 					XRDB_LOAD_COLOR("dwm.col_bright_red", col_red);
 					XRDB_LOAD_COLOR("dwm.col_bright_green", col_green);
@@ -2977,7 +2971,7 @@ void updatestatus(void) {
   drawbar(selmon);
 }
 
-void updatesystray(int updatebar) {
+void updatesystray(int flag) {
   XSetWindowAttributes wa;
   XWindowChanges wc;
   Client *i;
@@ -2986,6 +2980,9 @@ void updatesystray(int updatebar) {
   unsigned int w = 1, xpad = 0, ypad = 0;
   xpad = sp;
   ypad = vp;
+
+	int updatebar = flag&1;
+	int refresh_icon = flag&2;
 
   if (!showsystray)
     return;
@@ -3022,6 +3019,8 @@ void updatesystray(int updatebar) {
     w += systrayspacing;
     i->x = w;
     XMoveResizeWindow(dpy, i->win, i->x, i->y, i->w, i->h);
+		if (refresh_icon)
+			XClearArea(dpy, i->win, 0, 0, 0, 0, True);
     w += i->w;
     if (i->mon != m)
       i->mon = m;
@@ -3040,6 +3039,14 @@ void updatesystray(int updatebar) {
                    &wc);
   XMapWindow(dpy, systray->win);
   XMapSubwindows(dpy, systray->win);
+	if (refresh_icon) {
+		GC gc;
+		XGCValues gcv;
+		gcv.foreground = scheme[SchemeSystray][ColBg].pixel;
+		gc = XCreateGC(dpy, systray->win, GCForeground, &gcv);
+		XFillRectangle(dpy, systray->win, gc, 0, 0, w, bh);
+		XFreeGC(dpy, gc);
+	}
   XSync(dpy, False);
 
   if (updatebar)
@@ -3306,6 +3313,7 @@ void xrdb(const Arg *arg) {
   	scheme[i] = drw_scm_create(drw, colors[i], alphas[i], 3);
   focus(NULL);
   arrange(NULL);
+	updatesystray(2);
 }
 
 void zoom(const Arg *arg) {
