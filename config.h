@@ -275,6 +275,7 @@ static Key keys[] = {
     {0,                             XF86XK_AudioMute,         spawn,          {.v = vol_toggle}},
     {0,                             XF86XK_MonBrightnessDown, spawn,          {.v = brightness_down}},
     {0,                             XF86XK_MonBrightnessUp,   spawn,          {.v = brightness_up}},
+    {MODKEY | ControlMask,          XK_r,                     xrdb,           {.v = NULL}},
     // rofi
     {MODKEY,                        XK_d,                     spawn,          {.v = roficmd}},
     {MODKEY,                        XK_m,                     spawn,          {.v = modulecmd}},
@@ -314,7 +315,6 @@ static Key keys[] = {
     {MODKEY,                        XK_period,                focusmon,       {.i = +1}},
     {MODKEY | ControlMask,          XK_comma,                 tagmon,         {.i = -1}},
     {MODKEY | ControlMask,          XK_period,                tagmon,         {.i = +1}},
-    {MODKEY | ControlMask,          XK_r,                     xrdb,           {.v = NULL}},
     {MODKEY | ShiftMask,            XK_q,                     killclient,     {0}},
     {MODKEY | ControlMask,          XK_q,                     quit,           {0}},
     // gap manager

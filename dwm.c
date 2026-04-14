@@ -328,6 +328,7 @@ static void resizemouse(const Arg *arg);
 static void restack(Monitor *m);
 static void run(void);
 static void runautostart(void);
+static void runsh(const char *name, const char *args);
 static void scan(void);
 static int sendevent(Window w, Atom proto, int m, long d0, long d1, long d2, long d3, long d4);
 static void sendmon(Client *c, Monitor *m);
@@ -389,6 +390,7 @@ static const char autostartsh[] = "autostart.sh";
 static const char broken[] = "broken";
 static const char dwmdir[] = "dwm";
 static const char localshare[] = ".local/share";
+static const char colorschemesh[] = "colorscheme.sh";
 static char stext[1024];
 static int statusw;
 static int statuscmdn;
@@ -2246,6 +2248,74 @@ void runautostart(void) {
   free(path);
 }
 
+void runsh(const char *name, const char *args) {
+  char *pathpfx;
+  char *path;
+  char *xdgdatahome;
+  char *home;
+  struct stat sb;
+
+  if ((home = getenv("HOME")) == NULL)
+    /* this is almost impossible */
+    return;
+
+  /* if $XDG_DATA_HOME is set and not empty, use $XDG_DATA_HOME/dwm,
+   * otherwise use ~/.local/share/dwm as autostart script directory
+   */
+  xdgdatahome = getenv("XDG_DATA_HOME");
+  if (xdgdatahome != NULL && *xdgdatahome != '\0') {
+    /* space for path segments, separators and nul */
+    pathpfx = ecalloc(1, strlen(xdgdatahome) + strlen(dwmdir) + 2);
+
+    if (sprintf(pathpfx, "%s/%s", xdgdatahome, dwmdir) <= 0) {
+      free(pathpfx);
+      return;
+    }
+  } else {
+    /* space for path segments, separators and nul */
+    pathpfx =
+        ecalloc(1, strlen(home) + strlen(localshare) + strlen(dwmdir) + 3);
+
+    if (sprintf(pathpfx, "%s/%s/%s", home, localshare, dwmdir) < 0) {
+      free(pathpfx);
+      return;
+    }
+  }
+
+  /* check if the autostart script directory exists */
+  if (!(stat(pathpfx, &sb) == 0 && S_ISDIR(sb.st_mode))) {
+    /* the XDG conformant path does not exist or is no directory
+     * so we try ~/.dwm instead
+     */
+    char *pathpfx_new = realloc(pathpfx, strlen(home) + strlen(dwmdir) + 3);
+    if (pathpfx_new == NULL) {
+      free(pathpfx);
+      return;
+    }
+    pathpfx = pathpfx_new;
+
+    if (sprintf(pathpfx, "%s/.%s", home, dwmdir) <= 0) {
+      free(pathpfx);
+      return;
+    }
+  }
+
+  path = ecalloc(1, strlen(pathpfx) + strlen(name)+ strlen(args) + 1);
+  if (sprintf(path, "%s/%s", pathpfx, name) <= 0) {
+    free(path);
+    free(pathpfx);
+  }
+
+  if (access(path, X_OK) == 0) {
+		strcat(path, " ");
+		strcat(path, args);
+    system(path);
+	}
+
+  free(pathpfx);
+  free(path);
+}
+
 void scan(void) {
   unsigned int i, num;
   Window d1, d2, *wins = NULL;
@@ -3307,6 +3377,8 @@ void xinitvisual() {
 }
 
 void xrdb(const Arg *arg) {
+	runsh(colorschemesh, "before");
+
   loadxrdb();
   int i;
   for (i = 0; i < LENGTH(colors); i++)
@@ -3314,6 +3386,8 @@ void xrdb(const Arg *arg) {
   focus(NULL);
   arrange(NULL);
 	updatesystray(2);
+
+	runsh(colorschemesh, "after");
 }
 
 void zoom(const Arg *arg) {
