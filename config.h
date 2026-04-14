@@ -48,16 +48,16 @@ static const char *fonts[] = {
     // "LXGW WenKai Mono:pixelsize=16:antialias=true;autohint=true",
 };
 
-static const char col_black[]   = "#073642";  /*  0: black    */
-static const char col_red[]     = "#dc322f";  /*  1: red      */
-static const char col_green[]   = "#859900";  /*  2: green    */
-static const char col_yellow[]  = "#b58900";  /*  3: yellow   */
-static const char col_blue[]    = "#268bd2";  /*  4: blue     */
-static const char col_magenta[] = "#d33682";  /*  5: magenta  */
-static const char col_cyan[]    = "#2aa198";  /*  6: cyan     */
-static const char col_white[]   = "#eee8d5";  /*  7: white    */
+static char col_black[]   = "#073642";  /*  0: black    */
+static char col_red[]     = "#dc322f";  /*  1: red      */
+static char col_green[]   = "#859900";  /*  2: green    */
+static char col_yellow[]  = "#b58900";  /*  3: yellow   */
+static char col_blue[]    = "#268bd2";  /*  4: blue     */
+static char col_magenta[] = "#d33682";  /*  5: magenta  */
+static char col_cyan[]    = "#2aa198";  /*  6: cyan     */
+static char col_white[]   = "#eee8d5";  /*  7: white    */
 
-static const char col_ab_black[]   = "#000000";
+static char col_ab_black[]   = "#000000";
 
 static const unsigned int emptyalpha  = 0x00;
 static const unsigned int curalpha    = 0xec;
@@ -313,6 +313,7 @@ static Key keys[] = {
     {MODKEY,                        XK_period,                focusmon,       {.i = +1}},
     {MODKEY | ControlMask,          XK_comma,                 tagmon,         {.i = -1}},
     {MODKEY | ControlMask,          XK_period,                tagmon,         {.i = +1}},
+    {MODKEY,                        XK_F5,                    xrdb,           {.v = NULL}},
     {MODKEY | ShiftMask,            XK_q,                     killclient,     {0}},
     {MODKEY | ControlMask,          XK_q,                     quit,           {0}},
     // gap manager

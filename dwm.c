@@ -24,6 +24,7 @@
 #include <X11/Xatom.h>
 #include <X11/Xlib.h>
 #include <X11/Xproto.h>
+#include <X11/Xresource.h>
 #include <X11/Xutil.h>
 #include <X11/cursorfont.h>
 #include <X11/keysym.h>
@@ -64,6 +65,21 @@
 #define HEIGHT(X) ((X)->h + 2 * (X)->bw)
 #define TAGMASK ((1 << LENGTH(tags)) - 1)
 #define TEXTW(X) (drw_fontset_getwidth(drw, (X)) + lrpad)
+#define XRDB_LOAD_COLOR(R,V)    if (XrmGetResource(xrdb, R, NULL, &type, &value) == True) { \
+                                  if (value.addr != NULL && strnlen(value.addr, 8) == 7 && value.addr[0] == '#') { \
+                                    int i = 1; \
+                                    for (; i <= 6; i++) { \
+                                      if (value.addr[i] < 48) break; \
+                                      if (value.addr[i] > 57 && value.addr[i] < 65) break; \
+                                      if (value.addr[i] > 70 && value.addr[i] < 97) break; \
+                                      if (value.addr[i] > 102) break; \
+                                    } \
+                                    if (i == 7) { \
+                                      strncpy(V, value.addr, 7); \
+                                      V[7] = '\0'; \
+                                    } \
+                                  } \
+                                }
 #define INMON(m, x, y) \
     ((m) && \
      (x) >= (m)->mx && (x) < (m)->mx + (m)->mw && \
@@ -292,6 +308,7 @@ static void hidewin(Client *c);
 static void incnmaster(const Arg *arg);
 static void keypress(XEvent *e);
 static void killclient(const Arg *arg);
+static void loadxrdb(void);
 static void layoutmenu(const Arg *arg);
 static void manage(Window w, XWindowAttributes *wa);
 static void mappingnotify(XEvent *e);
@@ -365,6 +382,7 @@ static int xerror(Display *dpy, XErrorEvent *ee);
 static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static int xerrorstart(Display *dpy, XErrorEvent *ee);
 static void xinitvisual();
+static void xrdb(const Arg *arg);
 static void zoom(const Arg *arg);
 
 /* variables */
@@ -1675,6 +1693,38 @@ void killclient(const Arg *arg) {
     XUngrabServer(dpy);
   }
 }
+
+void loadxrdb() {
+  Display *display;
+  char * resm;
+  XrmDatabase xrdb;
+  char *type;
+  XrmValue value;
+
+  display = XOpenDisplay(NULL);
+
+  if (display != NULL) {
+    resm = XResourceManagerString(display);
+
+    if (resm != NULL) {
+      xrdb = XrmGetStringDatabase(resm);
+
+      if (xrdb != NULL) {
+        XRDB_LOAD_COLOR("dwm.col_black", col_black);
+        XRDB_LOAD_COLOR("dwm.col_red", col_red);
+        XRDB_LOAD_COLOR("dwm.col_green", col_green);
+        XRDB_LOAD_COLOR("dwm.col_yellow", col_yellow);
+        XRDB_LOAD_COLOR("dwm.col_blue", col_blue);
+        XRDB_LOAD_COLOR("dwm.col_magenta", col_magenta);
+        XRDB_LOAD_COLOR("dwm.col_cyan", col_cyan);
+        XRDB_LOAD_COLOR("dwm.col_white", col_white);
+      }
+    }
+  }
+
+  XCloseDisplay(display);
+}
+
 
 void layoutmenu(const Arg *arg) {
   FILE *p;
@@ -3232,6 +3282,15 @@ void xinitvisual() {
   }
 }
 
+void xrdb(const Arg *arg) {
+  loadxrdb();
+  int i;
+  for (i = 0; i < LENGTH(colors); i++)
+  	scheme[i] = drw_scm_create(drw, colors[i], alphas[i], 3);
+  focus(NULL);
+  arrange(NULL);
+}
+
 void zoom(const Arg *arg) {
   Client *c = selmon->sel;
 
@@ -3254,6 +3313,8 @@ int main(int argc, char *argv[]) {
   if (!(dpy = XOpenDisplay(NULL)))
     die("dwm: cannot open display");
   checkotherwm();
+  XrmInitialize();
+  loadxrdb();
   setup();
 #ifdef __OpenBSD__
   if (pledge("stdio rpath proc exec", NULL) == -1)
