@@ -48,6 +48,7 @@ static const char *fonts[] = {
     // "LXGW WenKai Mono:pixelsize=16:antialias=true;autohint=true",
 };
 
+static char col_theme[]   = "dark";
 static char col_black[]   = "#073642";  /*  0: black    */
 static char col_red[]     = "#dc322f";  /*  1: red      */
 static char col_green[]   = "#859900";  /*  2: green    */

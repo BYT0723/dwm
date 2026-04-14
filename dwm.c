@@ -65,6 +65,12 @@
 #define HEIGHT(X) ((X)->h + 2 * (X)->bw)
 #define TAGMASK ((1 << LENGTH(tags)) - 1)
 #define TEXTW(X) (drw_fontset_getwidth(drw, (X)) + lrpad)
+#define XRDB_LOAD_FIELD(R,V)    if (XrmGetResource(xrdb, R, "*", &type, &value) == True) { \
+																	if (value.addr != NULL) { \
+																			strncpy(V, value.addr, sizeof(V) - 1); \
+																			V[sizeof(V) - 1] = '\0'; \
+																	} \
+                                }
 #define XRDB_LOAD_COLOR(R,V)    if (XrmGetResource(xrdb, R, NULL, &type, &value) == True) { \
                                   if (value.addr != NULL && strnlen(value.addr, 8) == 7 && value.addr[0] == '#') { \
                                     int i = 1; \
@@ -1710,14 +1716,27 @@ void loadxrdb() {
       xrdb = XrmGetStringDatabase(resm);
 
       if (xrdb != NULL) {
-        XRDB_LOAD_COLOR("dwm.col_black", col_black);
-        XRDB_LOAD_COLOR("dwm.col_red", col_red);
-        XRDB_LOAD_COLOR("dwm.col_green", col_green);
-        XRDB_LOAD_COLOR("dwm.col_yellow", col_yellow);
-        XRDB_LOAD_COLOR("dwm.col_blue", col_blue);
-        XRDB_LOAD_COLOR("dwm.col_magenta", col_magenta);
-        XRDB_LOAD_COLOR("dwm.col_cyan", col_cyan);
-        XRDB_LOAD_COLOR("dwm.col_white", col_white);
+				XRDB_LOAD_FIELD("dwm.col_theme", col_theme);
+
+				if (strcmp(col_theme, "light")) {
+					XRDB_LOAD_COLOR("dwm.col_bright_black", col_black);
+					XRDB_LOAD_COLOR("dwm.col_bright_red", col_red);
+					XRDB_LOAD_COLOR("dwm.col_bright_green", col_green);
+					XRDB_LOAD_COLOR("dwm.col_bright_yellow", col_yellow);
+					XRDB_LOAD_COLOR("dwm.col_bright_blue", col_blue);
+					XRDB_LOAD_COLOR("dwm.col_bright_magenta", col_magenta);
+					XRDB_LOAD_COLOR("dwm.col_bright_cyan", col_cyan);
+					XRDB_LOAD_COLOR("dwm.col_bright_white", col_white);
+				} else {
+					XRDB_LOAD_COLOR("dwm.col_black", col_black);
+					XRDB_LOAD_COLOR("dwm.col_red", col_red);
+					XRDB_LOAD_COLOR("dwm.col_green", col_green);
+					XRDB_LOAD_COLOR("dwm.col_yellow", col_yellow);
+					XRDB_LOAD_COLOR("dwm.col_blue", col_blue);
+					XRDB_LOAD_COLOR("dwm.col_magenta", col_magenta);
+					XRDB_LOAD_COLOR("dwm.col_cyan", col_cyan);
+					XRDB_LOAD_COLOR("dwm.col_white", col_white);
+				}
       }
     }
   }
