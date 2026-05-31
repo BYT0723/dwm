@@ -140,15 +140,15 @@ sudo pacman -S --noconfirm feh xwinwrap-git mpv archlinux-wallpaper
 info "Phase 6: 可选组件"
 
 step "浏览器"
-sudo pacman -S --noconfirm firefox surf
+sudo pacman -S --noconfirm firefox surf chromium
 
 step "代理"
-sudo pacman -S --noconfirm trojan
-if [ -f "$HOME/.dwm/configs/trojan.json" ]; then
-	sudo cp "$HOME/.dwm/configs/trojan.json" /etc/trojan/config.json
-	sudo systemctl enable --now trojan
+sudo pacman -S --noconfirm sing-box
+if [ -f "$HOME/.dwm/configs/sing-box.json" ]; then
+	sudo cp "$HOME/.dwm/configs/sing-box.json" /etc/sing-box/config.json
+	sudo systemctl enable --now sing-box
 else
-	warn "trojan 配置未找到，跳过代理服务设置"
+	warn "sing-box 配置未找到，跳过代理服务设置"
 fi
 
 step "工具"
