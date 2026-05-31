@@ -12,7 +12,7 @@
 
 CACHE_DIR=$HOME"/.cache/walter-dwm"
 
-if ![ -d "$CACHE_DIR" ]; then
+if [ ! -d "$CACHE_DIR" ]; then
 	mkdir $CACHE_DIR
 fi
 
@@ -49,7 +49,7 @@ title "克隆dotfile仓库"
 git clone https://github.com/BYT0723/dotfile.git $CACHE_DIR"/dotfile"
 
 title "复制配置文件"
-cp $CACHE_DIR"/dotfile/*" ~/
+cp "$CACHE_DIR/dotfile/"* ~/
 title "更新zim以及插件"
 zimfw update
 

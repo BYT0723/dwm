@@ -151,6 +151,8 @@ static Fnt *xfont_create(Drw *drw, const char *fontname,
   if (FcPatternGetBool(xfont->pattern, FC_COLOR, 0, &iscol) == FcResultMatch &&
       iscol) {
     XftFontClose(drw->dpy, xfont);
+    if (pattern)
+      FcPatternDestroy(pattern);
     return NULL;
   }
 

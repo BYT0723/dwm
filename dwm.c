@@ -469,7 +469,8 @@ void applyrules(Client *c) {
   class = ch.res_class ? ch.res_class : broken;
   instance = ch.res_name ? ch.res_name : broken;
 
-  strcpy(c->class, class);
+  strncpy(c->class, class, sizeof(c->class) - 1);
+  c->class[sizeof(c->class) - 1] = '\0';
 
   for (i = 0; i < LENGTH(rules); i++) {
     r = &rules[i];
@@ -746,8 +747,12 @@ void cleanup(void) {
 
   for (i = 0; i < CurLast; i++)
     drw_cur_free(drw, cursor[i]);
-  for (i = 0; i < LENGTH(colors) + 1; i++)
+  for (i = 0; i < LENGTH(colors) + 1; i++) {
+    XftColorFree(dpy, visual, cmap, &scheme[i][ColFg]);
+    XftColorFree(dpy, visual, cmap, &scheme[i][ColBg]);
+    XftColorFree(dpy, visual, cmap, &scheme[i][ColBorder]);
     free(scheme[i]);
+  }
   free(scheme);
   XDestroyWindow(dpy, wmcheckwin);
   drw_free(drw);
@@ -763,10 +768,13 @@ void cleanupmon(Monitor *mon) {
     mons = mons->next;
   else {
     for (m = mons; m && m->next != mon; m = m->next);
+    if (!m)
+      return;
     m->next = mon->next;
   }
   XUnmapWindow(dpy, mon->barwin);
   XDestroyWindow(dpy, mon->barwin);
+  free(mon->pertag);
   free(mon);
 }
 
@@ -809,7 +817,7 @@ void clientmessage(XEvent *e) {
                        ResizeRedirectMask);
       XReparentWindow(dpy, c->win, systray->win, 0, 0);
       /* use parents background color */
-      swa.background_pixel = scheme[SchemeNorm][ColBg].pixel;
+      swa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
       XChangeWindowAttributes(dpy, c->win, CWBackPixel, &swa);
       sendevent(c->win, netatom[Xembed], StructureNotifyMask, CurrentTime,
                 XEMBED_EMBEDDED_NOTIFY, 0, systray->win,
@@ -1085,16 +1093,22 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
       while (text[++i] != '^') {
         if (text[i] == 'c') {
           char buf[8];
-          memcpy(buf, (char *)text + i + 1, 7);
-          buf[7] = '\0';
+          int n = 0;
+          while (n < 7 && (text + i + 1)[n] && (text + i + 1)[n] != '^')
+            n++;
+          memcpy(buf, (char *)text + i + 1, n);
+          buf[n] = '\0';
           drw_clr_create(drw, &drw->scheme[ColFg], buf, alphas[SchemeStatus][0]);
-          i += 7;
+          i += n;
         } else if (text[i] == 'b') {
           char buf[8];
-          memcpy(buf, (char *)text + i + 1, 7);
-          buf[7] = '\0';
+          int n = 0;
+          while (n < 7 && (text + i + 1)[n] && (text + i + 1)[n] != '^')
+            n++;
+          memcpy(buf, (char *)text + i + 1, n);
+          buf[n] = '\0';
           drw_clr_create(drw, &drw->scheme[ColBg], buf, alphas[SchemeStatus][1]);
-          i += 7;
+          i += n;
         } else if (text[i] == 'd') {
           drw->scheme[ColFg] = scheme[SchemeStatus][ColFg];
           drw->scheme[ColBg] = scheme[SchemeStatus][ColBg];
@@ -1710,27 +1724,28 @@ void loadxrdb() {
       xrdb = XrmGetStringDatabase(resm);
 
       if (xrdb != NULL) {
-				XrmGetResource(xrdb, "dwm.col_theme", NULL, &type, &value);
+        XrmGetResource(xrdb, "dwm.col_theme", NULL, &type, &value);
 
-				if (value.addr != NULL && strcmp((char *)value.addr, "light") == 0) {
-					XRDB_LOAD_COLOR("dwm.col_light_black", col_black);
-					XRDB_LOAD_COLOR("dwm.col_light_red", col_red);
-					XRDB_LOAD_COLOR("dwm.col_light_green", col_green);
-					XRDB_LOAD_COLOR("dwm.col_light_yellow", col_yellow);
-					XRDB_LOAD_COLOR("dwm.col_light_blue", col_blue);
-					XRDB_LOAD_COLOR("dwm.col_light_magenta", col_magenta);
-					XRDB_LOAD_COLOR("dwm.col_light_cyan", col_cyan);
-					XRDB_LOAD_COLOR("dwm.col_light_white", col_white);
-				} else {
-					XRDB_LOAD_COLOR("dwm.col_black", col_black);
-					XRDB_LOAD_COLOR("dwm.col_red", col_red);
-					XRDB_LOAD_COLOR("dwm.col_green", col_green);
-					XRDB_LOAD_COLOR("dwm.col_yellow", col_yellow);
-					XRDB_LOAD_COLOR("dwm.col_blue", col_blue);
-					XRDB_LOAD_COLOR("dwm.col_magenta", col_magenta);
-					XRDB_LOAD_COLOR("dwm.col_cyan", col_cyan);
-					XRDB_LOAD_COLOR("dwm.col_white", col_white);
-				}
+        if (value.addr != NULL && strcmp((char *)value.addr, "light") == 0) {
+          XRDB_LOAD_COLOR("dwm.col_light_black", col_black);
+          XRDB_LOAD_COLOR("dwm.col_light_red", col_red);
+          XRDB_LOAD_COLOR("dwm.col_light_green", col_green);
+          XRDB_LOAD_COLOR("dwm.col_light_yellow", col_yellow);
+          XRDB_LOAD_COLOR("dwm.col_light_blue", col_blue);
+          XRDB_LOAD_COLOR("dwm.col_light_magenta", col_magenta);
+          XRDB_LOAD_COLOR("dwm.col_light_cyan", col_cyan);
+          XRDB_LOAD_COLOR("dwm.col_light_white", col_white);
+        } else {
+          XRDB_LOAD_COLOR("dwm.col_black", col_black);
+          XRDB_LOAD_COLOR("dwm.col_red", col_red);
+          XRDB_LOAD_COLOR("dwm.col_green", col_green);
+          XRDB_LOAD_COLOR("dwm.col_yellow", col_yellow);
+          XRDB_LOAD_COLOR("dwm.col_blue", col_blue);
+          XRDB_LOAD_COLOR("dwm.col_magenta", col_magenta);
+          XRDB_LOAD_COLOR("dwm.col_cyan", col_cyan);
+          XRDB_LOAD_COLOR("dwm.col_white", col_white);
+        }
+        XrmDestroyDatabase(xrdb);
       }
     }
   }
@@ -2002,7 +2017,7 @@ void quit(const Arg *arg) {
   Client *c;
   for (m = mons; m; m = m->next) {
     if (m) {
-      for (c = m->stack; c; c = c->next)
+      for (c = m->stack; c; c = c->snext)
         if (c && HIDDEN(c))
           showwin(c);
     }
@@ -2226,10 +2241,11 @@ void runautostart(void) {
   }
 
   /* try the blocking script first */
-  path = ecalloc(1, strlen(pathpfx) + strlen(autostartblocksh) + 2);
+  path = ecalloc(1, strlen(pathpfx) + strlen(autostartblocksh) + 4);
   if (sprintf(path, "%s/%s", pathpfx, autostartblocksh) <= 0) {
     free(path);
     free(pathpfx);
+    return;
   }
 
   if (access(path, X_OK) == 0)
@@ -2239,6 +2255,7 @@ void runautostart(void) {
   if (sprintf(path, "%s/%s", pathpfx, autostartsh) <= 0) {
     free(path);
     free(pathpfx);
+    return;
   }
 
   if (access(path, X_OK) == 0)
@@ -2300,10 +2317,11 @@ void runsh(const char *name, const char *args) {
     }
   }
 
-  path = ecalloc(1, strlen(pathpfx) + strlen(name)+ strlen(args) + 1);
+  path = ecalloc(1, strlen(pathpfx) + strlen(name)+ strlen(args) + 3);
   if (sprintf(path, "%s/%s", pathpfx, name) <= 0) {
     free(path);
     free(pathpfx);
+    return;
   }
 
   if (access(path, X_OK) == 0) {
@@ -2438,7 +2456,9 @@ Layout *last_layout;
 void fullscreen(const Arg *arg) {
   if (selmon->showbar) {
     for (last_layout = (Layout *)layouts;
-         last_layout != selmon->lt[selmon->sellt]; last_layout++)
+         last_layout != selmon->lt[selmon->sellt] &&
+         (unsigned int)(last_layout - (Layout *)layouts) < LENGTH(layouts);
+         last_layout++)
       ;
     setlayout(&((Arg){.v = &layouts[2]}));
   } else {
@@ -3097,6 +3117,7 @@ void updatesystray(int flag) {
   }
   w = w ? w + systrayspacing : 1;
   x -= w;
+  XSetWindowBackground(dpy, systray->win, scheme[SchemeSystray][ColBg].pixel);
   XMoveResizeWindow(dpy, systray->win, x - xpad, m->by + ypad, w, bh);
   wc.x = x - xpad;
   wc.y = m->by + ypad;
@@ -3146,7 +3167,7 @@ void updatesystrayiconstate(Client *i, XPropertyEvent *ev) {
       !(flags = getatomprop(i, xatom[XembedInfo])))
     return;
 
-  if (flags & XEMBED_MAPPED && !i->tags) {
+  if ((flags & XEMBED_MAPPED) && !i->tags) {
     i->tags = 1;
     code = XEMBED_WINDOW_ACTIVATE;
     XMapRaised(dpy, i->win);
@@ -3381,8 +3402,16 @@ void xrdb(const Arg *arg) {
 
   loadxrdb();
   int i;
+  for (i = 0; i < LENGTH(colors); i++) {
+    if (scheme[i]) {
+      XftColorFree(dpy, visual, cmap, &scheme[i][ColFg]);
+      XftColorFree(dpy, visual, cmap, &scheme[i][ColBg]);
+      XftColorFree(dpy, visual, cmap, &scheme[i][ColBorder]);
+      free(scheme[i]);
+    }
+  }
   for (i = 0; i < LENGTH(colors); i++)
-  	scheme[i] = drw_scm_create(drw, colors[i], alphas[i], 3);
+    scheme[i] = drw_scm_create(drw, colors[i], alphas[i], 3);
   focus(NULL);
   arrange(NULL);
 	updatesystray(2);
