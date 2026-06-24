@@ -61,48 +61,49 @@ static char col_ab_black[] = "#000000";
 static char *colors[][3] = {
     /*                    fg            bg            border   */
     // host
-    [SchemeHost]    = { col_blue,      col_black,    col_black    },
+    [SchemeHost]    = { col_blue,     col_black,    col_black    },
     // tag
-    [SchemeTagNorm] = { col_white,     col_black,    col_black    },
-    [SchemeTagSel]  = { col_black,     col_blue,     col_black    },
+    [SchemeTagNorm] = { col_white,    col_black,    col_black    },
+    [SchemeTagSel]  = { col_black,    col_blue,     col_black    },
     // layout
-    [SchemeLayout]  = { col_green,     col_black,    col_ab_black },
+    [SchemeLayout]  = { col_green,    col_black,    col_ab_black },
     // tasks
-    [SchemeNorm]    = { col_cyan,      col_black,    col_ab_black },
-    [SchemeSel]     = { col_white,     col_black,    col_white    },
-    [SchemeHid]     = { col_cyan,      col_ab_black, col_ab_black },
+    [SchemeNorm]    = { col_cyan,     col_black,    col_ab_black },
+    [SchemeSel]     = { col_white,    col_black,    col_white    },
+    [SchemeHid]     = { col_cyan,     col_black,    col_ab_black },
 		// status
-    [SchemeStatus]   = { col_ab_black, col_ab_black, col_black    },
+    [SchemeStatus]  = { col_black,    col_black,    col_black    },
     // systray
-    [SchemeSystray] = { col_white,     col_black,    col_black    },
+    [SchemeSystray] = { col_white,    col_black,    col_black    },
     // empty
-    [SchemeEmpty]   = { col_ab_black,  col_ab_black, col_black    },
+    [SchemeEmpty]   = { col_ab_black, col_ab_black, col_black    },
 };
 
-#define OPAQUE 0xffU
-static const unsigned int emptyalpha  = 0x00;
-static const unsigned int curalpha    = 0xec;
-static const unsigned int hidalpha    = 0x80;
+#define OPAQUE        0xffU
+#define TRANSPARENT   0x00U
+#define BG_ALPHA      OPAQUE
+#define TAB_CUR_BG_ALPHA 0xecU
+#define TAB_HID_BG_ALPHA 0x80U
 
 static const unsigned int alphas[][3]      = {
-    /*                    fg        bg          border     */
+    /*                    fg         bg                border     */
     // host
-    [SchemeHost]    = { OPAQUE,     OPAQUE,     emptyalpha },
+    [SchemeHost]    = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     // tag
-    [SchemeTagNorm] = { OPAQUE,     OPAQUE,     emptyalpha },
-    [SchemeTagSel]  = { OPAQUE,     OPAQUE,     emptyalpha },
+    [SchemeTagNorm] = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
+    [SchemeTagSel]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     // layout
-    [SchemeLayout]  = { OPAQUE,     OPAQUE,     emptyalpha },
-    // task
-    [SchemeNorm]    = { OPAQUE,     curalpha,   emptyalpha },
-    [SchemeSel]     = { OPAQUE,     OPAQUE,     OPAQUE     },
-    [SchemeHid]     = { OPAQUE,     hidalpha,   emptyalpha },
+    [SchemeLayout]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
+    // tab
+    [SchemeNorm]    = { OPAQUE,      TAB_CUR_BG_ALPHA, TRANSPARENT },
+    [SchemeSel]     = { OPAQUE,      BG_ALPHA,         OPAQUE     },
+    [SchemeHid]     = { OPAQUE,      TAB_HID_BG_ALPHA, TRANSPARENT },
 		// Status
-    [SchemeStatus]  = { OPAQUE,     OPAQUE,     emptyalpha },
+    [SchemeStatus]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     // systray
-    [SchemeSystray] = { OPAQUE,     OPAQUE,     emptyalpha },
+    [SchemeSystray] = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     // empty
-    [SchemeEmpty]   = { emptyalpha, emptyalpha, emptyalpha },
+    [SchemeEmpty]   = { TRANSPARENT, TRANSPARENT,      TRANSPARENT },
 };
 
 /* tagging */
