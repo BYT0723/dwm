@@ -1771,7 +1771,7 @@ void manage(Window w, XWindowAttributes *wa) {
     c->mon = t->mon;
     c->tags = t->tags;
   } else {
-    c->mon = selmon;
+    c->mon = recttomon(wa->x, wa->y, wa->width, wa->height);
     applyrules(c);
   }
 
