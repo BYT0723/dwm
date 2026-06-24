@@ -282,7 +282,6 @@ static void detach(Client *c);
 static void detachstack(Client *c);
 static Monitor *dirtomon(int dir);
 static void drawbar(Monitor *m);
-static void wrapclienttitle(Client *c,char *title, size_t sz);
 static void drawbars(void);
 static int drawstatusbar(Monitor *m, int bh, char *text);
 //  static void enternotify(XEvent *e);
@@ -1212,7 +1211,7 @@ void drawbar(Monitor *m) {
   if ((w = m->ww - tw - stw - x) > bh) {
     if (n > 0) {
       int remainder = w % n;
-			int tabw = TEXTW(tabWidth);
+			int tabw = tabWidth * drw_fontset_getwidth(drw, " ") + lrpad;
 			if (tabw * n >= w || ((tab_style&TAB_CUSTOM_WIDTH) != TAB_CUSTOM_WIDTH))
 				tabw = (1.0 / (double)n) * w + 1;
 
@@ -1231,9 +1230,6 @@ void drawbar(Monitor *m) {
           scm = SchemeNorm;
         drw_setscheme(drw, scheme[scm]);
 
-				char title[256];
-				wrapclienttitle(c, title,sizeof(title));
-
         if (remainder >= 0) {
           if (remainder == 0) {
             tabw--;
@@ -1246,18 +1242,18 @@ void drawbar(Monitor *m) {
     			XFillArc(drw->dpy, drw->drawable, drw->gc, x, 0, lrpad, bh, LTAB_START_ANGLE, TAB_ANGLE_SIZE);
 
 					if (c->icon && tabw-lrpad >= c->icw + ICONSPACING) {
-        		drw_text(drw, x+lpad, 0, tabw-lrpad, bh, c->icw + ICONSPACING, title, 0);
+        		drw_text(drw, x+lpad, 0, tabw-lrpad, bh, c->icw + ICONSPACING, c->name, 0);
 						drw_pic(drw, x+lpad, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
 					} else
-        		drw_text(drw, x+lpad, 0, tabw-lrpad, bh, 0, title, 0);
+        		drw_text(drw, x+lpad, 0, tabw-lrpad, bh, 0, c->name, 0);
 
     			XFillArc(drw->dpy, drw->drawable, drw->gc, x+tabw-lrpad, 0, lrpad, bh, RTAB_START_ANGLE, TAB_ANGLE_SIZE);
 				}else{
 					if (c->icon && tabw-lrpad >= c->icw + ICONSPACING) {
-        		drw_text(drw, x, 0, tabw, bh, lpad + c->icw + ICONSPACING , title, 0);
+        		drw_text(drw, x, 0, tabw, bh, lpad + c->icw + ICONSPACING , c->name, 0);
 						drw_pic(drw, x+lpad, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
 					} else
-        		drw_text(drw, x, 0, tabw, bh, lpad + 0, title, 0);
+        		drw_text(drw, x, 0, tabw, bh, lpad + 0, c->name, 0);
 				}
 
         // 为浮动窗口添加浮动标志
@@ -1282,25 +1278,6 @@ void drawbars(void) {
 
   if (showsystray && !systraypinning)
     updatesystray(0);
-}
-
-void wrapclienttitle(Client *c,char *title,size_t sz) {
-  unsigned int i;
-  const char *icon = NULL;
-  const TaskIcon *ti = NULL;
-
-	if (!c->icon) {
-		for (i = 0; i < LENGTH(icons); i++) {
-			ti = &icons[i];
-			if ((!ti->class || strstr(c->class, ti->class)) &&
-					(!ti->title || strstr(c->name, ti->title))) {
-				icon = ti->icon;
-			}
-		}
-  	snprintf(title, sz, "%s%s", icon, c->name);
-	}else{
-  	snprintf(title, sz, "%s", c->name);
-	}
 }
 
 //  void enternotify(XEvent *e) {

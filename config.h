@@ -20,7 +20,8 @@ static const          char host[]      = "";
 #define TAB_CENTER       0x02
 #define TAB_CUSTOM_WIDTH 0x04
 
-static const          int tab_style     = TAB_RADIUS | TAB_CENTER | TAB_CUSTOM_WIDTH;
+static const unsigned int tab_style = TAB_RADIUS | TAB_CENTER | TAB_CUSTOM_WIDTH;
+static const unsigned int tabWidth = 20;
 static const          Bool statusradius = True;
 
 static const unsigned int gappih    = 8;  /* horiz inner gap between windows */
@@ -102,42 +103,6 @@ static const unsigned int alphas[][3]      = {
     [SchemeSystray] = { OPAQUE,     OPAQUE,     emptyalpha },
     // empty
     [SchemeEmpty]   = { emptyalpha, emptyalpha, emptyalpha },
-};
-
-/* task icon */
-static const char *tabWidth = "                    ";
-static const TaskIcon icons[] = {
-    /* class                title     icon */
-    // default
-    {NULL,                  NULL,      " "},
-    // terminal
-    {"st",                  NULL,      " "},
-    {"Alacritty",           NULL,      " "},
-    // browser
-    {"firefox",             NULL,      " "},
-    {"Chromium",            NULL,      " "},
-    {"google-chrome",       NULL,      " "},
-    // website
-    {NULL,                  "YouTube", " "},
-    // application
-    {"neovide",             NULL,      " "},
-    {"TelegramDesktop",     NULL,      " "},
-    {"discord",             NULL,      "󰙯 "},
-    {"electronic-wechat",   NULL,      " "},
-    {"wechat.exe",          NULL,      " "},
-    {"wechat",              NULL,      " "},
-    {"qq",                  NULL,      " "},
-    {"qqmusic",             NULL,      " "},
-    {"netease-cloud-music", NULL,      " "},
-    {"vlc",                 NULL,      "󰕼 "},
-    {"mpv",                 NULL,      " "},
-    {"DBeaver",             NULL,      " "},
-    {"Pcmanfm",             NULL,      " "},
-    {"Lxappearance",        NULL,      " "},
-    {"thunderbird",         NULL,      " "},
-    {"steam",               NULL,      " "},
-    {"Godot_Engine",        NULL,      " "},
-    {"feishu",              NULL,      " "},
 };
 
 /* tagging */
