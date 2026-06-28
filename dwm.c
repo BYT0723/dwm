@@ -647,7 +647,12 @@ void buttonpress(XEvent *e) {
 
       statuscmdn = 0;
       int isCode = 0;
-      for (text = s = stext; *s && x <= ev->x; s++) {
+      text = s = stext;
+      if (selmon->wh > selmon->ww)
+        for (char *p = stext; *p; p++)
+          if ((unsigned char)*p == 0x7f)
+            text = s = p + 1;
+      for (; *s && x <= ev->x; s++) {
         // status2d text width
         if ((unsigned char)(*s) == '^') {
           if (!isCode) {
@@ -1036,9 +1041,13 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
   p = text;
 
   i = -1, j = 0;
-  while (stext[++i])
-    if ((unsigned char)stext[i] >= ' ')
+  while (stext[++i]) {
+    if ((unsigned char)stext[i] == 0x7f) {
+      if (m->wh > m->ww)
+        j = 0;
+    } else if ((unsigned char)stext[i] >= ' ')
       text[j++] = stext[i];
+  }
   text[j] = '\0';
 
   /* compute width of the status text */
