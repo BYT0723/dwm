@@ -674,7 +674,7 @@ void buttonpress(XEvent *e) {
 						break;
 				}
         // statuscmd text width
-        if ((unsigned char)(*s) < ' ') {
+        if ((unsigned char)(*s) < ' ' || (unsigned char)(*s) == 0x7f) {
           ch = *s;
           *s = '\0';
           if (strlen(text) > 0) {
@@ -684,7 +684,8 @@ void buttonpress(XEvent *e) {
           text = s + 1;
           if (x >= ev->x)
             break;
-          statuscmdn = ch;
+          if ((unsigned char)ch < ' ')
+            statuscmdn = ch;
         }
       }
     } else if (ev->x > tstart && ev->x < tend ) { // tasks click event
