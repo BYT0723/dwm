@@ -2021,16 +2021,6 @@ void propertynotify(XEvent *e) {
 }
 
 void quit(const Arg *arg) {
-  // fix: reloading dwm keeps all the hidden clients hidden
-  Monitor *m;
-  Client *c;
-  for (m = mons; m; m = m->next) {
-    if (m) {
-      for (c = m->stack; c; c = c->snext)
-        if (c && HIDDEN(c))
-          showwin(c);
-    }
-  }
 	if(arg->i) restart = 1;
   running = 0;
 }
@@ -3479,9 +3469,7 @@ int main(int argc, char *argv[]) {
     Client *c;
     for (m = mons; m; m = m->next)
       for (c = m->clients; c; c = c->next)
-        XChangeProperty(dpy, c->win, da, XA_CARDINAL, 32,
-                        PropModeReplace, (unsigned char *)&m->num, 1);
-    XSync(dpy, False);
+        XChangeProperty(dpy, c->win, da, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&m->num, 1);
     XCloseDisplay(dpy);
     execvp(argv[0], argv);
   }
