@@ -2555,6 +2555,20 @@ void setup(void) {
   sp = sidepad;
   vp = (topbar == 1) ? vertpad : -vertpad;
   updategeom();
+  {
+    Monitor *m;
+    for (m = mons; m; m = m->next) {
+      char buf[32];
+      snprintf(buf, sizeof(buf), "DWM_TAG_%d", m->num);
+      char *env = getenv(buf);
+      if (env) {
+        unsigned int ts = atoi(env);
+        if (ts & TAGMASK)
+          m->tagset[m->seltags] = ts & TAGMASK;
+        unsetenv(buf);
+      }
+    }
+  }
   /* init atoms */
   utf8string = XInternAtom(dpy, "UTF8_STRING", False);
   wmatom[WMProtocols] = XInternAtom(dpy, "WM_PROTOCOLS", False);
@@ -3477,6 +3491,7 @@ int main(int argc, char *argv[]) {
   runautostart();
   run();
 	if (restart) {
+    // Store the client's current monitor and tag
     Atom da = XInternAtom(dpy, "_DWM_MONITOR", False);
     Atom dta = XInternAtom(dpy, "_DWM_TAG", False);
     Monitor *m;
@@ -3487,6 +3502,16 @@ int main(int argc, char *argv[]) {
         XChangeProperty(dpy, c->win, dta, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&c->tags, 1);
       }
     XCloseDisplay(dpy);
+    // Store the monitor's current tag in the environment variable DWM_TAG_%d
+    {
+      char buf[32];
+      for (m = mons; m; m = m->next) {
+        snprintf(buf, sizeof(buf), "DWM_TAG_%d", m->num);
+        char val[8];
+        snprintf(val, sizeof(val), "%u", m->tagset[m->seltags]);
+        setenv(buf, val, 1);
+      }
+    }
     execvp(argv[0], argv);
   }
   cleanup();
