@@ -1802,6 +1802,19 @@ void manage(Window w, XWindowAttributes *wa) {
       }
     }
     applyrules(c);
+    {
+      Atom dta = XInternAtom(dpy, "_DWM_TAG", False);
+      Atom actual;
+      int fmt;
+      unsigned long n, extra;
+      unsigned char *data = NULL;
+      if (XGetWindowProperty(dpy, w, dta, 0, 1, False, XA_CARDINAL, &actual, &fmt, &n, &extra, &data) == Success && data) {
+        if (n > 0 && fmt == 32)
+          c->tags = (unsigned int)((long *)data)[0];
+        XFree(data);
+        XDeleteProperty(dpy, w, dta);
+      }
+    }
   }
 
 	// set x in [mon->mx, mon->mx + mon->mw] | y in [mon->my, mon->my + mon->mh]
@@ -3465,11 +3478,14 @@ int main(int argc, char *argv[]) {
   run();
 	if (restart) {
     Atom da = XInternAtom(dpy, "_DWM_MONITOR", False);
+    Atom dta = XInternAtom(dpy, "_DWM_TAG", False);
     Monitor *m;
     Client *c;
     for (m = mons; m; m = m->next)
-      for (c = m->clients; c; c = c->next)
+      for (c = m->clients; c; c = c->next) {
         XChangeProperty(dpy, c->win, da, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&m->num, 1);
+        XChangeProperty(dpy, c->win, dta, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&c->tags, 1);
+      }
     XCloseDisplay(dpy);
     execvp(argv[0], argv);
   }
