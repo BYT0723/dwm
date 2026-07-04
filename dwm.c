@@ -2677,8 +2677,7 @@ void showhide(Client *c) {
 void sigchld(int unused) {
   if (signal(SIGCHLD, sigchld) == SIG_ERR)
     die("can't install SIGCHLD handler:");
-  while (0 < waitpid(-1, NULL, WNOHANG))
-    ;
+  while (0 < waitpid(-1, NULL, WNOHANG));
 }
 
 void sighup(int unused) {
