@@ -68,9 +68,9 @@ static char *colors[][3] = {
     // layout
     [SchemeLayout]  = { col_green,    col_black,    col_ab_black },
     // tasks
-    [SchemeNorm]    = { col_cyan,     col_black,    col_ab_black },
-    [SchemeSel]     = { col_white,    col_black,    col_white    },
-    [SchemeHid]     = { col_cyan,     col_black,    col_ab_black },
+    [SchemeNorm]    = { col_white,    col_black,    col_black    },
+    [SchemeSel]     = { col_black,    col_cyan,     col_black    },
+    [SchemeHid]     = { col_cyan,     col_black,    col_black    },
 		// status
     [SchemeStatus]  = { col_black,    col_black,    col_black    },
     // systray
@@ -83,7 +83,8 @@ static char *colors[][3] = {
 #define TRANSPARENT   0x00U
 #define BG_ALPHA      OPAQUE
 #define TAB_CUR_BG_ALPHA 0xecU
-#define TAB_HID_BG_ALPHA 0x80U
+#define TAB_SEL_BG_ALPHA 0xe0U
+#define TAB_HID_FG_ALPHA 0x80U
 
 static const unsigned int alphas[][3]      = {
     /*                    fg         bg                border     */
@@ -96,8 +97,8 @@ static const unsigned int alphas[][3]      = {
     [SchemeLayout]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     // tab
     [SchemeNorm]    = { OPAQUE,      TAB_CUR_BG_ALPHA, TRANSPARENT },
-    [SchemeSel]     = { OPAQUE,      BG_ALPHA,         OPAQUE     },
-    [SchemeHid]     = { OPAQUE,      TAB_HID_BG_ALPHA, TRANSPARENT },
+    [SchemeSel]     = { OPAQUE,      TAB_SEL_BG_ALPHA, TRANSPARENT },
+    [SchemeHid]     = { TAB_HID_FG_ALPHA, BG_ALPHA, TRANSPARENT },
 		// Status
     [SchemeStatus]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     // systray
