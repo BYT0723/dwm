@@ -298,6 +298,7 @@ static int getrootptr(int *x, int *y);
 static long getstate(Window w);
 static int gettextprop(Window w, Atom atom, char *text, unsigned int size);
 static unsigned int getsystraywidth();
+static int trayrank(const char *class);
 static void grabbuttons(Client *c, int focused);
 static void grabkeys(void);
 static void hide(const Arg *arg);
@@ -805,8 +806,25 @@ void clientmessage(XEvent *e) {
       }
 
       c->mon = selmon;
-      c->next = systray->icons;
-      systray->icons = c;
+      {
+        XClassHint hint = {NULL, NULL};
+        if (XGetClassHint(dpy, c->win, &hint)) {
+          const char *name = hint.res_name ? hint.res_name : hint.res_class;
+          if (name) {
+            strncpy(c->class, name, sizeof(c->class) - 1);
+            c->class[sizeof(c->class) - 1] = '\0';
+          }
+          if (hint.res_name) XFree(hint.res_name);
+          if (hint.res_class) XFree(hint.res_class);
+        }
+      }
+      {
+        int rank = trayrank(c->class);
+        Client **cur;
+        for (cur = &systray->icons; *cur && trayrank((*cur)->class) <= rank; cur = &(*cur)->next);
+        c->next = *cur;
+        *cur = c;
+      }
       XSetClassHint(dpy, c->win, &ch);
       XGetWindowAttributes(dpy, c->win, &wa);
       c->x = c->oldx = c->y = c->oldy = 0;
@@ -1557,6 +1575,18 @@ unsigned int getsystraywidth() {
     for (i = systray->icons; i; w += i->w + systrayspacing, i = i->next)
       ;
   return w ? w + systrayspacing : 0;
+}
+
+static int trayrank(const char *class) {
+  unsigned int i;
+  for (i = 0; systrayorder[i]; i++)
+    if (strcasecmp(class, systrayorder[i]) == 0)
+      return i;
+  /* unlisted: find "..." slot, otherwise end */
+  for (i = 0; systrayorder[i]; i++)
+    if (strcmp(systrayorder[i], "...") == 0)
+      return i;
+  return i;
 }
 
 int gettextprop(Window w, Atom atom, char *text, unsigned int size) {
