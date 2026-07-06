@@ -821,7 +821,7 @@ void clientmessage(XEvent *e) {
       {
         int rank = trayrank(c->class);
         Client **cur;
-        for (cur = &systray->icons; *cur && trayrank((*cur)->class) <= rank; cur = &(*cur)->next);
+        for (cur = &systray->icons; *cur && trayrank((*cur)->class) < rank; cur = &(*cur)->next);
         c->next = *cur;
         *cur = c;
       }
