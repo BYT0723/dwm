@@ -36,7 +36,7 @@ static const          int systraypinningfailfirst = 1;  /* 1: if pinning fails, 
 static const          int showsystray             = 1;  /* 0 means no systray */
 static const          int systraypad              = 2;
 /* systray icon order, left to right; "..." = slot for unlisted icons */
-static const char     *systrayorder[]            = { "fcitx", "...", "nm-applet", "udiskie", NULL };
+static const char     *systrayorder[]            = { "fcitx", "...", "easyeffects", "nm-applet", "udiskie", NULL };
 
 static const unsigned int attachtop = 0; /* new window is attached to the top of the stack */
 
