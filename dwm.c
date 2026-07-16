@@ -2049,13 +2049,13 @@ void propertynotify(XEvent *e) {
     }
     if (ev->atom == XA_WM_NAME || ev->atom == netatom[NetWMName]) {
       updatetitle(c);
-      if (c == c->mon->sel)
+      if (c == c->mon->sel && !c->isfullscreen)
         drawbar(c->mon);
     } else if (ev->atom == netatom[NetWMIcon]) {
-			updateicon(c);
-			if (c == c->mon->sel)
-				drawbar(c->mon);
-		}
+      updateicon(c);
+      if (c == c->mon->sel && !c->isfullscreen)
+        drawbar(c->mon);
+    }
     if (ev->atom == netatom[NetWMWindowType])
       updatewindowtype(c);
   }
@@ -2223,9 +2223,14 @@ void run(void) {
   XEvent ev;
   /* main event loop */
   XSync(dpy, False);
-  while (running && !XNextEvent(dpy, &ev))
+  while (running && !XNextEvent(dpy, &ev)) {
+      /* flood guard: skip redundant draw events when queue backs up */
+    if (XPending(dpy) > 50 && (ev.type == PropertyNotify || ev.type == Expose || ev.type == NoExpose)) {
+      continue;
+    }
     if (handler[ev.type])
       handler[ev.type](&ev); /* call handler */
+  }
 }
 
 void runautostart(void) {
