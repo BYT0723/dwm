@@ -1853,30 +1853,22 @@ void manage(Window w, XWindowAttributes *wa) {
   wc.border_width = c->bw;
   XConfigureWindow(dpy, w, CWBorderWidth, &wc);
   XSetWindowBorder(dpy, w, scheme[SchemeNorm][ColBorder].pixel);
-  configure(c); /* propagates border_width, if size doesn't change */
   updatewindowtype(c);
   updatesizehints(c);
   updatewmhints(c);
-  XSelectInput(dpy, w,
-               EnterWindowMask | FocusChangeMask | PropertyChangeMask |
-                   StructureNotifyMask);
+  XSelectInput(dpy, w, EnterWindowMask | FocusChangeMask | PropertyChangeMask | StructureNotifyMask);
   grabbuttons(c, 0);
   if (!c->isfloating)
     c->isfloating = c->oldstate = trans != None || c->isfixed;
 	if (c->isfloating) {
 		// 当默认窗口位置，边框贴近屏幕边缘，将窗口移动到屏幕中心
-		// x = mon_x + (mon_w - cli_w) / 2
-		// y = mon_y + (mon_y - cli_h) / 2
 		c->x = (c->x == c->mon->mx || c->x + c->w == c->mon->mx + c->mon->mw) ? c->mon->mx+(c->mon->mw - c->w)/2 : c->x;
 		c->y = (c->y == c->mon->my + bh || c->y == c->mon->my || c->y + c->h == c->mon->my + c->mon->mh) ? c->mon->my+(c->mon->mh - c->h)/2 : c->y;
-    XRaiseWindow(dpy, c->win);
   }
+  configure(c); /* propagates border_width, if size doesn't change */
   attachtop ? attach(c) : attachbottom(c);
   attachstack(c);
-  XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32,
-                  PropModeAppend, (unsigned char *)&(c->win), 1);
-  XMoveResizeWindow(dpy, c->win, c->x + 2 * sw, c->y, c->w,
-                    c->h); /* some windows require this */
+  XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend, (unsigned char *)&(c->win), 1);
   if (!HIDDEN(c))
     setclientstate(c, NormalState);
   if (c->mon == selmon)

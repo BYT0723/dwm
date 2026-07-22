@@ -216,14 +216,12 @@ static const char *modulecmd[]       = {"./.dwm/dwm-launcher.sh",     "modules",
 static const char *wallpapercmd[]    = {"./.dwm/dwm-launcher.sh",     "wallpaper",  NULL};
 static const char *screenshot[]      = {"./.dwm/dwm-launcher.sh",     "screenshot", NULL};
 static const char *screencast[]      = {"./.dwm/dwm-launcher.sh",     "screencast", NULL};
-static const char *conkycmd[]        = {"./.dwm/dwm-launcher.sh",     "conky",      NULL};
 static const char *toggleTouchpad[]  = {"./.dwm/tools/touchpad.sh",   "toggle",     NULL};
 static const char *vol_up[]          = {"./.dwm/tools/volume.sh",     "up",         NULL};
 static const char *vol_down[]        = {"./.dwm/tools/volume.sh",     "down",       NULL};
 static const char *vol_toggle[]      = {"./.dwm/tools/volume.sh",     "toggle",     NULL};
 static const char *brightness_up[]   = {"./.dwm/tools/brightness.sh", "up",         NULL};
 static const char *brightness_down[] = {"./.dwm/tools/brightness.sh", "down",       NULL};
-static const char *flameshot[]       = {"flameshot",                  "gui",    		NULL};
 // don't change or surround it by {}
 static const char *layoutmenu_cmd   = "./.dwm/dwm-layoutmenu.sh";
 // status click event command
@@ -234,11 +232,9 @@ static Key keys[] = {
     // custom shell script
     {MODKEY,                       XK_Return,                spawn,          {.v = termcmd}},
     {MODKEY,                       XK_n,                     spawn,          {.v = floatcmd}},
-    {MODKEY,                       XK_space,                 spawn,          {.v = toggleTouchpad}},
-    {MODKEY,                       XK_a,                     spawn,          {.v = flameshot}},
-    {MODKEY,                       XK_c,                     spawn,          {.v = conkycmd}},
-    {MODKEY|ShiftMask,             XK_a,                     spawn,          {.v = screenshot}},
-    {MODKEY|ShiftMask,             XK_r,                     spawn,          {.v = screencast}},
+    {MODKEY|ControlMask,           XK_space,                 spawn,          {.v = toggleTouchpad}},
+    {MODKEY,                       XK_a,                     spawn,          {.v = screenshot}},
+    {MODKEY,                       XK_r,                     spawn,          {.v = screencast}},
     {0,                            XF86XK_AudioLowerVolume,  spawn,          {.v = vol_down}},
     {0,                            XF86XK_AudioRaiseVolume,  spawn,          {.v = vol_up}},
     {0,                            XF86XK_AudioMute,         spawn,          {.v = vol_toggle}},
@@ -254,8 +250,8 @@ static Key keys[] = {
     {MODKEY|ShiftMask,             XK_l,                     spawn,          {.v = linkcmd}},
     // layout
     {MODKEY,                       XK_t,                     setlayout,      {.v = &layouts[0]}},
-    {MODKEY|ShiftMask,             XK_t,                     layoutmenu,     {0}},
     {MODKEY,                       XK_f,                     setlayout,      {.v = &layouts[1]}},
+    {MODKEY,                       XK_t,                     layoutmenu,     {0}},
     // layout adjust
     {MODKEY,                       XK_v,                     incnmaster,     {.i = +1}},
     {MODKEY,                       XK_s,                     incnmaster,     {.i = -1}},
