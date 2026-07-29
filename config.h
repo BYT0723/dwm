@@ -154,6 +154,7 @@ static const Rule rules[] = {
     {"viewnior",            NULL,       NULL,     0,            1,            -1},
     {"peek",                NULL,       NULL,     0,            1,            -1},
     {"flameshot",           NULL,       NULL,     0,            1,            -1},
+    {"scrcpy",              NULL,       NULL,     0,            1,            -1},
     // wps
     {"wpsoffice",           NULL,       NULL,     0,            1,            -1},
     {"wpspdf",              NULL,       NULL,     0,            1,            -1},
@@ -209,6 +210,7 @@ static const Layout layouts[] = {
 static const char *termcmd[]         = {"./.dwm/dwm-launcher.sh",     "term",       NULL};
 static const char *floatcmd[]        = {"./.dwm/dwm-launcher.sh",     "term",       "float", NULL};
 static const char *roficmd[]         = {"./.dwm/dwm-launcher.sh",     "apps",       NULL};
+static const char *fmcmd[]           = {"./.dwm/dwm-launcher.sh",     "fm",         NULL}; // file manager
 static const char *powercmd[]        = {"./.dwm/dwm-launcher.sh",     "powermenu",  NULL};
 static const char *mpdcmd[]          = {"./.dwm/dwm-launcher.sh",     "mpd",        NULL};
 static const char *linkcmd[]         = {"./.dwm/dwm-launcher.sh",     "quicklinks", NULL};
@@ -243,6 +245,7 @@ static Key keys[] = {
     {MODKEY|ControlMask,           XK_r,                     xrdb,           {.v = NULL}},
     // rofi
     {MODKEY,                       XK_d,                     spawn,          {.v = roficmd}},
+    {MODKEY,                       XK_e,                     spawn,          {.v = fmcmd}},
     {MODKEY,                       XK_m,                     spawn,          {.v = modulecmd}},
     {MODKEY,                       XK_w,                     spawn,          {.v = wallpapercmd}},
     {MODKEY|ShiftMask,             XK_m,                     spawn,          {.v = mpdcmd}},
