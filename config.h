@@ -242,7 +242,6 @@ static Key keys[] = {
     {0,                            XF86XK_AudioMute,         spawn,          {.v = vol_toggle}},
     {0,                            XF86XK_MonBrightnessDown, spawn,          {.v = brightness_down}},
     {0,                            XF86XK_MonBrightnessUp,   spawn,          {.v = brightness_up}},
-    {MODKEY|ControlMask,           XK_r,                     xrdb,           {.v = NULL}},
     // rofi
     {MODKEY,                       XK_d,                     spawn,          {.v = roficmd}},
     {MODKEY,                       XK_e,                     spawn,          {.v = fmcmd}},
