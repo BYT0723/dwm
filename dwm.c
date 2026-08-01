@@ -326,6 +326,7 @@ static void resizebarwin(Monitor *m);
 static void resizeclient(Client *c, int x, int y, int w, int h);
 static void resizemouse(const Arg *arg);
 static void restack(Monitor *m);
+static void restorestacking(void);
 static void run(void);
 static void runautostart(void);
 static void scan(void);
@@ -1857,7 +1858,21 @@ void manage(Window w, XWindowAttributes *wa) {
   grabbuttons(c, 0);
   if (!c->isfloating)
     c->isfloating = c->oldstate = trans != None || c->isfixed;
-	if (c->isfloating) {
+  {
+    Atom dfa = XInternAtom(dpy, "_DWM_FLOATING", False);
+    Atom actual;
+    int fmt;
+    unsigned long n, extra;
+    unsigned char *data = NULL;
+    if (XGetWindowProperty(dpy, w, dfa, 0, 1, False, XA_CARDINAL,
+                           &actual, &fmt, &n, &extra, &data) == Success && data) {
+      if (n > 0 && fmt == 32)
+        c->isfloating = c->oldstate = (int)((long *)data)[0];
+      XFree(data);
+      XDeleteProperty(dpy, w, dfa);
+    }
+  }
+  if (c->isfloating) {
 		// 当默认窗口位置，边框贴近屏幕边缘，将窗口移动到屏幕中心
 		c->x = (c->x == c->mon->mx || c->x + c->w == c->mon->mx + c->mon->mw) ? c->mon->mx+(c->mon->mw - c->w)/2 : c->x;
 		c->y = (c->y == c->mon->my + bh || c->y == c->mon->my || c->y + c->h == c->mon->my + c->mon->mh) ? c->mon->my+(c->mon->mh - c->h)/2 : c->y;
@@ -3400,6 +3415,53 @@ void zoom(const Arg *arg) {
   pop(c);
 }
 
+void restorestacking(void) {
+  Atom sa = XInternAtom(dpy, "_DWM_STACKING", False);
+  Atom actual;
+  int fmt;
+  unsigned long n, extra, i;
+  unsigned char *data = NULL;
+  Window *seq;
+  Client *c;
+
+  if (!getenv("DWM_RESTART"))
+    return;
+  if (XGetWindowProperty(dpy, root, sa, 0L, 100000L, False, XA_WINDOW,
+                         &actual, &fmt, &n, &extra, &data) != Success || !data || fmt != 32)
+    goto cleanup;
+  seq = (Window *)data;
+
+  /* rebuild stack list: iterate bottom→top so head-insert puts topmost at head */
+  for (i = 0; i < n; i++)
+    if ((c = wintoclient(seq[i]))) {
+      detachstack(c);
+      attachstack(c);
+    }
+
+  /* strictly restore X stacking order (bottom → top) */
+  {
+    XWindowChanges wc = {0};
+    Window prev = 0;
+    for (i = 0; i < n; i++) {
+      if (!wintoclient(seq[i]))
+        continue;
+      if (prev) {
+        wc.sibling = prev;
+        wc.stack_mode = Below;
+        XConfigureWindow(dpy, seq[i], CWSibling | CWStackMode, &wc);
+      }
+      prev = seq[i];
+    }
+  }
+  XSync(dpy, False);
+  XDeleteProperty(dpy, root, sa);
+
+cleanup:
+  if (data)
+    XFree(data);
+  unsetenv("DWM_RESTART");
+}
+
 int main(int argc, char *argv[]) {
   if (argc == 2 && !strcmp("-v", argv[1]))
     die("dwm-" VERSION);
@@ -3418,19 +3480,38 @@ int main(int argc, char *argv[]) {
     die("pledge");
 #endif /* __OpenBSD__ */
   scan();
+  restorestacking();
   runautostart();
   run();
 	if (restart) {
-    // Store the client's current monitor and tag
+    // Store the client's current monitor, tag and floating state
     Atom da = XInternAtom(dpy, "_DWM_MONITOR", False);
     Atom dta = XInternAtom(dpy, "_DWM_TAG", False);
+    Atom dfa = XInternAtom(dpy, "_DWM_FLOATING", False);
     Monitor *m;
     Client *c;
+    unsigned long fl;
     for (m = mons; m; m = m->next)
       for (c = m->clients; c; c = c->next) {
         XChangeProperty(dpy, c->win, da, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&m->num, 1);
         XChangeProperty(dpy, c->win, dta, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&c->tags, 1);
+        fl = c->isfloating;
+        XChangeProperty(dpy, c->win, dfa, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&fl, 1);
       }
+    // Store the stacking order
+    {
+      Atom sa = XInternAtom(dpy, "_DWM_STACKING", False);
+      Window d1, d2, *wins = NULL;
+      unsigned int i, num;
+      XDeleteProperty(dpy, root, sa);
+      if (XQueryTree(dpy, root, &d1, &d2, &wins, &num)) {
+        for (i = 0; i < num; i++)
+          XChangeProperty(dpy, root, sa, XA_WINDOW, 32, PropModeAppend,
+                          (unsigned char *)&wins[i], 1);
+        XFree(wins);
+      }
+    }
+    setenv("DWM_RESTART", "1", 1);
     XCloseDisplay(dpy);
     // Store the monitor's current tag in the environment variable DWM_TAG_%d
     {
