@@ -370,6 +370,7 @@ static void updatesizehints(Client *c);
 static void updatestatus(void);
 static void updatesystray(int flag);
 static void updatesystrayicongeom(Client *i, int w, int h);
+static void systraydock(Window w);
 static void updatesystrayiconstate(Client *i, XPropertyEvent *ev);
 static void updatetitle(Client *c);
 static void updateicon(Client *c);
@@ -786,70 +787,14 @@ void cleanupmon(Monitor *mon) {
 }
 
 void clientmessage(XEvent *e) {
-  XWindowAttributes wa;
-  XSetWindowAttributes swa;
   XClientMessageEvent *cme = &e->xclient;
   Client *c = wintoclient(cme->window);
-  XClassHint ch = {"Systray", "systray"};
 
   if (showsystray && cme->window == systray->win &&
       cme->message_type == netatom[NetSystemTrayOP]) {
     /* add systray icons */
-    if (cme->data.l[1] == SYSTEM_TRAY_REQUEST_DOCK) {
-      if (!(c = (Client *)calloc(1, sizeof(Client))))
-        die("fatal: could not malloc() %u bytes\n", sizeof(Client));
-      if (!(c->win = cme->data.l[2])) {
-        free(c);
-        return;
-      }
-
-      c->mon = selmon;
-      {
-        XClassHint hint = {NULL, NULL};
-        if (XGetClassHint(dpy, c->win, &hint)) {
-          const char *name = hint.res_name ? hint.res_name : hint.res_class;
-          if (name) {
-            strncpy(c->class, name, sizeof(c->class) - 1);
-            c->class[sizeof(c->class) - 1] = '\0';
-          }
-          if (hint.res_name) XFree(hint.res_name);
-          if (hint.res_class) XFree(hint.res_class);
-        }
-      }
-      {
-        int rank = trayrank(c->class);
-        Client **cur;
-        for (cur = &systray->icons; *cur && trayrank((*cur)->class) < rank; cur = &(*cur)->next);
-        c->next = *cur;
-        *cur = c;
-      }
-      XSetClassHint(dpy, c->win, &ch);
-      XGetWindowAttributes(dpy, c->win, &wa);
-      c->x = c->oldx = c->y = c->oldy = 0;
-      c->w = c->oldw = wa.width;
-      c->h = c->oldh = wa.height;
-      c->oldbw = wa.border_width;
-      c->bw = 0;
-      c->isfloating = True;
-      /* reuse tags field as mapped status */
-      c->tags = 1;
-      updatesizehints(c);
-      updatesystrayicongeom(c, wa.width, wa.height);
-      XAddToSaveSet(dpy, c->win);
-      XSelectInput(dpy, c->win,
-                   StructureNotifyMask | PropertyChangeMask |
-                       ResizeRedirectMask);
-      XReparentWindow(dpy, c->win, systray->win, 0, 0);
-      /* use parents background color */
-      swa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
-      XChangeWindowAttributes(dpy, c->win, CWBackPixel, &swa);
-      sendevent(c->win, netatom[Xembed], StructureNotifyMask, CurrentTime,
-                XEMBED_EMBEDDED_NOTIFY, 0, systray->win,
-                XEMBED_EMBEDDED_VERSION);
-      XSync(dpy, False);
-      setclientstate(c, NormalState);
-      updatesystray(1);
-    }
+    if (cme->data.l[1] == SYSTEM_TRAY_REQUEST_DOCK)
+      systraydock(cme->data.l[2]);
     return;
   }
 
@@ -2325,7 +2270,13 @@ void scan(void) {
           XGetTransientForHint(dpy, wins[i], &d1))
         continue;
       if (wa.map_state == IsViewable || getstate(wins[i]) == IconicState) {
-        /* re-dock former systray icons instead of managing them */
+        /* hot-restart: re-dock former systray icons.
+         *   When dwm restarts via XCloseDisplay+execvp, XAddToSaveSet
+         *   reparents embedded icon windows back to root instead of
+         *   destroying them — so the clients miss the spec-mandated
+         *   DestroyNotify and won't re-request dock on their own.
+         *   Identify them by WM_CLASS="Systray" (set during first dock)
+         *   and feed them through systraydock() for a full re-handshake. */
         if (showsystray && systray) {
           XClassHint ch = {NULL, NULL};
           if (XGetClassHint(dpy, wins[i], &ch)) {
@@ -2333,26 +2284,7 @@ void scan(void) {
             if (ch.res_name) XFree(ch.res_name);
             if (ch.res_class) XFree(ch.res_class);
             if (issystray) {
-              Client *ic;
-              if (!(ic = calloc(1, sizeof(Client))))
-                die("fatal: could not malloc()\n");
-              ic->win = wins[i];
-              ic->mon = selmon;
-              ic->w = ic->oldw = wa.width;
-              ic->h = ic->oldh = wa.height;
-              ic->x = ic->oldx = ic->y = ic->oldy = 0;
-              ic->oldbw = wa.border_width;
-              ic->bw = 0;
-              ic->isfloating = True;
-              ic->tags = 1;
-              updatesizehints(ic);
-              updatesystrayicongeom(ic, wa.width, wa.height);
-              XSetWindowBackground(dpy, ic->win, scheme[SchemeSystray][ColBg].pixel);
-              XReparentWindow(dpy, ic->win, systray->win, 0, 0);
-              XMapRaised(dpy, ic->win);
-              { Client **cur;
-                for (cur = &systray->icons; *cur; cur = &(*cur)->next);
-                *cur = ic; }
+              systraydock(wins[i]);
               continue;
             }
           }
@@ -3100,6 +3032,75 @@ void updatestatus(void) {
     statusw += TEXTW(text);
   }
   drawbar(selmon);
+}
+
+/* unified systray dock entry point shared by clientmessage() and scan().
+ * Must include the full XEMBED handshake (EmbeddedNotify + XSelectInput +
+ * setclientstate) — skipping any of these causes SNI bridge tools like
+ * SysTray-X (and their managed icons, e.g. xunlei via SNI) to either draw
+ * blank or block waiting for embed confirmation. */
+void systraydock(Window w) {
+	XWindowAttributes wa;
+	XSetWindowAttributes swa;
+	XClassHint ch = {"Systray", "systray"};
+	Client *c;
+
+	if (!showsystray || !systray || !w)
+		return;
+	/* prevent double-dock: if the same window is already in the systray
+	 * (e.g. scan() re-docked it before the client's own dock request),
+	 * skip to avoid duplicate entries and blank slots. */
+	if (wintosystrayicon(w))
+		return;
+
+	if (!(c = (Client *)calloc(1, sizeof(Client))))
+		die("fatal: could not malloc() %u bytes\n", sizeof(Client));
+	c->win = w;
+	c->mon = selmon;
+
+	{
+		XClassHint hint = {NULL, NULL};
+		if (XGetClassHint(dpy, c->win, &hint)) {
+			const char *name = hint.res_name ? hint.res_name : hint.res_class;
+			if (name) {
+				strncpy(c->class, name, sizeof(c->class) - 1);
+				c->class[sizeof(c->class) - 1] = '\0';
+			}
+			if (hint.res_name) XFree(hint.res_name);
+			if (hint.res_class) XFree(hint.res_class);
+		}
+	}
+
+	XSetClassHint(dpy, c->win, &ch);
+	XGetWindowAttributes(dpy, c->win, &wa);
+	c->x = c->oldx = c->y = c->oldy = 0;
+	c->w = c->oldw = wa.width;
+	c->h = c->oldh = wa.height;
+	c->oldbw = wa.border_width;
+	c->bw = 0;
+	c->isfloating = True;
+	c->tags = 1;
+	updatesizehints(c);
+	updatesystrayicongeom(c, wa.width, wa.height);
+	XAddToSaveSet(dpy, c->win);
+	XSelectInput(dpy, c->win,
+	             StructureNotifyMask | PropertyChangeMask | ResizeRedirectMask);
+	XReparentWindow(dpy, c->win, systray->win, 0, 0);
+	swa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
+	XChangeWindowAttributes(dpy, c->win, CWBackPixel, &swa);
+	sendevent(c->win, netatom[Xembed], StructureNotifyMask, CurrentTime,
+	          XEMBED_EMBEDDED_NOTIFY, 0, systray->win, XEMBED_EMBEDDED_VERSION);
+	XSync(dpy, False);
+	setclientstate(c, NormalState);
+
+	{
+		int rank = trayrank(c->class);
+		Client **cur;
+		for (cur = &systray->icons; *cur && trayrank((*cur)->class) < rank; cur = &(*cur)->next);
+		c->next = *cur;
+		*cur = c;
+	}
+	updatesystray(1);
 }
 
 void updatesystray(int flag) {
