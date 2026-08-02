@@ -3484,6 +3484,14 @@ int main(int argc, char *argv[]) {
   runautostart();
   run();
 	if (restart) {
+    /* remove systray icons from save-set so they are destroyed with
+     * systray->win instead of being reparented to root and becoming
+     * orphaned windows managed by scan() after restart */
+    if (showsystray && systray) {
+      Client *i;
+      for (i = systray->icons; i; i = i->next)
+        XRemoveFromSaveSet(dpy, i->win);
+    }
     // Store the client's current monitor, tag and floating state
     Atom da = XInternAtom(dpy, "_DWM_MONITOR", False);
     Atom dta = XInternAtom(dpy, "_DWM_TAG", False);
