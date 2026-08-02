@@ -2324,8 +2324,41 @@ void scan(void) {
       if (!XGetWindowAttributes(dpy, wins[i], &wa) || wa.override_redirect ||
           XGetTransientForHint(dpy, wins[i], &d1))
         continue;
-      if (wa.map_state == IsViewable || getstate(wins[i]) == IconicState)
+      if (wa.map_state == IsViewable || getstate(wins[i]) == IconicState) {
+        /* re-dock former systray icons instead of managing them */
+        if (showsystray && systray) {
+          XClassHint ch = {NULL, NULL};
+          if (XGetClassHint(dpy, wins[i], &ch)) {
+            int issystray = (ch.res_name && strcmp(ch.res_name, "Systray") == 0);
+            if (ch.res_name) XFree(ch.res_name);
+            if (ch.res_class) XFree(ch.res_class);
+            if (issystray) {
+              Client *ic;
+              if (!(ic = calloc(1, sizeof(Client))))
+                die("fatal: could not malloc()\n");
+              ic->win = wins[i];
+              ic->mon = selmon;
+              ic->w = ic->oldw = wa.width;
+              ic->h = ic->oldh = wa.height;
+              ic->x = ic->oldx = ic->y = ic->oldy = 0;
+              ic->oldbw = wa.border_width;
+              ic->bw = 0;
+              ic->isfloating = True;
+              ic->tags = 1;
+              updatesizehints(ic);
+              updatesystrayicongeom(ic, wa.width, wa.height);
+              XSetWindowBackground(dpy, ic->win, scheme[SchemeSystray][ColBg].pixel);
+              XReparentWindow(dpy, ic->win, systray->win, 0, 0);
+              XMapRaised(dpy, ic->win);
+              { Client **cur;
+                for (cur = &systray->icons; *cur; cur = &(*cur)->next);
+                *cur = ic; }
+              continue;
+            }
+          }
+        }
         manage(wins[i], &wa);
+      }
     }
     for (i = 0; i < num; i++) { /* now the transients */
       if (!XGetWindowAttributes(dpy, wins[i], &wa))
@@ -2334,6 +2367,8 @@ void scan(void) {
           (wa.map_state == IsViewable || getstate(wins[i]) == IconicState))
         manage(wins[i], &wa);
     }
+    if (showsystray && systray)
+      updatesystray(1);
     if (wins)
       XFree(wins);
   }
@@ -3484,14 +3519,6 @@ int main(int argc, char *argv[]) {
   runautostart();
   run();
 	if (restart) {
-    /* remove systray icons from save-set so they are destroyed with
-     * systray->win instead of being reparented to root and becoming
-     * orphaned windows managed by scan() after restart */
-    if (showsystray && systray) {
-      Client *i;
-      for (i = systray->icons; i; i = i->next)
-        XRemoveFromSaveSet(dpy, i->win);
-    }
     // Store the client's current monitor, tag and floating state
     Atom da = XInternAtom(dpy, "_DWM_MONITOR", False);
     Atom dta = XInternAtom(dpy, "_DWM_TAG", False);
