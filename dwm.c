@@ -1683,29 +1683,15 @@ void loadxrdb() {
 
     if (resm != NULL) {
       xrdb = XrmGetStringDatabase(resm);
-
       if (xrdb != NULL) {
-        XrmGetResource(xrdb, "dwm.col_theme", NULL, &type, &value);
-
-        if (value.addr != NULL && strcmp((char *)value.addr, "light") == 0) {
-          XRDB_LOAD_COLOR("dwm.col_light_black", col_black);
-          XRDB_LOAD_COLOR("dwm.col_light_red", col_red);
-          XRDB_LOAD_COLOR("dwm.col_light_green", col_green);
-          XRDB_LOAD_COLOR("dwm.col_light_yellow", col_yellow);
-          XRDB_LOAD_COLOR("dwm.col_light_blue", col_blue);
-          XRDB_LOAD_COLOR("dwm.col_light_magenta", col_magenta);
-          XRDB_LOAD_COLOR("dwm.col_light_cyan", col_cyan);
-          XRDB_LOAD_COLOR("dwm.col_light_white", col_white);
-        } else {
-          XRDB_LOAD_COLOR("dwm.col_black", col_black);
-          XRDB_LOAD_COLOR("dwm.col_red", col_red);
-          XRDB_LOAD_COLOR("dwm.col_green", col_green);
-          XRDB_LOAD_COLOR("dwm.col_yellow", col_yellow);
-          XRDB_LOAD_COLOR("dwm.col_blue", col_blue);
-          XRDB_LOAD_COLOR("dwm.col_magenta", col_magenta);
-          XRDB_LOAD_COLOR("dwm.col_cyan", col_cyan);
-          XRDB_LOAD_COLOR("dwm.col_white", col_white);
-        }
+        XRDB_LOAD_COLOR("dwm.col_black", col_black);
+        XRDB_LOAD_COLOR("dwm.col_red", col_red);
+        XRDB_LOAD_COLOR("dwm.col_green", col_green);
+        XRDB_LOAD_COLOR("dwm.col_yellow", col_yellow);
+        XRDB_LOAD_COLOR("dwm.col_blue", col_blue);
+        XRDB_LOAD_COLOR("dwm.col_magenta", col_magenta);
+        XRDB_LOAD_COLOR("dwm.col_cyan", col_cyan);
+        XRDB_LOAD_COLOR("dwm.col_white", col_white);
         XrmDestroyDatabase(xrdb);
       }
     }
