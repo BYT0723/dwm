@@ -137,6 +137,7 @@ enum {
   NetWMWindowTypeDock,
   NetWMWindowTypeDialog,
   NetClientList,
+  NetWMWindowOpacity,
   NetLast
 };
 /* EWMH atoms */
@@ -2517,6 +2518,8 @@ void setup(void) {
       XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
   netatom[NetWMWindowTypeDialog] =
       XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
+  netatom[NetWMWindowOpacity] =
+      XInternAtom(dpy, "_NET_WM_WINDOW_OPACITY", False);
   netatom[NetClientList] = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
   xatom[Manager] = XInternAtom(dpy, "MANAGER", False);
   xatom[Xembed] = XInternAtom(dpy, "_XEMBED", False);
@@ -3096,6 +3099,7 @@ void updatesystray(int flag) {
   Monitor *m = systraytomon(NULL);
   unsigned int x = m->mx + m->mw;
   unsigned int w = 1, xpad = 0, ypad = 0;
+  unsigned long opacity;
   xpad = sp;
   ypad = vp;
 
@@ -3116,6 +3120,8 @@ void updatesystray(int flag) {
     XSelectInput(dpy, systray->win, SubstructureNotifyMask);
     XChangeProperty(dpy, systray->win, netatom[NetSystemTrayOrientation], XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&netatom[NetSystemTrayOrientationHorz], 1);
     XChangeWindowAttributes(dpy, systray->win, CWEventMask|CWOverrideRedirect|CWBackPixel|CWBorderPixel, &wa);
+    opacity = alphas[SchemeSystray][1] * 0x01010101UL;
+    XChangeProperty(dpy, systray->win, netatom[NetWMWindowOpacity], XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&opacity, 1);
     XMapRaised(dpy, systray->win);
     XSetSelectionOwner(dpy, netatom[NetSystemTray], systray->win, CurrentTime);
     if (XGetSelectionOwner(dpy, netatom[NetSystemTray]) == systray->win) {

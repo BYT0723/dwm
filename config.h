@@ -16,11 +16,12 @@ static const          char host[]      = "";
  * bit2: center
  * bit3: custom_width
  */
+#define TAB_NONE         0x00
 #define TAB_RADIUS       0x01
 #define TAB_CENTER       0x02
 #define TAB_CUSTOM_WIDTH 0x04
 
-static const unsigned int tab_style = TAB_RADIUS | TAB_CENTER | TAB_CUSTOM_WIDTH;
+static const unsigned int tab_style = TAB_CUSTOM_WIDTH | TAB_RADIUS | TAB_CENTER;
 static const unsigned int tabWidth = 20;
 static const          Bool statusradius = True;
 
@@ -48,7 +49,6 @@ static const char *fonts[] = {
     "Symbols Nerd Font Mono:pixelsize=16:antialias=true;autohint=true",
     "CaskaydiaCove Nerd Font:pixelsize=16:antialias=true;autohint=true",
     "Noto Sans Mono CJK SC:pixelsize=16:antialias=true;autohint=true",
-    // "LXGW WenKai Mono:pixelsize=16:antialias=true;autohint=true",
 };
 
 static char col_black[]    = "#073642";  /*  0: black    */
@@ -83,10 +83,10 @@ static char *colors[][3] = {
 
 #define OPAQUE        0xffU
 #define TRANSPARENT   0x00U
-#define BG_ALPHA      OPAQUE
+#define BG_ALPHA      0xccU
 #define TAB_CUR_BG_ALPHA 0xecU
 #define TAB_SEL_BG_ALPHA 0xe0U
-#define TAB_HID_FG_ALPHA 0x80U
+#define TAB_HID_BG_ALPHA 0x80U
 
 static const unsigned int alphas[][3]      = {
     /*                    fg         bg                border     */
@@ -100,8 +100,8 @@ static const unsigned int alphas[][3]      = {
     // tab
     [SchemeNorm]    = { OPAQUE,      TAB_CUR_BG_ALPHA, TRANSPARENT },
     [SchemeSel]     = { OPAQUE,      TAB_SEL_BG_ALPHA, TRANSPARENT },
-    [SchemeHid]     = { TAB_HID_FG_ALPHA, BG_ALPHA, TRANSPARENT },
-		// Status
+    [SchemeHid]     = { OPAQUE,      TAB_HID_BG_ALPHA, TRANSPARENT },
+    // Status
     [SchemeStatus]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     // systray
     [SchemeSystray] = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
