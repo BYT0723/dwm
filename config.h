@@ -83,7 +83,7 @@ static char *colors[][3] = {
 
 #define OPAQUE        0xffU
 #define TRANSPARENT   0x00U
-#define BG_ALPHA      0xccU
+#define BG_ALPHA      0xecU
 #define TAB_CUR_BG_ALPHA 0xecU
 #define TAB_SEL_BG_ALPHA 0xe0U
 #define TAB_HID_BG_ALPHA 0x80U
