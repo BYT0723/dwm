@@ -1,3 +1,4 @@
+#include <X11/X.h>
 #include <X11/XF86keysym.h>
 
 /* appearance */
@@ -255,7 +256,7 @@ static Key keys[] = {
     // layout
     {MODKEY,                       XK_t,                     setlayout,      {.v = &layouts[0]}},
     {MODKEY,                       XK_f,                     setlayout,      {.v = &layouts[1]}},
-    {MODKEY,                       XK_t,                     layoutmenu,     {0}},
+    {MODKEY|ShiftMask,             XK_t,                     layoutmenu,     {0}},
     // layout adjust
     {MODKEY,                       XK_v,                     incnmaster,     {.i = +1}},
     {MODKEY,                       XK_s,                     incnmaster,     {.i = -1}},
