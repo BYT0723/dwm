@@ -3084,6 +3084,7 @@ void systraydock(Window w) {
 	XReparentWindow(dpy, c->win, systray->win, 0, 0);
 	swa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
 	XChangeWindowAttributes(dpy, c->win, CWBackPixel, &swa);
+	XSetWindowBackgroundPixmap(dpy, c->win, ParentRelative);
 	sendevent(c->win, netatom[Xembed], StructureNotifyMask, CurrentTime,
 	          XEMBED_EMBEDDED_NOTIFY, 0, systray->win, XEMBED_EMBEDDED_VERSION);
 	XSync(dpy, False);
@@ -3146,6 +3147,7 @@ void updatesystray(int flag) {
   for (w = 0, i = systray->icons; i; i = i->next) {
     wa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
     XChangeWindowAttributes(dpy, i->win, CWBackPixel, &wa);
+    XSetWindowBackgroundPixmap(dpy, i->win, ParentRelative);
     XMapRaised(dpy, i->win);
     w += systrayspacing;
     i->x = w;
