@@ -2,7 +2,7 @@
 #include <X11/XF86keysym.h>
 
 /* appearance */
-static const unsigned int borderpx     = 0;   /* border pixel of windows */
+static const unsigned int borderpx     = 1;   /* border pixel of windows */
 static const unsigned int snap         = 32;  /* snap pixel */
 static const          int showbar      = 1;   /* 0 means no bar */
 static const          int topbar       = 1;   /* 0 means bottom bar */
@@ -22,17 +22,18 @@ static const          char host[]      = "";
 #define TAB_CENTER       0x02
 #define TAB_CUSTOM_WIDTH 0x04
 
-static const unsigned int tab_style = TAB_RADIUS;
-static const unsigned int tabWidth = 20;
+static const unsigned int tab_style = TAB_RADIUS | TAB_CUSTOM_WIDTH | TAB_CENTER;
+static const unsigned int tabWidth = 32;
 static const          Bool statusradius = True;
 static const          int showtitle = 1;         /* 1 = show window title in tabs, 0 = show class name */
 static const unsigned int corner_radius = 4;
-static const unsigned int tab_gap = 6;
+static const unsigned int tab_gap = 4;
+static const          int autoshowhid = 1; /* 1 = focusstackhid shows hidden windows permanently; 0 = preview, re-hide on switch away */
 
-static const unsigned int gappih    = 8;  /* horiz inner gap between windows */
-static const unsigned int gappiv    = 8;  /* vert inner gap between windows */
-static const unsigned int gappoh    = 8;  /* horiz outer gap between windows and screen edge */
-static const unsigned int gappov    = 8;  /* vert outer gap between windows and screen edge */
+static const unsigned int gappih    = 4;  /* horiz inner gap between windows */
+static const unsigned int gappiv    = 4;  /* vert inner gap between windows */
+static const unsigned int gappoh    = 4;  /* horiz outer gap between windows and screen edge */
+static const unsigned int gappov    = 4;  /* vert outer gap between windows and screen edge */
 static                int smartgaps = 0;   /* 1 means no outer gap when there is only one window */
 
 static const unsigned int systraypinning          = 0;  /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
@@ -82,7 +83,7 @@ static char *colors[][3] = {
     [SchemeLayout]  = { col_green,    col_black,    col_ab_black },
     // tasks
     [SchemeNorm]    = { col_white,    col_black,    col_black    },
-    [SchemeSel]     = { col_black,    col_blue,     col_black    },
+    [SchemeSel]     = { col_black,    col_blue,     col_cyan     },
     [SchemeHid]     = { col_ab_white, col_ab_black, col_black    },
 		// status
     [SchemeStatus]  = { col_black,    col_black,    col_black    },
@@ -109,7 +110,7 @@ static const unsigned int alphas[][3]      = {
     [SchemeLayout]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     // tab
     [SchemeNorm]    = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
-    [SchemeSel]     = { OPAQUE,      TAB_SEL_BG_ALPHA, TRANSPARENT },
+    [SchemeSel]     = { OPAQUE,      TAB_SEL_BG_ALPHA, TAB_SEL_BG_ALPHA },
     [SchemeHid]     = { BG_ALPHA,    TAB_HID_BG_ALPHA, TRANSPARENT },
     // Status
     [SchemeStatus]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
