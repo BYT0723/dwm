@@ -1284,7 +1284,6 @@ void expose(XEvent *e) {
 }
 
 void focus(Client *c) {
-  Client *old = selmon->sel;
 
   if (!c || !ISVISIBLE(c))
     for (c = selmon->stack; c && (!ISVISIBLE(c) || HIDDEN(c)); c = c->snext);
@@ -1313,8 +1312,7 @@ void focus(Client *c) {
     XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
   }
   selmon->sel = c;
-  if (old != c)
-    drawbars();
+  drawbars();
 }
 
 /* there are some broken focus acquiring clients needing extra handling */
@@ -1818,7 +1816,6 @@ void manage(Window w, XWindowAttributes *wa) {
   arrange(c->mon);
   if (!HIDDEN(c))
     XMapWindow(dpy, c->win);
-  drawbar(c->mon);
   focus(NULL);
 }
 
