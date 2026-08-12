@@ -429,6 +429,8 @@ static Cur *cursor[CurLast];
 static Clr **scheme;
 static Display *dpy;
 static Drw *drw;
+static Fnt *fonts_set;
+static Fnt *fonts_bold_set;
 static Monitor *mons, *selmon;
 static Window root, wmcheckwin;
 
@@ -765,6 +767,7 @@ void cleanup(void) {
   free(scheme);
   XDestroyWindow(dpy, wmcheckwin);
   drw_free(drw);
+  drw_fontset_free(fonts_bold_set);
   XSync(dpy, False);
   XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
   XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
@@ -1200,6 +1203,9 @@ void drawbar(Monitor *m) {
         else
           scm = SchemeNorm;
         drw_setscheme(drw, scheme[scm]);
+        int bold = scm == SchemeSel && fonts_bold_set;
+        if (bold)
+          drw_setfontset(drw, fonts_bold_set);
 
         if (remainder >= 0) {
           if (remainder == 0) {
@@ -1240,6 +1246,8 @@ void drawbar(Monitor *m) {
         // 为浮动窗口添加浮动标志
         if (c->isfloating)
           drw_rect(drw, x + tabw - lpad, (bh-boxw)/2, boxw, boxw, c->isfixed, 0);
+        if (bold)
+          drw_setfontset(drw, fonts_set);
         x += tabw;
       }
       m->tw = tabw;
@@ -2471,8 +2479,10 @@ void setup(void) {
   root = RootWindow(dpy, screen);
   xinitvisual();
   drw = drw_create(dpy, screen, root, sw, sh, visual, depth, cmap);
-  if (!drw_fontset_create(drw, fonts, LENGTH(fonts)))
+  if (!(fonts_set = drw_fontset_create(drw, fonts, LENGTH(fonts))))
     die("no fonts could be loaded.");
+  fonts_bold_set = drw_fontset_create(drw, fonts_bold, LENGTH(fonts_bold));
+  drw_setfontset(drw, fonts_set); /* drw_fontset_create overwrites drw->fonts */
 
 	// NOTE: 使用下面的方法是因为四舍五入会导致statu text计算时出现裂缝
 	/*  lrpad = drw->fonts->h; */

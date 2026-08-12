@@ -53,6 +53,12 @@ static const char *fonts[] = {
     "Noto Sans Mono CJK SC:pixelsize=16:antialias=true;autohint=true",
 };
 
+static const char *fonts_bold[] = {
+    "Symbols Nerd Font Mono:pixelsize=16:weight=bold:antialias=true;autohint=true",
+    "CaskaydiaCove Nerd Font:pixelsize=16:weight=bold:antialias=true;autohint=true",
+    "Noto Sans Mono CJK SC:pixelsize=16:weight=bold:antialias=true;autohint=true",
+};
+
 static char col_black[]    = "#073642";  /*  0: black    */
 static char col_red[]      = "#dc322f";  /*  1: red      */
 static char col_green[]    = "#859900";  /*  2: green    */
@@ -74,7 +80,7 @@ static char *colors[][3] = {
     [SchemeLayout]  = { col_green,    col_black,    col_ab_black },
     // tasks
     [SchemeNorm]    = { col_white,    col_black,    col_black    },
-    [SchemeSel]     = { col_black,    col_cyan,     col_black    },
+    [SchemeSel]     = { col_green,    col_black,    col_black    },
     [SchemeHid]     = { col_ab_white, col_ab_black, col_black    },
 		// status
     [SchemeStatus]  = { col_black,    col_black,    col_black    },
@@ -86,9 +92,9 @@ static char *colors[][3] = {
 
 #define OPAQUE        0xffU
 #define TRANSPARENT   0x00U
-#define BG_ALPHA      0xccU
+#define BG_ALPHA      0xd0U
 #define TAB_SEL_BG_ALPHA 0xe0U
-#define TAB_HID_BG_ALPHA 0x50U
+#define TAB_HID_BG_ALPHA 0x66U
 
 static const unsigned int alphas[][3]      = {
     /*                    fg         bg                border     */
