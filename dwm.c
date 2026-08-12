@@ -188,7 +188,8 @@ struct Client {
   int bw, oldbw;
   unsigned int tags;
   int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
-	unsigned int icw, ich; Picture icon;
+	unsigned int icw, ich, icon_alpha;
+  Picture icon;
   Client *next;
   Client *snext;
   Monitor *mon;
@@ -1284,6 +1285,8 @@ void expose(XEvent *e) {
 }
 
 void focus(Client *c) {
+  Client *old = selmon->sel;
+
   if (!c || !ISVISIBLE(c))
     for (c = selmon->stack; c && (!ISVISIBLE(c) || HIDDEN(c)); c = c->snext);
   if (selmon->sel && selmon->sel != c) {
@@ -1311,7 +1314,8 @@ void focus(Client *c) {
     XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
   }
   selmon->sel = c;
-  drawbars();
+  if (old != c)
+    drawbars();
 }
 
 /* there are some broken focus acquiring clients needing extra handling */
@@ -1726,6 +1730,7 @@ void manage(Window w, XWindowAttributes *wa) {
   c->h = c->oldh = wa->height;
   c->oldbw = wa->border_width;
   c->cfact = 1.0;
+  c->icon_alpha = 0;
 
   updatetitle(c);
   if (XGetTransientForHint(dpy, w, &trans) && (t = wintoclient(trans))) {
@@ -1814,6 +1819,7 @@ void manage(Window w, XWindowAttributes *wa) {
   arrange(c->mon);
   if (!HIDDEN(c))
     XMapWindow(dpy, c->win);
+  drawbar(c->mon);
   focus(NULL);
 }
 
@@ -1947,12 +1953,17 @@ void propertynotify(XEvent *e) {
   XPropertyEvent *ev = &e->xproperty;
 
   if (showsystray && (c = wintosystrayicon(ev->window))) {
+    int dirty = 0;
     if (ev->atom == XA_WM_NORMAL_HINTS) {
       updatesizehints(c);
       updatesystrayicongeom(c, c->w, c->h);
-    } else
+      dirty = 1;
+    } else if (ev->atom == xatom[XembedInfo]) {
       updatesystrayiconstate(c, ev);
-    updatesystray(1);
+      dirty = 1;
+    }
+    if (dirty)
+      updatesystray(1);
   }
 
   if ((ev->window == root) && (ev->atom == XA_WM_NAME))
@@ -1981,6 +1992,7 @@ void propertynotify(XEvent *e) {
       if (c == c->mon->sel && !c->isfullscreen)
         drawbar(c->mon);
     } else if (ev->atom == netatom[NetWMIcon]) {
+      c->icon_alpha = 0;
       updateicon(c);
       if (c == c->mon->sel && !c->isfullscreen)
         drawbar(c->mon);
@@ -3249,16 +3261,21 @@ void updatetitle(Client *c) {
 }
 
 void updateicon(Client *c) {
-	freeicon(c);
-
   Monitor *m;
-	int scm = SchemeNorm;
+  int scm = SchemeNorm;
   for (m = mons; m; m = m->next)
-			if(m->sel == c)
-				scm = SchemeSel;
-	if (HIDDEN(c))
-		scm = SchemeHid;
-	c->icon = geticonprop(c->win, &c->icw, &c->ich, alphas[scm][1]);
+    if (m->sel == c)
+      scm = SchemeSel;
+  if (HIDDEN(c))
+    scm = SchemeHid;
+
+  unsigned int new_alpha = alphas[scm][1];
+  if (c->icon_alpha == new_alpha && c->icon)
+    return;
+
+  freeicon(c);
+  c->icon_alpha = new_alpha;
+  c->icon = geticonprop(c->win, &c->icw, &c->ich, new_alpha);
 }
 
 
