@@ -101,10 +101,6 @@
 #define VERSION_MINOR 0
 #define XEMBED_EMBEDDED_VERSION (VERSION_MAJOR << 16) | VERSION_MINOR
 
-#define LTAB_START_ANGLE (90 * 64)
-#define RTAB_START_ANGLE (270 * 64)
-#define TAB_ANGLE_SIZE (180 * 64)
-
 /* enums */
 enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
 enum {
@@ -616,10 +612,12 @@ void buttonpress(XEvent *e) {
 
   stw = systraytomon(selmon) == selmon ? getsystraywidth() : 0;
 
+  int gap_total = (int)tab_gap * m->bt;
+  int tab_total = m->tw * m->bt + gap_total;
   tstart = selmon->ww - stw - statusw - m->btw;
   if (tab_style&TAB_CENTER)
-    tstart += (m->btw - m->tw * m->bt) / 2;
-  tend = tstart + m->tw * m->bt;
+    tstart += (m->btw - tab_total) / 2;
+  tend = tstart + tab_total;
 
   if (ev->window == selmon->barwin) {
     i = x = 0;
@@ -672,7 +670,9 @@ void buttonpress(XEvent *e) {
           isCode = !isCode;
         }
 				if (isCode && statusradius && ((unsigned char)(*s) == '(' || (unsigned char)(*s) == ')')){
-					x += lpad;
+					x += corner_radius;
+          if ((unsigned char)(*s) == ')')
+            x += tab_gap;
 					if (x >= ev->x)
 						break;
 				}
@@ -1028,8 +1028,11 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
 				++i;
         if (text[i] == 'f')
           w += atoi(text + ++i);
-        if (statusradius && (text[i] == '(' || text[i] == ')'))
-					w += lpad;
+        if (statusradius && (text[i] == '(' || text[i] == ')')) {
+          w += corner_radius;
+          if (text[i] == ')')
+            w += tab_gap;
+        }
       } else {
         isCode = 0;
         text = text + i + 1;
@@ -1096,16 +1099,13 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
           int rh = atoi(text + ++i);
 
           drw_rect(drw, rx + x, ry, rw, rh, 1, 0);
-        } else if (text[i] == 'f') {
+        } else if (text[i] == 'f')
           x += atoi(text + ++i);
-        } else if (text[i] == '(' && statusradius) {
-    			XSetForeground(drw->dpy, drw->gc, drw->scheme[ColBg].pixel);
-    			XFillArc(drw->dpy, drw->drawable, drw->gc, x, 0, lrpad, bh, LTAB_START_ANGLE, TAB_ANGLE_SIZE);
-          x += lpad;
+        else if (text[i] == '(' && statusradius) {
+          x += drw_rounded(drw, x, 0, bh, corner_radius, RoundedLeft);
         } else if (text[i] == ')' && statusradius) {
-    			XSetForeground(drw->dpy, drw->gc, drw->scheme[ColBg].pixel);
-    			XFillArc(drw->dpy, drw->drawable, drw->gc, x - lpad, 0, lrpad, bh, RTAB_START_ANGLE, TAB_ANGLE_SIZE);
-          x += lpad;
+          x += drw_rounded(drw, x, 0, bh, corner_radius, RoundedRight);
+          x += tab_gap;
         }
       }
 
@@ -1159,6 +1159,7 @@ void drawbar(Monitor *m) {
   // draw host
   w = TEXTW(host);
   drw_setscheme(drw, scheme[SchemeHost]);
+  x += drw_rounded(drw, x, 0, bh, corner_radius, RoundedLeft);
   x = drw_text(drw, x, 0, w, bh, lpad, host, 0);
 
   for (i = 0; i < LENGTH(tags); i++) {
@@ -1174,24 +1175,29 @@ void drawbar(Monitor *m) {
   // layout symbol
   w = blw = TEXTW(m->ltsymbol);
   drw_setscheme(drw, scheme[SchemeLayout]);
-	if (statusradius) {
-		x = drw_text(drw, x, 0, w-lpad, bh, lpad, m->ltsymbol, 0);
-		XFillArc(drw->dpy, drw->drawable, drw->gc, x - lpad, 0, lrpad, bh, 270 * 64, 180 * 64);
-		x += lpad;
-	}else
-		x = drw_text(drw, x, 0, w, bh, lpad, m->ltsymbol, 0);
+  if (statusradius) {
+    int r = MIN(corner_radius, bh / 2);
+    x = drw_text(drw, x, 0, w - r, bh, lpad, m->ltsymbol, 0);
+    x += drw_rounded(drw, x, 0, bh, corner_radius, RoundedRight);
+  } else
+    x = drw_text(drw, x, 0, w, bh, lpad, m->ltsymbol, 0);
+
+  // gap between layout and tabs
+  x += tab_gap;
 
   // draw tab
   if ((w = m->ww - tw - stw - x) > bh) {
     if (n > 0) {
-      int remainder = w % n;
+      int gap_total = (int)tab_gap * n;
+      int avail = MAX(0, (int)w - gap_total);
+      int remainder = avail % n;
 			int tabw = tabWidth * drw_fontset_getwidth(drw, " ") + lrpad;
-			if (tabw * n >= w || ((tab_style&TAB_CUSTOM_WIDTH) != TAB_CUSTOM_WIDTH))
-				tabw = (1.0 / (double)n) * w + 1;
+			if (tabw * n >= avail || ((tab_style&TAB_CUSTOM_WIDTH) != TAB_CUSTOM_WIDTH))
+				tabw = (1.0 / (double)n) * avail + 1;
 
       // 判断tab是否居中
       if (tab_style&TAB_CENTER)
-        x += MAX((w-(tabw * n))/2, 0);
+        x += MAX(((int)w - (tabw * n + gap_total))/2, 0);
 
       for (c = m->clients; c; c = c->next) {
         if (!ISVISIBLE(c))
@@ -1219,19 +1225,20 @@ void drawbar(Monitor *m) {
         int cx;
 
         if (tab_style&TAB_RADIUS) {
-          XSetForeground(drw->dpy, drw->gc, drw->scheme[ColBg].pixel);
-          XFillArc(drw->dpy, drw->drawable, drw->gc, x, 0, lrpad, bh, LTAB_START_ANGLE, TAB_ANGLE_SIZE);
+          int r = MIN(corner_radius, bh / 2);
+          int diam = r * 2;
+          drw_rounded(drw, x, 0, bh, corner_radius, RoundedLeft);
 
-          if (c->icon && tabw-lrpad >= c->icw + ICONSPACING) {
-            cx = MAX(0, ((int)(tabw - lrpad) - tw - (int)(c->icw + ICONSPACING)) / 2);
-            drw_text(drw, x+lpad, 0, tabw-lrpad, bh, cx + c->icw + ICONSPACING, tabtext, 0);
-            drw_pic(drw, x + lpad + cx, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
+          if (c->icon && tabw-diam >= c->icw + ICONSPACING) {
+            cx = MAX(0, ((int)(tabw - diam) - tw - (int)(c->icw + ICONSPACING)) / 2);
+            drw_text(drw, x+r, 0, tabw-diam, bh, cx + c->icw + ICONSPACING, tabtext, 0);
+            drw_pic(drw, x + r + cx, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
           } else {
-            cx = MAX(0, ((int)(tabw - lrpad) - tw) / 2);
-            drw_text(drw, x+lpad, 0, tabw-lrpad, bh, cx, tabtext, 0);
+            cx = MAX(0, ((int)(tabw - diam) - tw) / 2);
+            drw_text(drw, x+r, 0, tabw-diam, bh, cx, tabtext, 0);
           }
 
-          XFillArc(drw->dpy, drw->drawable, drw->gc, x+tabw-lrpad, 0, lrpad, bh, RTAB_START_ANGLE, TAB_ANGLE_SIZE);
+          drw_rounded(drw, x + tabw - r, 0, bh, corner_radius, RoundedRight);
         } else {
           if (c->icon && tabw-lrpad >= c->icw + ICONSPACING) {
             cx = MAX((int)lpad, ((int)tabw - tw - (int)(c->icw + ICONSPACING)) / 2);
@@ -1245,10 +1252,10 @@ void drawbar(Monitor *m) {
 
         // 为浮动窗口添加浮动标志
         if (c->isfloating)
-          drw_rect(drw, x + tabw - lpad, (bh-boxw)/2, boxw, boxw, c->isfixed, 0);
+          drw_rect(drw, x + tabw - corner_radius - boxw, (bh-boxw)/2, boxw, boxw, c->isfixed, 0);
         if (bold)
           drw_setfontset(drw, fonts_set);
-        x += tabw;
+        x += tabw + (int)tab_gap;
       }
       m->tw = tabw;
     }

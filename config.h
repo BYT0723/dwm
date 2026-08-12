@@ -6,9 +6,9 @@ static const unsigned int borderpx     = 0;   /* border pixel of windows */
 static const unsigned int snap         = 32;  /* snap pixel */
 static const          int showbar      = 1;   /* 0 means no bar */
 static const          int topbar       = 1;   /* 0 means bottom bar */
-static const          int barfontpad   = 6;
-static const          int vertpad      = 3;  /* vertical padding of bar */
-static const          int sidepad      = 3;  /* horizontal padding of bar */
+static const          int barfontpad   = 8;
+static const          int vertpad      = 2;  /* vertical padding of bar */
+static const          int sidepad      = 2;  /* horizontal padding of bar */
 static const          char host[]      = "";
 
 /* tab style; 0:default 1:radius 2:center 3:radius_center
@@ -25,7 +25,9 @@ static const          char host[]      = "";
 static const unsigned int tab_style = TAB_RADIUS;
 static const unsigned int tabWidth = 20;
 static const          Bool statusradius = True;
-static const           int showtitle = 1;         /* 1 = show window title in tabs, 0 = show class name */
+static const          int showtitle = 1;         /* 1 = show window title in tabs, 0 = show class name */
+static const unsigned int corner_radius = 4;
+static const unsigned int tab_gap = 6;
 
 static const unsigned int gappih    = 8;  /* horiz inner gap between windows */
 static const unsigned int gappiv    = 8;  /* vert inner gap between windows */
@@ -37,7 +39,7 @@ static const unsigned int systraypinning          = 0;  /* 0: sloppy systray fol
 static const unsigned int systrayspacing          = 4;  /* systray spacing */
 static const          int systraypinningfailfirst = 1;  /* 1: if pinning fails, display systray on the first monitor, False: display systray on the last monitor*/
 static const          int showsystray             = 1;  /* 0 means no systray */
-static const          int systraypad              = 2;
+static const          int systraypad              = 4;
 /* systray icon order, left to right; "..." = slot for unlisted icons */
 static const char     *systrayorder[]            = { "fcitx", "...", "easyeffects", "nm-applet", "udiskie", NULL };
 
@@ -80,7 +82,7 @@ static char *colors[][3] = {
     [SchemeLayout]  = { col_green,    col_black,    col_ab_black },
     // tasks
     [SchemeNorm]    = { col_white,    col_black,    col_black    },
-    [SchemeSel]     = { col_green,    col_black,    col_black    },
+    [SchemeSel]     = { col_black,    col_blue,     col_black    },
     [SchemeHid]     = { col_ab_white, col_ab_black, col_black    },
 		// status
     [SchemeStatus]  = { col_black,    col_black,    col_black    },

@@ -12,6 +12,12 @@
 #define UTF_INVALID 0xFFFD
 #define UTF_SIZ 4
 
+#define CORNER_TL (90 * 64)   /* top-left corner start angle */
+#define CORNER_TR (0)         /* top-right corner start angle */
+#define CORNER_BL (180 * 64)  /* bottom-left corner start angle */
+#define CORNER_BR (270 * 64)  /* bottom-right corner start angle */
+#define CORNER_SIZE (90 * 64) /* 1/4 circle corner size */
+
 static const unsigned char utfbyte[UTF_SIZ + 1] = {0x80, 0, 0xC0, 0xE0, 0xF0};
 static const unsigned char utfmask[UTF_SIZ + 1] = {0xC0, 0x80, 0xE0, 0xF0,
                                                    0xF8};
@@ -339,6 +345,30 @@ void drw_rect(Drw *drw, int x, int y, unsigned int w, unsigned int h,
     XFillRectangle(drw->dpy, drw->drawable, drw->gc, x, y, w, h);
   else
     XDrawRectangle(drw->dpy, drw->drawable, drw->gc, x, y, w - 1, h - 1);
+}
+
+int drw_rounded(Drw *drw, int x, int y, unsigned int h, int radius, int side) {
+  int r = MIN(radius, (int)h / 2);
+  int diam = r * 2;
+
+  if (!drw || !drw->scheme)
+    return 0;
+  XSetForeground(drw->dpy, drw->gc, drw->scheme[ColBg].pixel);
+  if (side == RoundedLeft) {
+    XFillArc(drw->dpy, drw->drawable, drw->gc, x, y, diam, diam, CORNER_TL,
+             CORNER_SIZE);
+    XFillArc(drw->dpy, drw->drawable, drw->gc, x, y + h - diam, diam, diam,
+             CORNER_BL, CORNER_SIZE);
+  } else {
+    XFillArc(drw->dpy, drw->drawable, drw->gc, x - r, y, diam, diam, CORNER_TR,
+             CORNER_SIZE);
+    XFillArc(drw->dpy, drw->drawable, drw->gc, x - r, y + h - diam, diam, diam,
+             CORNER_BR, CORNER_SIZE);
+  }
+  if (h - diam >= 1)
+    XFillRectangle(drw->dpy, drw->drawable, drw->gc, x, y + r, r, h - diam);
+
+  return r;
 }
 
 int drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h,
