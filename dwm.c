@@ -1671,40 +1671,33 @@ void killclient(const Arg *arg) {
 }
 
 void loadxrdb() {
-  Display *display;
   char *resm;
   XrmDatabase xrdb;
   char *type;
   XrmValue value;
 
-  display = XOpenDisplay(NULL);
+  resm = XResourceManagerString(dpy);
 
-  if (display != NULL) {
-    resm = XResourceManagerString(display);
-
-    if (resm != NULL) {
-      xrdb = XrmGetStringDatabase(resm);
-      if (xrdb != NULL) {
-        XRDB_LOAD_COLOR("dwm.col_black", col_black);
-        XRDB_LOAD_COLOR("dwm.col_red", col_red);
-        XRDB_LOAD_COLOR("dwm.col_green", col_green);
-        XRDB_LOAD_COLOR("dwm.col_yellow", col_yellow);
-        XRDB_LOAD_COLOR("dwm.col_blue", col_blue);
-        XRDB_LOAD_COLOR("dwm.col_magenta", col_magenta);
-        XRDB_LOAD_COLOR("dwm.col_cyan", col_cyan);
-        XRDB_LOAD_COLOR("dwm.col_white", col_white);
-        XrmDestroyDatabase(xrdb);
-      }
+  if (resm != NULL) {
+    xrdb = XrmGetStringDatabase(resm);
+    if (xrdb != NULL) {
+      XRDB_LOAD_COLOR("dwm.col_black", col_black);
+      XRDB_LOAD_COLOR("dwm.col_red", col_red);
+      XRDB_LOAD_COLOR("dwm.col_green", col_green);
+      XRDB_LOAD_COLOR("dwm.col_yellow", col_yellow);
+      XRDB_LOAD_COLOR("dwm.col_blue", col_blue);
+      XRDB_LOAD_COLOR("dwm.col_magenta", col_magenta);
+      XRDB_LOAD_COLOR("dwm.col_cyan", col_cyan);
+      XRDB_LOAD_COLOR("dwm.col_white", col_white);
+      XrmDestroyDatabase(xrdb);
     }
   }
-
-  XCloseDisplay(display);
 }
 
 
 void layoutmenu(const Arg *arg) {
   FILE *p;
-  char c[3], *s;
+  char c[16], *s;
   int i;
 
   if (!(p = popen(layoutmenu_cmd, "r")))
@@ -3413,7 +3406,7 @@ void xinitvisual() {
   visual = NULL;
   for (i = 0; i < nitems; i++) {
     fmt = XRenderFindVisualFormat(dpy, infos[i].visual);
-    if (fmt->type == PictTypeDirect && fmt->direct.alphaMask) {
+    if (fmt && fmt->type == PictTypeDirect && fmt->direct.alphaMask) {
       visual = infos[i].visual;
       depth = infos[i].depth;
       cmap = XCreateColormap(dpy, root, visual, AllocNone);
@@ -3552,6 +3545,7 @@ int main(int argc, char *argv[]) {
       }
     }
     execvp(argv[0], argv);
+    die("dwm: execvp %s:", argv[0]);
   }
   cleanup();
   XCloseDisplay(dpy);
