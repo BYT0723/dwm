@@ -16,7 +16,9 @@ static void centeredfloatingmaster(Monitor *m);
 static void deck(Monitor *m);
 static void dwindle(Monitor *m);
 static void fibonacci(Monitor *m, int s);
+static void gaplessgrid(Monitor *m);
 static void grid(Monitor *m);
+static void horizgrid(Monitor *m);
 static void nrowgrid(Monitor *m);
 static void spiral(Monitor *m);
 static void tile(Monitor *m);
@@ -246,7 +248,7 @@ static void bstackhoriz(Monitor *m) {
  * Centred master layout + gaps
  * https://dwm.suckless.org/patches/centeredmaster/
  */
-void centeredmaster(Monitor *m) {
+static void centeredmaster(Monitor *m) {
   unsigned int i, n;
   int oh, ov, ih, iv;
   int mx = 0, my = 0, mh = 0, mw = 0;
@@ -337,7 +339,7 @@ void centeredmaster(Monitor *m) {
   }
 }
 
-void centeredfloatingmaster(Monitor *m) {
+static void centeredfloatingmaster(Monitor *m) {
   unsigned int i, n;
   float mfacts, sfacts;
   float mivf = 1.0; // master inner vertical gap factor
@@ -398,7 +400,7 @@ void centeredfloatingmaster(Monitor *m) {
  * Deck layout + gaps
  * https://dwm.suckless.org/patches/deck/
  */
-void deck(Monitor *m) {
+static void deck(Monitor *m) {
   unsigned int i, n;
   int oh, ov, ih, iv;
   int mx = 0, my = 0, mh = 0, mw = 0;
@@ -442,7 +444,7 @@ void deck(Monitor *m) {
  * Fibonacci layout + gaps
  * https://dwm.suckless.org/patches/fibonacci/
  */
-void fibonacci(Monitor *m, int s) {
+static void fibonacci(Monitor *m, int s) {
   unsigned int i, n;
   int nx, ny, nw, nh;
   int oh, ov, ih, iv;
@@ -522,15 +524,15 @@ void fibonacci(Monitor *m, int s) {
   }
 }
 
-void dwindle(Monitor *m) { fibonacci(m, 1); }
+static void dwindle(Monitor *m) { fibonacci(m, 1); }
 
-void spiral(Monitor *m) { fibonacci(m, 0); }
+static void spiral(Monitor *m) { fibonacci(m, 0); }
 
 /*
  * Gappless grid layout + gaps (ironically)
  * https://dwm.suckless.org/patches/gaplessgrid/
  */
-void gaplessgrid(Monitor *m) {
+static void gaplessgrid(Monitor *m) {
   unsigned int i, n;
   int x, y, cols, rows, ch, cw, cn, rn, rrest, crest; // counters
   int oh, ov, ih, iv;
@@ -579,7 +581,7 @@ void gaplessgrid(Monitor *m) {
  * Gridmode layout + gaps
  * https://dwm.suckless.org/patches/gridmode/
  */
-void grid(Monitor *m) {
+static void grid(Monitor *m) {
   unsigned int i, n;
   int cx, cy, cw, ch, cc, cr, chrest, cwrest, cols, rows;
   int oh, ov, ih, iv;
@@ -612,7 +614,7 @@ void grid(Monitor *m) {
  * Horizontal grid layout + gaps
  * https://dwm.suckless.org/patches/horizgrid/
  */
-void horizgrid(Monitor *m) {
+static void horizgrid(Monitor *m) {
   Client *c;
   unsigned int n, i;
   int oh, ov, ih, iv;
@@ -681,7 +683,7 @@ void horizgrid(Monitor *m) {
  * nrowgrid layout + gaps
  * https://dwm.suckless.org/patches/nrowgrid/
  */
-void nrowgrid(Monitor *m) {
+static void nrowgrid(Monitor *m) {
   unsigned int n;
   int ri = 0, ci = 0;                  /* counters */
   int oh, ov, ih, iv;                  /* vanitygap settings */

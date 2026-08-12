@@ -91,12 +91,11 @@
 /* XEMBED messages */
 #define XEMBED_EMBEDDED_NOTIFY 0
 #define XEMBED_WINDOW_ACTIVATE 1
+#define XEMBED_WINDOW_DEACTIVATE 2
 #define XEMBED_FOCUS_IN 4
 #define XEMBED_MODALITY_ON 10
 
 #define XEMBED_MAPPED (1 << 0)
-#define XEMBED_WINDOW_ACTIVATE 1
-#define XEMBED_WINDOW_DEACTIVATE 2
 
 #define VERSION_MAJOR 0
 #define VERSION_MINOR 0
@@ -2635,7 +2634,7 @@ void spawn(const Arg *arg) {
     execvp(((char **)arg->v)[0], (char **)arg->v);
     fprintf(stderr, "dwm: execvp %s", ((char **)arg->v)[0]);
     perror(" failed");
-    exit(EXIT_SUCCESS);
+    _exit(EXIT_FAILURE);
   }
 }
 
