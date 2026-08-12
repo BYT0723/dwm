@@ -22,9 +22,10 @@ static const          char host[]      = "";
 #define TAB_CENTER       0x02
 #define TAB_CUSTOM_WIDTH 0x04
 
-static const unsigned int tab_style = TAB_CUSTOM_WIDTH | TAB_RADIUS | TAB_CENTER;
+static const unsigned int tab_style = TAB_RADIUS;
 static const unsigned int tabWidth = 20;
 static const          Bool statusradius = True;
+static const           int showtitle = 1;         /* 1 = show window title in tabs, 0 = show class name */
 
 static const unsigned int gappih    = 8;  /* horiz inner gap between windows */
 static const unsigned int gappiv    = 8;  /* vert inner gap between windows */
@@ -61,6 +62,7 @@ static char col_magenta[]  = "#d33682";  /*  5: magenta  */
 static char col_cyan[]     = "#2aa198";  /*  6: cyan     */
 static char col_white[]    = "#eee8d5";  /*  7: white    */
 static char col_ab_black[] = "#000000";
+static char col_ab_white[] = "#ffffff";
 static char *colors[][3] = {
     /*                    fg            bg            border   */
     // host
@@ -73,7 +75,7 @@ static char *colors[][3] = {
     // tasks
     [SchemeNorm]    = { col_white,    col_black,    col_black    },
     [SchemeSel]     = { col_black,    col_cyan,     col_black    },
-    [SchemeHid]     = { col_cyan,     col_black,    col_black    },
+    [SchemeHid]     = { col_ab_white, col_ab_black, col_black    },
 		// status
     [SchemeStatus]  = { col_black,    col_black,    col_black    },
     // systray
@@ -84,10 +86,9 @@ static char *colors[][3] = {
 
 #define OPAQUE        0xffU
 #define TRANSPARENT   0x00U
-#define BG_ALPHA      0xecU
-#define TAB_CUR_BG_ALPHA 0xecU
+#define BG_ALPHA      0xccU
 #define TAB_SEL_BG_ALPHA 0xe0U
-#define TAB_HID_BG_ALPHA 0x80U
+#define TAB_HID_BG_ALPHA 0x50U
 
 static const unsigned int alphas[][3]      = {
     /*                    fg         bg                border     */
@@ -99,9 +100,9 @@ static const unsigned int alphas[][3]      = {
     // layout
     [SchemeLayout]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     // tab
-    [SchemeNorm]    = { OPAQUE,      TAB_CUR_BG_ALPHA, TRANSPARENT },
+    [SchemeNorm]    = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     [SchemeSel]     = { OPAQUE,      TAB_SEL_BG_ALPHA, TRANSPARENT },
-    [SchemeHid]     = { OPAQUE,      TAB_HID_BG_ALPHA, TRANSPARENT },
+    [SchemeHid]     = { BG_ALPHA,    TAB_HID_BG_ALPHA, TRANSPARENT },
     // Status
     [SchemeStatus]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     // systray

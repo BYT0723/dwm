@@ -1208,24 +1208,34 @@ void drawbar(Monitor *m) {
           remainder--;
         }
 
-				if (tab_style&TAB_RADIUS) {
-    			XSetForeground(drw->dpy, drw->gc, drw->scheme[ColBg].pixel);
-    			XFillArc(drw->dpy, drw->drawable, drw->gc, x, 0, lrpad, bh, LTAB_START_ANGLE, TAB_ANGLE_SIZE);
+        const char *tabtext = showtitle ? c->name : c->class;
+        int tw = TEXTW(tabtext) - lrpad;
+        int cx;
 
-					if (c->icon && tabw-lrpad >= c->icw + ICONSPACING) {
-        		drw_text(drw, x+lpad, 0, tabw-lrpad, bh, c->icw + ICONSPACING, c->name, 0);
-						drw_pic(drw, x+lpad, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
-					} else
-        		drw_text(drw, x+lpad, 0, tabw-lrpad, bh, 0, c->name, 0);
+        if (tab_style&TAB_RADIUS) {
+          XSetForeground(drw->dpy, drw->gc, drw->scheme[ColBg].pixel);
+          XFillArc(drw->dpy, drw->drawable, drw->gc, x, 0, lrpad, bh, LTAB_START_ANGLE, TAB_ANGLE_SIZE);
 
-    			XFillArc(drw->dpy, drw->drawable, drw->gc, x+tabw-lrpad, 0, lrpad, bh, RTAB_START_ANGLE, TAB_ANGLE_SIZE);
-				}else{
-					if (c->icon && tabw-lrpad >= c->icw + ICONSPACING) {
-        		drw_text(drw, x, 0, tabw, bh, lpad + c->icw + ICONSPACING , c->name, 0);
-						drw_pic(drw, x+lpad, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
-					} else
-        		drw_text(drw, x, 0, tabw, bh, lpad + 0, c->name, 0);
-				}
+          if (c->icon && tabw-lrpad >= c->icw + ICONSPACING) {
+            cx = MAX(0, ((int)(tabw - lrpad) - tw - (int)(c->icw + ICONSPACING)) / 2);
+            drw_text(drw, x+lpad, 0, tabw-lrpad, bh, cx + c->icw + ICONSPACING, tabtext, 0);
+            drw_pic(drw, x + lpad + cx, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
+          } else {
+            cx = MAX(0, ((int)(tabw - lrpad) - tw) / 2);
+            drw_text(drw, x+lpad, 0, tabw-lrpad, bh, cx, tabtext, 0);
+          }
+
+          XFillArc(drw->dpy, drw->drawable, drw->gc, x+tabw-lrpad, 0, lrpad, bh, RTAB_START_ANGLE, TAB_ANGLE_SIZE);
+        } else {
+          if (c->icon && tabw-lrpad >= c->icw + ICONSPACING) {
+            cx = MAX((int)lpad, ((int)tabw - tw - (int)(c->icw + ICONSPACING)) / 2);
+            drw_text(drw, x, 0, tabw, bh, cx + c->icw + ICONSPACING, tabtext, 0);
+            drw_pic(drw, x + cx, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
+          } else {
+            cx = MAX((int)lpad, ((int)tabw - tw) / 2);
+            drw_text(drw, x, 0, tabw, bh, cx, tabtext, 0);
+          }
+        }
 
         // 为浮动窗口添加浮动标志
         if (c->isfloating)
@@ -1981,7 +1991,7 @@ void propertynotify(XEvent *e) {
     }
     if (ev->atom == XA_WM_NAME || ev->atom == netatom[NetWMName]) {
       updatetitle(c);
-      if (c == c->mon->sel && !c->isfullscreen)
+      if (c == c->mon->sel && !c->isfullscreen && showtitle)
         drawbar(c->mon);
     } else if (ev->atom == netatom[NetWMIcon]) {
       c->icon_alpha = 0;
@@ -3261,7 +3271,7 @@ void updateicon(Client *c) {
   if (HIDDEN(c))
     scm = SchemeHid;
 
-  unsigned int new_alpha = alphas[scm][1];
+  unsigned int new_alpha = alphas[scm][0];
   if (c->icon_alpha == new_alpha && c->icon)
     return;
 
