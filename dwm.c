@@ -993,15 +993,12 @@ Monitor *dirtomon(int dir) {
 }
 
 int drawstatusbar(Monitor *m, int bh, char *stext) {
-  int ret, i, j, w, x, len;
+  int ret, i, j, w, x;
   short isCode = 0;
   char *text;
-  char *p;
+  char textbuf[1024];
 
-  len = strlen(stext) + 1;
-  if (!(text = (char *)malloc(sizeof(char) * len)))
-    die("malloc");
-  p = text;
+  text = textbuf;
 
   i = -1, j = 0;
   while (stext[++i]) {
@@ -1040,7 +1037,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
   if (!isCode && strlen(text) > 0)
     w += TEXTW(text);
   isCode = 0;
-  text = p;
+  text = textbuf;
 
   ret = m->ww - w - 2 * sp;
 	x = systraytomon(m) == selmon ? ret-getsystraywidth() : ret;
@@ -1121,7 +1118,6 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
   }
 
   drw_setscheme(drw, scheme[SchemeNorm]);
-  free(p);
 
   return ret;
 }
