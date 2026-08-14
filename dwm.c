@@ -2598,13 +2598,18 @@ void statusclick(Monitor *m, int xclick, int stw, int button) {
 
 /* walk the status2d segments of stext, adding each segment's width to
    *x until *x reaches stopx (INT_MAX for the total width). Records the
-   last statuscmd index in *cmdidx. On portrait monitors a 0x7f
-   separator resets the layout from the following segment. */
+   last statuscmd index in *cmdidx. On portrait monitors drawstatusbar
+   only keeps the text after the last 0x7f separator, so the walk skips
+   everything before it to stay aligned with the drawn layout. */
 void status2dwalk(Monitor *m, char *stext, int stopx, int *x, int *cmdidx) {
   char *text, *s, ch;
   int isCode = 0;
 
   text = s = stext;
+  if (m->wh > m->ww)
+    for (char *p = stext; *p; p++)
+      if ((unsigned char)*p == 0x7f)
+        text = s = p + 1;
   *cmdidx = 0;
   for (; *s && *x < stopx; s++) {
     if ((unsigned char)(*s) == '^') {
@@ -2653,8 +2658,6 @@ void status2dwalk(Monitor *m, char *stext, int stopx, int *x, int *cmdidx) {
         break;
       if ((unsigned char)ch < ' ')
         *cmdidx = ch;
-      if (m->wh > m->ww)
-        *x = 0;
     }
   }
   if (!isCode && *x < stopx && strlen(text) > 0)
