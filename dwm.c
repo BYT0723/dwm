@@ -281,6 +281,7 @@ static Monitor *dirtomon(int dir);
 static void drawbar(Monitor *m);
 static void drawbars(void);
 static int drawstatusbar(Monitor *m, int bh, char *text);
+static int drawtabs(Monitor *m, int x, int w, int n);
 static void enternotify(XEvent *e);
 static void expose(XEvent *e);
 static void focus(Client *c);
@@ -348,10 +349,14 @@ static void sigchld(int unused);
 static void sighup(int unused);
 static void sigterm(int unused);
 static void spawn(const Arg *arg);
+static void status2dwalk(Monitor *m, char *stext, int stopx, int *x, int *cmdidx);
+static void statusclick(Monitor *m, int xclick, int stw, int button);
 static void systraydock(Window w);
+static int systrayredock(Window w);
 static Monitor *systraytomon(Monitor *m);
 static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
+static Client *tasksclick(Monitor *m, int xclick, int tstart, int tend);
 static void togglebar(const Arg *arg);
 static void togglefloating(const Arg *arg);
 static void toggletag(const Arg *arg);
@@ -642,71 +647,12 @@ void buttonpress(XEvent *e) {
       click = ClkLtSymbol;
     /* 2px right padding */
     else if (ev->x > selmon->ww - statusw - stw) {
-      char *text, *s, ch;
-      *lastbutton = '0' + ev->button;
-
-      x = selmon->ww - statusw - stw;
+      statusclick(selmon, ev->x, stw, ev->button);
       click = ClkStatusText;
-
-      statuscmdn = 0;
-      int isCode = 0;
-      text = s = stext;
-      if (selmon->wh > selmon->ww)
-        for (char *p = stext; *p; p++)
-          if ((unsigned char)*p == 0x7f)
-            text = s = p + 1;
-      for (; *s && x <= ev->x; s++) {
-        // status2d text width
-        if ((unsigned char)(*s) == '^') {
-          if (!isCode) {
-            ch = *s;
-            *s = '\0';
-            if (strlen(text) > 0) {
-              x += TEXTW(text);
-            }
-            *s = ch;
-            if (x >= ev->x)
-              break;
-          }
-          text = s + 1;
-          isCode = !isCode;
-        }
-				if (isCode && statusradius && ((unsigned char)(*s) == '(' || (unsigned char)(*s) == ')')){
-					x += corner_radius;
-          if ((unsigned char)(*s) == ')')
-            x += tab_gap;
-					if (x >= ev->x)
-						break;
-				}
-        // statuscmd text width
-        if ((unsigned char)(*s) < ' ' || (unsigned char)(*s) == 0x7f) {
-          ch = *s;
-          *s = '\0';
-          if (strlen(text) > 0) {
-            x += TEXTW(text);
-          }
-          *s = ch;
-          text = s + 1;
-          if (x >= ev->x)
-            break;
-          if ((unsigned char)ch < ' ')
-            statuscmdn = ch;
-        }
-      }
-    } else if (ev->x > tstart && ev->x < tend ) { // tasks click event
-      x = tstart;
-      c = m->clients;
-
-      if (c) {
-        do {
-          if (!ISVISIBLE(c))
-            continue;
-          else
-            x += m->tw;
-        } while (ev->x > x && (c = c->next));
-
+    } else if (ev->x > tstart && ev->x < tend) {
+      if (m->clients) {
         click = ClkWinTitle;
-        arg.v = c;
+        arg.v = tasksclick(selmon, ev->x, tstart, tend);
       }
     }
   } else if ((c = wintoclient(ev->window))) {
@@ -996,8 +942,7 @@ Monitor *dirtomon(int dir) {
 }
 
 void drawbar(Monitor *m) {
-  int x = 0, w, tw = 0, stw = 0, n = 0, scm;
-  int boxw = drw->fonts->h / 6 + 2;
+  int x = 0, w, tw = 0, stw = 0, n = 0;
   unsigned int i, occ = 0, urg = 0;
   Client *c;
 
@@ -1050,79 +995,8 @@ void drawbar(Monitor *m) {
 
   x += tab_gap;
 
-  if ((w = m->ww - tw - stw - x) > bh) {
-    if (n > 0) {
-      int gap_total = (int)tab_gap * n;
-      int avail = MAX(0, (int)w - gap_total);
-      int remainder = avail % n;
-			int tabw = tabWidth * drw_fontset_getwidth(drw, " ") + lrpad;
-			if (tabw * n >= avail || ((tab_style&TAB_CUSTOM_WIDTH) != TAB_CUSTOM_WIDTH))
-				tabw = (1.0 / (double)n) * avail + 1;
-
-      if (tab_style&TAB_CENTER)
-        x += MAX(((int)w - (tabw * n + gap_total))/2, 0);
-
-      for (c = m->clients; c; c = c->next) {
-        if (!ISVISIBLE(c))
-          continue;
-        if (m->sel == c)
-          scm = SchemeSel;
-        else if (HIDDEN(c))
-          scm = SchemeHid;
-        else
-          scm = SchemeNorm;
-        drw_setscheme(drw, scheme[scm]);
-        int bold = scm == SchemeSel && fonts_bold_set;
-        if (bold)
-          drw_setfontset(drw, fonts_bold_set);
-
-        if (remainder >= 0) {
-          if (remainder == 0) {
-            tabw--;
-          }
-          remainder--;
-        }
-
-        const char *tabtext = showtitle ? c->name : c->class;
-        int tw = TEXTW(tabtext) - lrpad;
-        int cx;
-
-        if (tab_style&TAB_RADIUS) {
-          int r = MIN(corner_radius, bh / 2);
-          int diam = r * 2;
-          drw_rounded(drw, x, 0, bh, corner_radius, RoundedLeft);
-
-          if (c->icon && tabw-diam >= c->icw + ICONSPACING) {
-            cx = MAX(0, ((int)(tabw - diam) - tw - (int)(c->icw + ICONSPACING)) / 2);
-            drw_text(drw, x+r, 0, tabw-diam, bh, cx + c->icw + ICONSPACING, tabtext, 0);
-            drw_pic(drw, x + r + cx, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
-          } else {
-            cx = MAX(0, ((int)(tabw - diam) - tw) / 2);
-            drw_text(drw, x+r, 0, tabw-diam, bh, cx, tabtext, 0);
-          }
-
-          drw_rounded(drw, x + tabw - r, 0, bh, corner_radius, RoundedRight);
-        } else {
-          if (c->icon && tabw-lrpad >= c->icw + ICONSPACING) {
-            cx = MAX((int)lpad, ((int)tabw - tw - (int)(c->icw + ICONSPACING)) / 2);
-            drw_text(drw, x, 0, tabw, bh, cx + c->icw + ICONSPACING, tabtext, 0);
-            drw_pic(drw, x + cx, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
-          } else {
-            cx = MAX((int)lpad, ((int)tabw - tw) / 2);
-            drw_text(drw, x, 0, tabw, bh, cx, tabtext, 0);
-          }
-        }
-
-        // floating marker
-        if (c->isfloating)
-          drw_rect(drw, x + tabw - corner_radius - boxw, (bh-boxw)/2, boxw, boxw, c->isfixed, 0);
-        if (bold)
-          drw_setfontset(drw, fonts_set);
-        x += tabw + (int)tab_gap;
-      }
-      m->tw = tabw;
-    }
-  }
+  if ((w = m->ww - tw - stw - x) > bh && n > 0)
+    m->tw = drawtabs(m, x, w, n);
 
   m->bt = n;
   m->btw = w;
@@ -1158,34 +1032,12 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
   text[j] = '\0';
 
   /* compute width of the status text */
-  w = 0;
-  i = -1;
-  while (text[++i]) {
-    if (text[i] == '^') {
-      if (!isCode) {
-        isCode = 1;
-        text[i] = '\0';
-        if (strlen(text) > 0) {
-          w += TEXTW(text);
-        }
-        text[i] = '^';
-				++i;
-        if (text[i] == 'f')
-          w += atoi(text + ++i);
-        if (statusradius && (text[i] == '(' || text[i] == ')')) {
-          w += corner_radius;
-          if (text[i] == ')')
-            w += tab_gap;
-        }
-      } else {
-        isCode = 0;
-        text = text + i + 1;
-        i = -1;
-      }
-    }
+  {
+    int cmdidx;
+
+    w = 0;
+    status2dwalk(m, text, INT_MAX, &w, &cmdidx);
   }
-  if (!isCode && strlen(text) > 0)
-    w += TEXTW(text);
   isCode = 0;
   text = textbuf;
 
@@ -1269,6 +1121,85 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
   return ret;
 }
 
+/* draw client tabs, starting at x within the remaining bar width w;
+   returns the width of a single tab */
+int drawtabs(Monitor *m, int x, int w, int n) {
+  int gap_total, avail, remainder, tabw, scm;
+  int boxw = drw->fonts->h / 6 + 2;
+  Client *c;
+
+  gap_total = (int)tab_gap * n;
+  avail = MAX(0, (int)w - gap_total);
+  remainder = avail % n;
+  tabw = tabWidth * drw_fontset_getwidth(drw, " ") + lrpad;
+  if (tabw * n >= avail || ((tab_style&TAB_CUSTOM_WIDTH) != TAB_CUSTOM_WIDTH))
+    tabw = (1.0 / (double)n) * avail + 1;
+
+  if (tab_style&TAB_CENTER)
+    x += MAX(((int)w - (tabw * n + gap_total))/2, 0);
+
+  for (c = m->clients; c; c = c->next) {
+    int bold, tw, cx;
+    const char *tabtext;
+
+    if (!ISVISIBLE(c))
+      continue;
+    if (m->sel == c)
+      scm = SchemeSel;
+    else if (HIDDEN(c))
+      scm = SchemeHid;
+    else
+      scm = SchemeNorm;
+    drw_setscheme(drw, scheme[scm]);
+    bold = scm == SchemeSel && fonts_bold_set;
+    if (bold)
+      drw_setfontset(drw, fonts_bold_set);
+
+    if (remainder >= 0) {
+      if (remainder == 0)
+        tabw--;
+      remainder--;
+    }
+
+    tabtext = showtitle ? c->name : c->class;
+    tw = TEXTW(tabtext) - lrpad;
+
+    if (tab_style&TAB_RADIUS) {
+      int r = MIN(corner_radius, bh / 2);
+      int diam = r * 2;
+      drw_rounded(drw, x, 0, bh, corner_radius, RoundedLeft);
+
+      if (c->icon && tabw-diam >= c->icw + ICONSPACING) {
+        cx = MAX(0, ((int)(tabw - diam) - tw - (int)(c->icw + ICONSPACING)) / 2);
+        drw_text(drw, x+r, 0, tabw-diam, bh, cx + c->icw + ICONSPACING, tabtext, 0);
+        drw_pic(drw, x + r + cx, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
+      } else {
+        cx = MAX(0, ((int)(tabw - diam) - tw) / 2);
+        drw_text(drw, x+r, 0, tabw-diam, bh, cx, tabtext, 0);
+      }
+
+      drw_rounded(drw, x + tabw - r, 0, bh, corner_radius, RoundedRight);
+    } else {
+      if (c->icon && tabw-lrpad >= c->icw + ICONSPACING) {
+        cx = MAX((int)lpad, ((int)tabw - tw - (int)(c->icw + ICONSPACING)) / 2);
+        drw_text(drw, x, 0, tabw, bh, cx + c->icw + ICONSPACING, tabtext, 0);
+        drw_pic(drw, x + cx, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
+      } else {
+        cx = MAX((int)lpad, ((int)tabw - tw) / 2);
+        drw_text(drw, x, 0, tabw, bh, cx, tabtext, 0);
+      }
+    }
+
+    // floating marker
+    if (c->isfloating)
+      drw_rect(drw, x + tabw - corner_radius - boxw, (bh-boxw)/2, boxw, boxw, c->isfixed, 0);
+    if (bold)
+      drw_setfontset(drw, fonts_set);
+    x += tabw + (int)tab_gap;
+  }
+  return tabw;
+}
+
 void enternotify(XEvent *e) {
 	Client *c;
 	Monitor *m;
@@ -1350,7 +1281,8 @@ void focusmon(const Arg *arg) {
 	int root_x, root_y, win_x, win_y;
 	unsigned int mask;
 
-	if (XQueryPointer(dpy, root, &root_return, &child_return, &root_x, &root_y, &win_x, &win_y, &mask)) {
+	if (XQueryPointer(dpy, root, &root_return, &child_return, &root_x,
+	                    &root_y, &win_x, &win_y, &mask)) {
 		/* remember old monitor pointer position */
 		if (INMON(selmon, root_x, root_y)) {
 			selmon->last_mouse_pos[0] = root_x;
@@ -1435,7 +1367,8 @@ Atom getatomprop(Client *c, Atom prop) {
   if (prop == xatom[XembedInfo])
     req = xatom[XembedInfo];
 
-  if (XGetWindowProperty(dpy, c->win, prop, 0L, sizeof atom, False, req, &da, &format, &nitems, &dl, &p) == Success && p) {
+  if (XGetWindowProperty(dpy, c->win, prop, 0L, sizeof atom, False, req,
+                         &da, &format, &nitems, &dl, &p) == Success && p) {
 		if (nitems > 0 && format == 32)
     	atom = *(long *)p;
     if (da == xatom[XembedInfo] && dl == 2)
@@ -1520,7 +1453,8 @@ long getstate(Window w) {
   unsigned long n, extra;
   Atom real;
 
-  if (XGetWindowProperty(dpy, w, wmatom[WMState], 0L, 2L, False, wmatom[WMState], &real, &format, &n, &extra, &p) != Success)
+  if (XGetWindowProperty(dpy, w, wmatom[WMState], 0L, 2L, False,
+                         wmatom[WMState], &real, &format, &n, &extra, &p) != Success)
     return -1;
   if (n != 0 && format == 32)
     result = *(long *)p;
@@ -1799,7 +1733,8 @@ void manage(Window w, XWindowAttributes *wa) {
   updatewindowtype(c);
   updatesizehints(c);
   updatewmhints(c);
-  XSelectInput(dpy, w, EnterWindowMask | FocusChangeMask | PropertyChangeMask | StructureNotifyMask);
+  XSelectInput(dpy, w, EnterWindowMask | FocusChangeMask |
+               PropertyChangeMask | StructureNotifyMask);
   grabbuttons(c, 0);
   if (!c->isfloating)
     c->isfloating = c->oldstate = trans != None || c->isfixed;
@@ -1829,13 +1764,16 @@ void manage(Window w, XWindowAttributes *wa) {
     }
   }
   if (c->isfloating) {
-		c->x = (c->x == c->mon->mx || c->x + c->w == c->mon->mx + c->mon->mw) ? c->mon->mx+(c->mon->mw - c->w)/2 : c->x;
-		c->y = (c->y == c->mon->my + bh || c->y == c->mon->my || c->y + c->h == c->mon->my + c->mon->mh) ? c->mon->my+(c->mon->mh - c->h)/2 : c->y;
+		c->x = (c->x == c->mon->mx || c->x + c->w == c->mon->mx + c->mon->mw)
+		        ? c->mon->mx+(c->mon->mw - c->w)/2 : c->x;
+		c->y = (c->y == c->mon->my + bh || c->y == c->mon->my ||
+		        c->y + c->h == c->mon->my + c->mon->mh) ? c->mon->my+(c->mon->mh - c->h)/2 : c->y;
   }
   configure(c); /* propagates border_width, if size doesn't change */
   attachtop ? attach(c) : attachbottom(c);
   attachstack(c);
-  XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32, PropModeAppend, (unsigned char *)&(c->win), 1);
+  XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32,
+                  PropModeAppend, (unsigned char *)&(c->win), 1);
   if (!HIDDEN(c))
     setclientstate(c, NormalState);
   if (c->mon == selmon)
@@ -2182,7 +2120,8 @@ void run(void) {
   XSync(dpy, False);
   while (running && !XNextEvent(dpy, &ev)) {
       /* flood guard: skip redundant draw events when queue backs up */
-    if (XPending(dpy) > 50 && (ev.type == PropertyNotify || ev.type == Expose || ev.type == NoExpose)) {
+    if (XPending(dpy) > 50 &&
+        (ev.type == PropertyNotify || ev.type == Expose || ev.type == NoExpose)) {
       continue;
     }
     if (handler[ev.type])
@@ -2278,26 +2217,8 @@ void scan(void) {
           XGetTransientForHint(dpy, wins[i], &d1))
         continue;
       if (wa.map_state == IsViewable || getstate(wins[i]) == IconicState) {
-        /* hot-restart: re-dock former systray icons.
-         *   When dwm restarts via XCloseDisplay+execvp, XAddToSaveSet
-         *   reparents embedded icon windows back to root instead of
-         *   destroying them — so the clients miss the spec-mandated
-         *   DestroyNotify and won't re-request dock on their own.
-         *   Identify them by WM_CLASS="Systray" (set during first dock)
-         *   and feed them through systraydock() for a full re-handshake. */
-        if (showsystray && systray) {
-          XClassHint ch = {NULL, NULL};
-          if (XGetClassHint(dpy, wins[i], &ch)) {
-            int issystray = (ch.res_name && strcmp(ch.res_name, "Systray") == 0);
-            if (ch.res_name) XFree(ch.res_name);
-            if (ch.res_class) XFree(ch.res_class);
-            if (issystray) {
-              systraydock(wins[i]);
-              continue;
-            }
-          }
-        }
-        manage(wins[i], &wa);
+        if (!systrayredock(wins[i]))
+          manage(wins[i], &wa);
       }
     }
     for (i = 0; i < num; i++) { /* now the transients */
@@ -2664,6 +2585,103 @@ void spawn(const Arg *arg) {
   }
 }
 
+/* resolve a click on the status text: records lastbutton and statuscmdn */
+void statusclick(Monitor *m, int xclick, int stw, int button) {
+  int startx, x = 0, cmdidx;
+
+  *lastbutton = '0' + button;
+  statuscmdn = 0;
+  startx = m->ww - statusw - stw;
+  status2dwalk(m, stext, xclick - startx, &x, &cmdidx);
+  statuscmdn = cmdidx;
+}
+
+/* walk the status2d segments of stext, adding each segment's width to
+   *x until *x reaches stopx (INT_MAX for the total width). Records the
+   last statuscmd index in *cmdidx. On portrait monitors a 0x7f
+   separator resets the layout from the following segment. */
+void status2dwalk(Monitor *m, char *stext, int stopx, int *x, int *cmdidx) {
+  char *text, *s, ch;
+  int isCode = 0;
+
+  text = s = stext;
+  *cmdidx = 0;
+  for (; *s && *x < stopx; s++) {
+    if ((unsigned char)(*s) == '^') {
+      if (!isCode) {
+        ch = *s;
+        *s = '\0';
+        if (strlen(text) > 0)
+          *x += TEXTW(text);
+        *s = ch;
+        if (*x >= stopx)
+          break;
+        text = s + 1;
+        isCode = 1;
+        continue;
+      }
+      isCode = 0;
+      text = s + 1;
+      continue;
+    }
+    if (isCode) {
+      /* only the first char after '^' is the code identifier */
+      if (s == text && *s == 'f') {
+        *x += atoi(s + 1);
+        while (s[1] && s[1] != '^')
+          s++;
+        continue;
+      }
+      if (s == text && statusradius && (*s == '(' || *s == ')')) {
+        *x += corner_radius;
+        if (*s == ')')
+          *x += tab_gap;
+        if (*x >= stopx)
+          break;
+        continue;
+      }
+      continue;
+    }
+    if ((unsigned char)(*s) < ' ' || (unsigned char)(*s) == 0x7f) {
+      ch = *s;
+      *s = '\0';
+      if (strlen(text) > 0)
+        *x += TEXTW(text);
+      *s = ch;
+      text = s + 1;
+      if (*x >= stopx)
+        break;
+      if ((unsigned char)ch < ' ')
+        *cmdidx = ch;
+      if (m->wh > m->ww)
+        *x = 0;
+    }
+  }
+  if (!isCode && *x < stopx && strlen(text) > 0)
+    *x += TEXTW(text);
+}
+
+/* hot-restart: re-dock former systray icons. When dwm restarts via
+   XCloseDisplay+execvp, XAddToSaveSet reparents embedded icon windows
+   back to root instead of destroying them, so the clients miss the
+   DestroyNotify and won't re-request dock on their own. Identify them
+   by WM_CLASS="Systray" and re-handshake through systraydock(). */
+int systrayredock(Window w) {
+  XClassHint ch = {NULL, NULL};
+  int issystray;
+
+  if (!showsystray || !systray)
+    return 0;
+  if (!XGetClassHint(dpy, w, &ch))
+    return 0;
+  issystray = (ch.res_name && strcmp(ch.res_name, "Systray") == 0);
+  if (ch.res_name) XFree(ch.res_name);
+  if (ch.res_class) XFree(ch.res_class);
+  if (issystray)
+    systraydock(w);
+  return issystray;
+}
+
 Monitor *systraytomon(Monitor *m) {
   Monitor *t;
   int i, n;
@@ -2697,11 +2715,28 @@ void tagmon(const Arg *arg) {
   sendmon(selmon->sel, dirtomon(arg->i));
 }
 
+/* resolve a click on the client tabs; returns the clicked client or NULL */
+Client *tasksclick(Monitor *m, int xclick, int tstart, int tend) {
+  Client *c;
+  int x;
+
+  for (x = tstart, c = m->clients; c; c = c->next) {
+    if (!ISVISIBLE(c))
+      continue;
+    x += m->tw;
+    if (xclick <= x)
+      break;
+  }
+  return c;
+}
+
 void togglebar(const Arg *arg) {
   selmon->showbar = selmon->pertag->showbars[selmon->pertag->curtag] =
       !selmon->showbar;
   updatebarpos(selmon);
-  XMoveResizeWindow(dpy, selmon->barwin, selmon->wx + sp, selmon->by + vp, selmon->ww - 2 * sp - (systraytomon(selmon) == selmon ? getsystraywidth() : 0), bh);
+  XMoveResizeWindow(dpy, selmon->barwin, selmon->wx + sp, selmon->by + vp,
+                  selmon->ww - 2 * sp -
+                  (systraytomon(selmon) == selmon ? getsystraywidth() : 0), bh);
   if (showsystray) {
     XWindowChanges wc;
     if (!selmon->showbar)
@@ -3143,16 +3178,22 @@ void updatesystray(int flag) {
     /* init systray */
     if (!(systray = (Systray *)calloc(1, sizeof(Systray))))
       die("fatal: could not malloc() %u bytes\n", sizeof(Systray));
-    systray->win = XCreateSimpleWindow(dpy, root, x - sp, m->by + vp, w, bh, 0, 0, scheme[SchemeSystray][ColBg].pixel);
+    systray->win = XCreateSimpleWindow(dpy, root, x - sp, m->by + vp, w, bh,
+                             0, 0, scheme[SchemeSystray][ColBg].pixel);
     wa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
     wa.event_mask        = ButtonPressMask | ExposureMask;
     wa.override_redirect = True;
     wa.border_pixel = 0;
     XSelectInput(dpy, systray->win, SubstructureNotifyMask);
-    XChangeProperty(dpy, systray->win, netatom[NetSystemTrayOrientation], XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&netatom[NetSystemTrayOrientationHorz], 1);
-    XChangeWindowAttributes(dpy, systray->win, CWEventMask|CWOverrideRedirect|CWBackPixel|CWBorderPixel, &wa);
+    XChangeProperty(dpy, systray->win, netatom[NetSystemTrayOrientation],
+                    XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *)&netatom[NetSystemTrayOrientationHorz], 1);
+    XChangeWindowAttributes(dpy, systray->win,
+                          CWEventMask|CWOverrideRedirect|CWBackPixel|CWBorderPixel,
+                          &wa);
     opacity = alphas[SchemeSystray][1] * 0x01010101UL;
-    XChangeProperty(dpy, systray->win, netatom[NetWMWindowOpacity], XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&opacity, 1);
+    XChangeProperty(dpy, systray->win, netatom[NetWMWindowOpacity], XA_CARDINAL,
+                    32, PropModeReplace, (unsigned char *)&opacity, 1);
     XMapRaised(dpy, systray->win);
     XSetSelectionOwner(dpy, netatom[NetSystemTray], systray->win, CurrentTime);
     if (XGetSelectionOwner(dpy, netatom[NetSystemTray]) == systray->win) {
