@@ -1821,6 +1821,36 @@ void manage(Window w, XWindowAttributes *wa) {
       XDeleteProperty(dpy, w, dfa);
     }
   }
+  /* _DWM_FULLSCREEN layout: [isfullscreen, oldx, oldy, oldw, oldh,
+     oldstate, oldbw] — pre-fullscreen geometry lost on hot-restart,
+     needed by setfullscreen() to restore the client on exit. */
+  {
+    Atom dfs = XInternAtom(dpy, "_DWM_FULLSCREEN", False);
+    Atom actual;
+    int fmt;
+    unsigned long n, extra;
+    unsigned char *data = NULL;
+    if (XGetWindowProperty(dpy, w, dfs, 0, 7, False, XA_CARDINAL, &actual, &fmt, &n, &extra, &data) == Success && data) {
+      if (n > 0 && fmt == 32) {
+        unsigned long *fstate = (unsigned long *)data;
+        if (fstate[0]) {
+          c->isfullscreen = 1;
+          if (n >= 5) {
+            c->oldx = (int)fstate[1];
+            c->oldy = (int)fstate[2];
+            c->oldw = (int)fstate[3];
+            c->oldh = (int)fstate[4];
+          }
+          if (n >= 6)
+            c->oldstate = (int)fstate[5];
+          if (n >= 7)
+            c->oldbw = (int)fstate[6];
+        }
+      }
+      XFree(data);
+      XDeleteProperty(dpy, w, dfs);
+    }
+  }
   if (c->isfloating) {
 		// 当默认窗口位置，边框贴近屏幕边缘，将窗口移动到屏幕中心
 		c->x = (c->x == c->mon->mx || c->x + c->w == c->mon->mx + c->mon->mw) ? c->mon->mx+(c->mon->mw - c->w)/2 : c->x;
@@ -3499,10 +3529,33 @@ void restorestacking(void) {
         continue;
       if (prev) {
         wc.sibling = prev;
-        wc.stack_mode = Below;
+        wc.stack_mode = Above;
         XConfigureWindow(dpy, seq[i], CWSibling | CWStackMode, &wc);
       }
       prev = seq[i];
+    }
+  }
+  /* restore panel (bar/systray) vs client stacking: the new barwin and
+     systray are mapped on top, so lower them below the bottommost
+     fullscreen client (not the topmost one, or the bar would end up
+     sandwiched between fullscreen clients), matching the normal-state
+     model: tiled < bar/systray < fullscreen */
+  {
+    XWindowChanges wc = {0};
+    Monitor *m2;
+    Client *c2, *bottomfs;
+    for (m2 = mons; m2; m2 = m2->next) {
+      bottomfs = NULL;
+      for (c2 = m2->stack; c2; c2 = c2->snext)
+        if (ISVISIBLE(c2) && c2->isfullscreen)
+          bottomfs = c2;
+      if (bottomfs) {
+        wc.sibling = bottomfs->win;
+        wc.stack_mode = Below;
+        XConfigureWindow(dpy, m2->barwin, CWSibling | CWStackMode, &wc);
+        if (showsystray && systray && systraytomon(m2) == m2)
+          XConfigureWindow(dpy, systray->win, CWSibling | CWStackMode, &wc);
+      }
     }
   }
   XSync(dpy, False);
@@ -3540,6 +3593,7 @@ int main(int argc, char *argv[]) {
     Atom da = XInternAtom(dpy, "_DWM_MONITOR", False);
     Atom dta = XInternAtom(dpy, "_DWM_TAG", False);
     Atom dfa = XInternAtom(dpy, "_DWM_FLOATING", False);
+    Atom dfs = XInternAtom(dpy, "_DWM_FULLSCREEN", False);
     Monitor *m;
     Client *c;
     unsigned long fl;
@@ -3549,6 +3603,12 @@ int main(int argc, char *argv[]) {
         XChangeProperty(dpy, c->win, dta, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&c->tags, 1);
         fl = c->isfloating;
         XChangeProperty(dpy, c->win, dfa, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&fl, 1);
+        if (c->isfullscreen) {
+          unsigned long fstate[7] = {c->isfullscreen, c->oldx, c->oldy, c->oldw, c->oldh, c->oldstate, c->oldbw};
+          XChangeProperty(dpy, c->win, dfs, XA_CARDINAL, 32, PropModeReplace, (unsigned char *)fstate, 7);
+        } else {
+          XDeleteProperty(dpy, c->win, dfs);
+        }
       }
     // Store the stacking order
     {
