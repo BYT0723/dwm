@@ -1118,6 +1118,30 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
   return ret;
 }
 
+/* expand tabtext template ({title}, {class}) into buf */
+static void tabtext_expand(Client *c, char *buf, size_t len) {
+  const char *f = tabtext;
+  size_t n = 0;
+
+  while (*f && n < len - 1) {
+    const char *val = NULL;
+
+    if (!strncmp(f, "{title}", 7))
+      val = c->name;
+    else if (!strncmp(f, "{class}", 7))
+      val = c->class;
+
+    if (val) {
+      strncpy(buf + n, val, len - n - 1);
+      n += MIN(strlen(val), len - n - 1);
+      f += 7;
+    } else {
+      buf[n++] = *f++;
+    }
+  }
+  buf[n] = '\0';
+}
+
 /* draw client tabs, starting at x within the remaining bar width w;
    returns the width of a single tab */
 int drawtabs(Monitor *m, int x, int w, int n) {
@@ -1137,7 +1161,7 @@ int drawtabs(Monitor *m, int x, int w, int n) {
 
   for (c = m->clients; c; c = c->next) {
     int bold, tw, cx;
-    const char *tabtext;
+    char text[256];
 
     if (!ISVISIBLE(c))
       continue;
@@ -1158,8 +1182,8 @@ int drawtabs(Monitor *m, int x, int w, int n) {
       remainder--;
     }
 
-    tabtext = tabshowtitle ? c->name : c->class;
-    tw = TEXTW(tabtext) - lrpad;
+    tabtext_expand(c, text, sizeof(text));
+    tw = TEXTW(text) - lrpad;
 
     if (barinnerradius > 0) {
       int r = MIN(barinnerradius, bh / 2);
@@ -1168,22 +1192,22 @@ int drawtabs(Monitor *m, int x, int w, int n) {
 
       if (c->icon && tabw-diam >= c->icw + ICONSPACING) {
         cx = MAX(0, ((int)(tabw - diam) - tw - (int)(c->icw + ICONSPACING)) / 2);
-        drw_text(drw, x+r, 0, tabw-diam, bh, cx + c->icw + ICONSPACING, tabtext, 0);
+        drw_text(drw, x+r, 0, tabw-diam, bh, cx + c->icw + ICONSPACING, text, 0);
         drw_pic(drw, x + r + cx, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
       } else {
         cx = MAX(0, ((int)(tabw - diam) - tw) / 2);
-        drw_text(drw, x+r, 0, tabw-diam, bh, cx, tabtext, 0);
+        drw_text(drw, x+r, 0, tabw-diam, bh, cx, text, 0);
       }
 
       drw_rounded(drw, x + tabw - r, 0, bh, barinnerradius, RoundedRight);
     } else {
       if (c->icon && tabw-lrpad >= c->icw + ICONSPACING) {
         cx = MAX((int)lpad, ((int)tabw - tw - (int)(c->icw + ICONSPACING)) / 2);
-        drw_text(drw, x, 0, tabw, bh, cx + c->icw + ICONSPACING, tabtext, 0);
+        drw_text(drw, x, 0, tabw, bh, cx + c->icw + ICONSPACING, text, 0);
         drw_pic(drw, x + cx, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
       } else {
         cx = MAX((int)lpad, ((int)tabw - tw) / 2);
-        drw_text(drw, x, 0, tabw, bh, cx, tabtext, 0);
+        drw_text(drw, x, 0, tabw, bh, cx, text, 0);
       }
     }
 
@@ -1948,7 +1972,7 @@ void propertynotify(XEvent *e) {
     }
     if (ev->atom == XA_WM_NAME || ev->atom == netatom[NetWMName]) {
       updatetitle(c);
-      if (c == c->mon->sel && !c->isfullscreen && tabshowtitle)
+      if (c == c->mon->sel && !c->isfullscreen && strstr(tabtext, "{title}"))
         drawbar(c->mon);
     } else if (ev->atom == netatom[NetWMIcon]) {
       c->icon_alpha = 0;

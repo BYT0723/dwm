@@ -23,7 +23,7 @@ static const          char host[]      = "";
 
 static const unsigned int tab_style = TAB_NONE;
 static const unsigned int tabwidth = 20;
-static const          int tabshowtitle = 1;         /* 1 = show window title in tabs, 0 = show class name */
+static const char         tabtext[] = "{title}"; /* tab text template; placeholders: {title}, {class} */
 static const unsigned int barinnerradius = 4;
 static const unsigned int barinnergap = 4;
 static const          int autoshowhid = 1; /* 1 = focusstackhid shows hidden windows permanently; 0 = preview, re-hide on switch away */
@@ -46,8 +46,8 @@ static const unsigned int attachtop = 0; /* new window is attached to the top of
 
 static const Bool viewontag = True; /* Switch view on tag switch */
 
-#define ICONSIZE (bh) /* or adaptively preserve 2 pixels each side */
-#define ICONSPACING 6 /* space between icon and title */
+#define ICONSIZE (bh - 2) /* or adaptively preserve 2 pixels each side */
+#define ICONSPACING 4 /* space between icon and title */
 static const char *fonts[] = {
     "Symbols Nerd Font Mono:pixelsize=16:antialias=true;autohint=true",
     "CaskaydiaCove Nerd Font:pixelsize=16:antialias=true;autohint=true",
