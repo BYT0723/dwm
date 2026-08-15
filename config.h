@@ -22,7 +22,7 @@ static const          char host[]      = "";
 #define TAB_CUSTOM_WIDTH 0x02
 
 static const unsigned int tab_style = TAB_NONE;
-static const unsigned int tabwidth = 32;
+static const unsigned int tabwidth = 20;
 static const          int tabshowtitle = 1;         /* 1 = show window title in tabs, 0 = show class name */
 static const unsigned int barinnerradius = 4;
 static const unsigned int barinnergap = 4;
@@ -46,18 +46,12 @@ static const unsigned int attachtop = 0; /* new window is attached to the top of
 
 static const Bool viewontag = True; /* Switch view on tag switch */
 
-#define ICONSIZE (bh - 4) /* or adaptively preserve 2 pixels each side */
+#define ICONSIZE (bh) /* or adaptively preserve 2 pixels each side */
 #define ICONSPACING 6 /* space between icon and title */
 static const char *fonts[] = {
     "Symbols Nerd Font Mono:pixelsize=16:antialias=true;autohint=true",
     "CaskaydiaCove Nerd Font:pixelsize=16:antialias=true;autohint=true",
     "Noto Sans Mono CJK SC:pixelsize=16:antialias=true;autohint=true",
-};
-
-static const char *fonts_bold[] = {
-    "Symbols Nerd Font Mono:pixelsize=16:weight=bold:antialias=true;autohint=true",
-    "CaskaydiaCove Nerd Font:pixelsize=16:weight=bold:antialias=true;autohint=true",
-    "Noto Sans Mono CJK SC:pixelsize=16:weight=bold:antialias=true;autohint=true",
 };
 
 static char col_black[]    = "#073642";  /*  0: black    */
@@ -81,7 +75,7 @@ static char *colors[][3] = {
     [SchemeLayout]  = { col_green,    col_black,    col_ab_black },
     // tasks
     [SchemeNorm]    = { col_white,    col_black,    col_black    },
-    [SchemeSel]     = { col_black,    col_blue,     col_cyan     },
+    [SchemeSel]     = { col_blue,     col_black,     col_cyan     },
     [SchemeHid]     = { col_ab_white, col_ab_black, col_black    },
 		// status
     [SchemeStatus]  = { col_black,    col_black,    col_black    },

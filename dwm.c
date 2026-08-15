@@ -433,7 +433,7 @@ static Clr **scheme;
 static Display *dpy;
 static Drw *drw;
 static Fnt *fonts_set;
-static Fnt *fonts_bold_set;
+static Fnt *fonts_bold_italic_set;
 static Monitor *mons, *selmon;
 static Window root, wmcheckwin;
 
@@ -713,7 +713,7 @@ void cleanup(void) {
   free(scheme);
   XDestroyWindow(dpy, wmcheckwin);
   drw_free(drw);
-  drw_fontset_free(fonts_bold_set);
+  drw_fontset_free(fonts_bold_italic_set);
   XSync(dpy, False);
   XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
   XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
@@ -1148,9 +1148,9 @@ int drawtabs(Monitor *m, int x, int w, int n) {
     else
       scm = SchemeNorm;
     drw_setscheme(drw, scheme[scm]);
-    bold = scm == SchemeSel && fonts_bold_set;
+    bold = scm == SchemeSel && fonts_bold_italic_set;
     if (bold)
-      drw_setfontset(drw, fonts_bold_set);
+      drw_setfontset(drw, fonts_bold_italic_set);
 
     if (remainder >= 0) {
       if (remainder == 0)
@@ -2414,7 +2414,21 @@ void setup(void) {
   drw = drw_create(dpy, screen, root, sw, sh, visual, depth, cmap);
   if (!(fonts_set = drw_fontset_create(drw, fonts, LENGTH(fonts))))
     die("no fonts could be loaded.");
-  fonts_bold_set = drw_fontset_create(drw, fonts_bold, LENGTH(fonts_bold));
+  {
+    FcPattern *bolditalicpat[LENGTH(fonts)];
+    int i;
+
+    for (i = 0; i < LENGTH(fonts); i++) {
+      if (!(bolditalicpat[i] = FcNameParse((FcChar8 *)fonts[i])))
+        continue;
+      FcPatternAddInteger(bolditalicpat[i], FC_WEIGHT, FC_WEIGHT_BOLD);
+      FcPatternAddInteger(bolditalicpat[i], FC_SLANT, FC_SLANT_ITALIC);
+    }
+    fonts_bold_italic_set = drw_fontset_create_pattern(drw, bolditalicpat, LENGTH(fonts));
+    for (i = 0; i < LENGTH(fonts); i++)
+      if (bolditalicpat[i])
+        FcPatternDestroy(bolditalicpat[i]);
+  }
   drw_setfontset(drw, fonts_set); /* drw_fontset_create overwrites drw->fonts */
 
 	// NOTE: halving lpad avoids rounding cracks in status text width
