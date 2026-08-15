@@ -619,7 +619,7 @@ void buttonpress(XEvent *e) {
 
   stw = systraytomon(selmon) == selmon ? getsystraywidth() : 0;
 
-  int gap_total = (int)tab_gap * m->bt;
+  int gap_total = (int)barinnergap * m->bt;
   int tab_total = m->tw * m->bt + gap_total;
   tstart = selmon->ww - stw - statusw - m->btw;
   if (tab_style&TAB_CENTER)
@@ -972,7 +972,7 @@ void drawbar(Monitor *m) {
 
   w = TEXTW(host);
   drw_setscheme(drw, scheme[SchemeHost]);
-  x += drw_rounded(drw, x, 0, bh, corner_radius, RoundedLeft);
+  x += drw_rounded(drw, x, 0, bh, barinnerradius, RoundedLeft);
   x = drw_text(drw, x, 0, w, bh, lpad, host, 0);
 
   for (i = 0; i < LENGTH(tags); i++) {
@@ -986,14 +986,11 @@ void drawbar(Monitor *m) {
   }
   w = blw = TEXTW(m->ltsymbol);
   drw_setscheme(drw, scheme[SchemeLayout]);
-  if (statusradius) {
-    int r = MIN(corner_radius, bh / 2);
-    x = drw_text(drw, x, 0, w - r, bh, lpad, m->ltsymbol, 0);
-    x += drw_rounded(drw, x, 0, bh, corner_radius, RoundedRight);
-  } else
-    x = drw_text(drw, x, 0, w, bh, lpad, m->ltsymbol, 0);
+  int r = MIN(barinnerradius, bh / 2);
+  x = drw_text(drw, x, 0, w - r, bh, lpad, m->ltsymbol, 0);
+  x += drw_rounded(drw, x, 0, bh, barinnerradius, RoundedRight);
 
-  x += tab_gap;
+  x += barinnergap;
 
   if ((w = m->ww - tw - stw - x) > bh && n > 0)
     m->tw = drawtabs(m, x, w, n);
@@ -1097,11 +1094,11 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
           drw_rect(drw, rx + x, ry, rw, rh, 1, 0);
         } else if (text[i] == 'f')
           x += atoi(text + ++i);
-        else if (text[i] == '(' && statusradius) {
-          x += drw_rounded(drw, x, 0, bh, corner_radius, RoundedLeft);
-        } else if (text[i] == ')' && statusradius) {
-          x += drw_rounded(drw, x, 0, bh, corner_radius, RoundedRight);
-          x += tab_gap;
+        else if (text[i] == '(' && barinnerradius > 0) {
+          x += drw_rounded(drw, x, 0, bh, barinnerradius, RoundedLeft);
+        } else if (text[i] == ')' && barinnerradius > 0) {
+          x += drw_rounded(drw, x, 0, bh, barinnerradius, RoundedRight);
+          x += barinnergap;
         }
       }
 
@@ -1128,11 +1125,11 @@ int drawtabs(Monitor *m, int x, int w, int n) {
   int boxw = drw->fonts->h / 6 + 2;
   Client *c;
 
-  gap_total = (int)tab_gap * n;
+  gap_total = (int)barinnergap * n;
   avail = MAX(0, (int)w - gap_total);
   remainder = avail % n;
-  tabw = tabWidth * drw_fontset_getwidth(drw, " ") + lrpad;
-  if (tabw * n >= avail || ((tab_style&TAB_CUSTOM_WIDTH) != TAB_CUSTOM_WIDTH))
+  tabw = tabwidth * drw_fontset_getwidth(drw, " ") + lrpad;
+  if (tabw * n >= avail || !(tab_style & TAB_CUSTOM_WIDTH))
     tabw = (1.0 / (double)n) * avail + 1;
 
   if (tab_style&TAB_CENTER)
@@ -1161,13 +1158,13 @@ int drawtabs(Monitor *m, int x, int w, int n) {
       remainder--;
     }
 
-    tabtext = showtitle ? c->name : c->class;
+    tabtext = tabshowtitle ? c->name : c->class;
     tw = TEXTW(tabtext) - lrpad;
 
-    if (tab_style&TAB_RADIUS) {
-      int r = MIN(corner_radius, bh / 2);
+    if (barinnerradius > 0) {
+      int r = MIN(barinnerradius, bh / 2);
       int diam = r * 2;
-      drw_rounded(drw, x, 0, bh, corner_radius, RoundedLeft);
+      drw_rounded(drw, x, 0, bh, barinnerradius, RoundedLeft);
 
       if (c->icon && tabw-diam >= c->icw + ICONSPACING) {
         cx = MAX(0, ((int)(tabw - diam) - tw - (int)(c->icw + ICONSPACING)) / 2);
@@ -1178,7 +1175,7 @@ int drawtabs(Monitor *m, int x, int w, int n) {
         drw_text(drw, x+r, 0, tabw-diam, bh, cx, tabtext, 0);
       }
 
-      drw_rounded(drw, x + tabw - r, 0, bh, corner_radius, RoundedRight);
+      drw_rounded(drw, x + tabw - r, 0, bh, barinnerradius, RoundedRight);
     } else {
       if (c->icon && tabw-lrpad >= c->icw + ICONSPACING) {
         cx = MAX((int)lpad, ((int)tabw - tw - (int)(c->icw + ICONSPACING)) / 2);
@@ -1192,10 +1189,10 @@ int drawtabs(Monitor *m, int x, int w, int n) {
 
     // floating marker
     if (c->isfloating)
-      drw_rect(drw, x + tabw - corner_radius - boxw, (bh-boxw)/2, boxw, boxw, c->isfixed, 0);
+      drw_rect(drw, x + tabw - barinnerradius - boxw, (bh-boxw)/2, boxw, boxw, c->isfixed, 0);
     if (bold)
       drw_setfontset(drw, fonts_set);
-    x += tabw + (int)tab_gap;
+    x += tabw + (int)barinnergap;
   }
   return tabw;
 }
@@ -1951,7 +1948,7 @@ void propertynotify(XEvent *e) {
     }
     if (ev->atom == XA_WM_NAME || ev->atom == netatom[NetWMName]) {
       updatetitle(c);
-      if (c == c->mon->sel && !c->isfullscreen && showtitle)
+      if (c == c->mon->sel && !c->isfullscreen && tabshowtitle)
         drawbar(c->mon);
     } else if (ev->atom == netatom[NetWMIcon]) {
       c->icon_alpha = 0;
@@ -2637,10 +2634,10 @@ void status2dwalk(Monitor *m, char *stext, int stopx, int *x, int *cmdidx) {
           s++;
         continue;
       }
-      if (s == text && statusradius && (*s == '(' || *s == ')')) {
-        *x += corner_radius;
+      if (s == text && barinnerradius > 0 && (*s == '(' || *s == ')')) {
+        *x += barinnerradius;
         if (*s == ')')
-          *x += tab_gap;
+          *x += barinnergap;
         if (*x >= stopx)
           break;
         continue;

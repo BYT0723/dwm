@@ -11,23 +11,21 @@ static const          int vertpad      = 2;  /* vertical padding of bar */
 static const          int sidepad      = 2;  /* horizontal padding of bar */
 static const          char host[]      = "";
 
-/* tab style; 0:default 1:radius 2:center 3:radius_center
+/* tab style; 0:default 1:center 2:custom_width
  * 0 0 0 0 0 0 0 0
- * bit1: radius
- * bit2: center
- * bit3: custom_width
+ * bit1: center
+ * bit2: custom_width
+ * radius is controlled by barinnerradius
  */
 #define TAB_NONE         0x00
-#define TAB_RADIUS       0x01
-#define TAB_CENTER       0x02
-#define TAB_CUSTOM_WIDTH 0x04
+#define TAB_CENTER       0x01
+#define TAB_CUSTOM_WIDTH 0x02
 
-static const unsigned int tab_style = TAB_RADIUS | TAB_CUSTOM_WIDTH | TAB_CENTER;
-static const unsigned int tabWidth = 32;
-static const          Bool statusradius = True;
-static const          int showtitle = 1;         /* 1 = show window title in tabs, 0 = show class name */
-static const unsigned int corner_radius = 4;
-static const unsigned int tab_gap = 4;
+static const unsigned int tab_style = TAB_NONE;
+static const unsigned int tabwidth = 32;
+static const          int tabshowtitle = 1;         /* 1 = show window title in tabs, 0 = show class name */
+static const unsigned int barinnerradius = 4;
+static const unsigned int barinnergap = 4;
 static const          int autoshowhid = 1; /* 1 = focusstackhid shows hidden windows permanently; 0 = preview, re-hide on switch away */
 
 static const unsigned int gappih    = 6;
