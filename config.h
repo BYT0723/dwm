@@ -24,7 +24,7 @@ static const          char host[]      = "";
 static const unsigned int tabstyle = TAB_CENTER | TAB_CUSTOM_WIDTH;
 static const unsigned int tabwidth = 16;
 static const char         tabtext[] = "{class}"; /* tab text template; placeholders: {title}, {class} */
-static const unsigned int tabradius = 4;
+static const unsigned int tabradius = 8;
 static const unsigned int tabgap = 4;
 static const          int autoshowhid = 1; /* 1 = focusstackhid shows hidden windows permanently; 0 = preview, re-hide on switch away */
 
