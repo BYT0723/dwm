@@ -619,10 +619,10 @@ void buttonpress(XEvent *e) {
 
   stw = systraytomon(selmon) == selmon ? getsystraywidth() : 0;
 
-  int gap_total = (int)barinnergap * m->bt;
+  int gap_total = (int)tabgap * m->bt;
   int tab_total = m->tw * m->bt + gap_total;
   tstart = selmon->ww - stw - statusw - m->btw;
-  if (tab_style&TAB_CENTER)
+  if (tabstyle&TAB_CENTER)
     tstart += (m->btw - tab_total) / 2;
   tend = tstart + tab_total;
 
@@ -972,7 +972,7 @@ void drawbar(Monitor *m) {
 
   w = TEXTW(host);
   drw_setscheme(drw, scheme[SchemeHost]);
-  x += drw_rounded(drw, x, 0, bh, barinnerradius, RoundedLeft);
+  x += drw_rounded(drw, x, 0, bh, tabradius, RoundedLeft);
   x = drw_text(drw, x, 0, w, bh, lpad, host, 0);
 
   for (i = 0; i < LENGTH(tags); i++) {
@@ -986,11 +986,11 @@ void drawbar(Monitor *m) {
   }
   w = blw = TEXTW(m->ltsymbol);
   drw_setscheme(drw, scheme[SchemeLayout]);
-  int r = MIN(barinnerradius, bh / 2);
+  int r = MIN(tabradius, bh / 2);
   x = drw_text(drw, x, 0, w - r, bh, lpad, m->ltsymbol, 0);
-  x += drw_rounded(drw, x, 0, bh, barinnerradius, RoundedRight);
+  x += drw_rounded(drw, x, 0, bh, tabradius, RoundedRight);
 
-  x += barinnergap;
+  x += tabgap;
 
   if ((w = m->ww - tw - stw - x) > bh && n > 0)
     m->tw = drawtabs(m, x, w, n);
@@ -1094,11 +1094,11 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
           drw_rect(drw, rx + x, ry, rw, rh, 1, 0);
         } else if (text[i] == 'f')
           x += atoi(text + ++i);
-        else if (text[i] == '(' && barinnerradius > 0) {
-          x += drw_rounded(drw, x, 0, bh, barinnerradius, RoundedLeft);
-        } else if (text[i] == ')' && barinnerradius > 0) {
-          x += drw_rounded(drw, x, 0, bh, barinnerradius, RoundedRight);
-          x += barinnergap;
+        else if (text[i] == '(' && tabradius > 0) {
+          x += drw_rounded(drw, x, 0, bh, tabradius, RoundedLeft);
+        } else if (text[i] == ')' && tabradius > 0) {
+          x += drw_rounded(drw, x, 0, bh, tabradius, RoundedRight);
+          x += tabgap;
         }
       }
 
@@ -1149,14 +1149,14 @@ int drawtabs(Monitor *m, int x, int w, int n) {
   int boxw = drw->fonts->h / 6 + 2;
   Client *c;
 
-  gap_total = (int)barinnergap * n;
+  gap_total = (int)tabgap * n;
   avail = MAX(0, (int)w - gap_total);
   remainder = avail % n;
   tabw = tabwidth * drw_fontset_getwidth(drw, " ") + lrpad;
-  if (tabw * n >= avail || !(tab_style & TAB_CUSTOM_WIDTH))
+  if (tabw * n >= avail || !(tabstyle & TAB_CUSTOM_WIDTH))
     tabw = (1.0 / (double)n) * avail + 1;
 
-  if (tab_style&TAB_CENTER)
+  if (tabstyle&TAB_CENTER)
     x += MAX(((int)w - (tabw * n + gap_total))/2, 0);
 
   for (c = m->clients; c; c = c->next) {
@@ -1185,10 +1185,10 @@ int drawtabs(Monitor *m, int x, int w, int n) {
     tabtext_expand(c, text, sizeof(text));
     tw = TEXTW(text) - lrpad;
 
-    if (barinnerradius > 0) {
-      int r = MIN(barinnerradius, bh / 2);
+    if (tabradius > 0) {
+      int r = MIN(tabradius, bh / 2);
       int diam = r * 2;
-      drw_rounded(drw, x, 0, bh, barinnerradius, RoundedLeft);
+      drw_rounded(drw, x, 0, bh, tabradius, RoundedLeft);
 
       if (c->icon && tabw-diam >= c->icw + ICONSPACING) {
         cx = MAX(0, ((int)(tabw - diam) - tw - (int)(c->icw + ICONSPACING)) / 2);
@@ -1199,7 +1199,7 @@ int drawtabs(Monitor *m, int x, int w, int n) {
         drw_text(drw, x+r, 0, tabw-diam, bh, cx, text, 0);
       }
 
-      drw_rounded(drw, x + tabw - r, 0, bh, barinnerradius, RoundedRight);
+      drw_rounded(drw, x + tabw - r, 0, bh, tabradius, RoundedRight);
     } else {
       if (c->icon && tabw-lrpad >= c->icw + ICONSPACING) {
         cx = MAX((int)lpad, ((int)tabw - tw - (int)(c->icw + ICONSPACING)) / 2);
@@ -1213,10 +1213,10 @@ int drawtabs(Monitor *m, int x, int w, int n) {
 
     // floating marker
     if (c->isfloating)
-      drw_rect(drw, x + tabw - barinnerradius - boxw, (bh-boxw)/2, boxw, boxw, c->isfixed, 0);
+      drw_rect(drw, x + tabw - tabradius - boxw, (bh-boxw)/2, boxw, boxw, c->isfixed, 0);
     if (bold)
       drw_setfontset(drw, fonts_set);
-    x += tabw + (int)barinnergap;
+    x += tabw + (int)tabgap;
   }
   return tabw;
 }
@@ -2672,10 +2672,10 @@ void status2dwalk(Monitor *m, char *stext, int stopx, int *x, int *cmdidx) {
           s++;
         continue;
       }
-      if (s == text && barinnerradius > 0 && (*s == '(' || *s == ')')) {
-        *x += barinnerradius;
+      if (s == text && tabradius > 0 && (*s == '(' || *s == ')')) {
+        *x += tabradius;
         if (*s == ')')
-          *x += barinnergap;
+          *x += tabgap;
         if (*x >= stopx)
           break;
         continue;
@@ -3627,6 +3627,8 @@ cleanup:
   if (data)
     XFree(data);
   unsetenv("DWM_RESTART");
+
+  focus(NULL);
 }
 
 int main(int argc, char *argv[]) {
