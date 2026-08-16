@@ -12,11 +12,7 @@
 #define UTF_INVALID 0xFFFD
 #define UTF_SIZ 4
 
-#define CORNER_TL (90 * 64)   /* top-left corner start angle */
-#define CORNER_TR (0)         /* top-right corner start angle */
-#define CORNER_BL (180 * 64)  /* bottom-left corner start angle */
-#define CORNER_BR (270 * 64)  /* bottom-right corner start angle */
-#define CORNER_SIZE (90 * 64) /* 1/4 circle corner size */
+#define AA_SAMPLES 8 /* subsamples per pixel for rounded-corner coverage */
 
 static const unsigned char utfbyte[UTF_SIZ + 1] = {0x80, 0, 0xC0, 0xE0, 0xF0};
 static const unsigned char utfmask[UTF_SIZ + 1] = {0xC0, 0x80, 0xE0, 0xF0,
@@ -376,25 +372,120 @@ void drw_rect(Drw *drw, int x, int y, unsigned int w, unsigned int h,
 }
 
 int drw_rounded(Drw *drw, int x, int y, unsigned int h, int radius, int side) {
-  int r = MIN(radius, (int)h / 2);
-  int diam = r * 2;
+  static Pixmap ampm[2], cpm;
+  static Picture amask[2], color_pic;
+  static int cached_r = -1;
+  static unsigned int cached_h = 0;
+  static unsigned long cached_pixel = 0;
+  int r, m, i, j;
 
   if (!drw || !drw->scheme)
     return 0;
-  XSetForeground(drw->dpy, drw->gc, drw->scheme[ColBg].pixel);
-  if (side == RoundedLeft) {
-    XFillArc(drw->dpy, drw->drawable, drw->gc, x, y, diam, diam, CORNER_TL,
-             CORNER_SIZE);
-    XFillArc(drw->dpy, drw->drawable, drw->gc, x, y + h - diam, diam, diam,
-             CORNER_BL, CORNER_SIZE);
-  } else {
-    XFillArc(drw->dpy, drw->drawable, drw->gc, x - r, y, diam, diam, CORNER_TR,
-             CORNER_SIZE);
-    XFillArc(drw->dpy, drw->drawable, drw->gc, x - r, y + h - diam, diam, diam,
-             CORNER_BR, CORNER_SIZE);
+  r = MIN(radius, (int)h / 2);
+  if (r <= 0)
+    return 0;
+
+  /* Generate per-pixel coverage masks once per (r, h): amask[0] is the left
+   * cap, amask[1] its horizontal mirror. Coverage is 0..255 by AA_SAMPLES x
+   * AA_SAMPLES subsampling: the corner circle is centered at (r, r) for the
+   * top arc and at (r, h - r) for the bottom arc, and the middle band is
+   * fully covered. */
+  if (cached_r != r || cached_h != h) {
+    GC gc;
+    int ns = AA_SAMPLES * AA_SAMPLES;
+    double rr = (double)r * r;
+    unsigned char *data = ecalloc((size_t)r * h, 1);
+
+    if (color_pic != None) {
+      XRenderFreePicture(drw->dpy, color_pic);
+      XFreePixmap(drw->dpy, cpm);
+    }
+    cpm = XCreatePixmap(drw->dpy, drw->root, r, h, 32);
+    if (!cpm) {
+      free(data);
+      return 0;
+    }
+    color_pic = XRenderCreatePicture(
+        drw->dpy, cpm, XRenderFindStandardFormat(drw->dpy, PictStandardARGB32),
+        0, NULL);
+    if (!color_pic) {
+      free(data);
+      XFreePixmap(drw->dpy, cpm);
+      cpm = None;
+      return 0;
+    }
+    cached_pixel = 0;
+
+    for (m = 0; m < 2; m++) {
+      if (amask[m] != None)
+        XRenderFreePicture(drw->dpy, amask[m]);
+      if (ampm[m] != None)
+        XFreePixmap(drw->dpy, ampm[m]);
+
+      for (j = 0; j < (int)h; j++)
+        for (i = 0; i < r; i++) {
+          int px = m ? r - 1 - i : i;
+          if (j >= r && j < h - r) {
+            data[(size_t)j * r + i] = 255;
+          } else {
+            int sx, sy, n = 0;
+            double cy = (j < r) ? r : (h - r);
+            for (sy = 0; sy < AA_SAMPLES; sy++)
+              for (sx = 0; sx < AA_SAMPLES; sx++) {
+                double dx = px + (sx + 0.5) / AA_SAMPLES - r;
+                double dy = j + (sy + 0.5) / AA_SAMPLES - cy;
+                if (dx * dx + dy * dy <= rr)
+                  n++;
+              }
+            data[(size_t)j * r + i] = (unsigned char)((n * 255 + ns / 2) / ns);
+          }
+        }
+
+      ampm[m] = XCreatePixmap(drw->dpy, drw->root, r, h, 8);
+      if (!ampm[m]) {
+        free(data);
+        return 0;
+      }
+      gc = XCreateGC(drw->dpy, ampm[m], 0, NULL);
+      XImage img = {r, (int)h, 0, ZPixmap, (char *)data,
+                    ImageByteOrder(drw->dpy), BitmapUnit(drw->dpy),
+                    BitmapBitOrder(drw->dpy), 8, 8, 0, 8, 0, 0, 0};
+      XInitImage(&img);
+      XPutImage(drw->dpy, ampm[m], gc, &img, 0, 0, 0, 0, r, h);
+      XFreeGC(drw->dpy, gc);
+      amask[m] = XRenderCreatePicture(
+          drw->dpy, ampm[m], XRenderFindStandardFormat(drw->dpy, PictStandardA8),
+          0, NULL);
+      if (!amask[m]) {
+        free(data);
+        XFreePixmap(drw->dpy, ampm[m]);
+        ampm[m] = None;
+        return 0;
+      }
+    }
+    free(data);
+    cached_r = r;
+    cached_h = h;
   }
-  if (h - diam >= 1)
-    XFillRectangle(drw->dpy, drw->drawable, drw->gc, x, y + r, r, h - diam);
+
+  /* Refill the solid color source only on color change. The pixel value is
+   * stored as-is (non-premultiplied), matching how the rest of the bar is
+   * painted directly with XFillRectangle/XFillArc. */
+  if (cached_pixel != drw->scheme[ColBg].pixel) {
+    unsigned long p = drw->scheme[ColBg].pixel;
+    unsigned char a = (p >> 24) & 0xff, cr = (p >> 16) & 0xff;
+    unsigned char cg = (p >> 8) & 0xff, cb = p & 0xff;
+    XRenderColor rc = {.red = cr * 0x101,
+                       .green = cg * 0x101,
+                       .blue = cb * 0x101,
+                       .alpha = a * 0x101};
+    XRenderFillRectangle(drw->dpy, PictOpSrc, color_pic, &rc, 0, 0, r, h);
+    cached_pixel = p;
+  }
+
+  m = (side == RoundedLeft) ? 0 : 1;
+  XRenderComposite(drw->dpy, PictOpOver, color_pic, amask[m], drw->picture, 0,
+                   0, 0, 0, x, y, r, h);
 
   return r;
 }
