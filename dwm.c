@@ -3203,7 +3203,6 @@ void updatesystray(int flag) {
   Monitor *m = systraytomon(NULL);
   unsigned int x = m->mx + m->mw;
   unsigned int w = 1, xpad = 0, ypad = 0;
-  unsigned long opacity;
   xpad = sp;
   ypad = vp;
 
@@ -3223,20 +3222,14 @@ void updatesystray(int flag) {
     wa.override_redirect = True;
     wa.border_pixel = 0;
     XSelectInput(dpy, systray->win, SubstructureNotifyMask);
-    XChangeProperty(dpy, systray->win, netatom[NetSystemTrayOrientation],
-                    XA_CARDINAL, 32, PropModeReplace,
-                    (unsigned char *)&netatom[NetSystemTrayOrientationHorz], 1);
-    XChangeWindowAttributes(dpy, systray->win,
-                          CWEventMask|CWOverrideRedirect|CWBackPixel|CWBorderPixel,
-                          &wa);
-    opacity = alphas[SchemeSystray][1] * 0x01010101UL;
-    XChangeProperty(dpy, systray->win, netatom[NetWMWindowOpacity], XA_CARDINAL,
-                    32, PropModeReplace, (unsigned char *)&opacity, 1);
+    XChangeProperty(dpy, systray->win, netatom[NetSystemTrayOrientation], XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&netatom[NetSystemTrayOrientationHorz], 1);
+    XChangeWindowAttributes(dpy, systray->win, CWEventMask|CWOverrideRedirect|CWBackPixel|CWBorderPixel, &wa);
+    uint32_t opacity = (uint32_t)(alphas[SchemeSystray][1] * 0x01010101U);
+    XChangeProperty(dpy, systray->win, netatom[NetWMWindowOpacity], XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&opacity, 1);
     XMapRaised(dpy, systray->win);
     XSetSelectionOwner(dpy, netatom[NetSystemTray], systray->win, CurrentTime);
     if (XGetSelectionOwner(dpy, netatom[NetSystemTray]) == systray->win) {
-      sendevent(root, xatom[Manager], StructureNotifyMask, CurrentTime,
-                netatom[NetSystemTray], systray->win, 0, 0);
+      sendevent(root, xatom[Manager], StructureNotifyMask, CurrentTime, netatom[NetSystemTray], systray->win, 0, 0);
       XSync(dpy, False);
     } else {
       fprintf(stderr, "dwm: unable to obtain system tray.\n");
@@ -3270,19 +3263,9 @@ void updatesystray(int flag) {
   wc.height = bh;
   wc.stack_mode = Above;
   wc.sibling = m->barwin;
-  XConfigureWindow(dpy, systray->win,
-                   CWX | CWY | CWWidth | CWHeight | CWSibling | CWStackMode,
-                   &wc);
+  XConfigureWindow(dpy, systray->win, CWX | CWY | CWWidth | CWHeight | CWSibling | CWStackMode, &wc);
   XMapWindow(dpy, systray->win);
   XMapSubwindows(dpy, systray->win);
-	if (refresh_icon) {
-		GC gc;
-		XGCValues gcv;
-		gcv.foreground = scheme[SchemeSystray][ColBg].pixel;
-		gc = XCreateGC(dpy, systray->win, GCForeground, &gcv);
-		XFillRectangle(dpy, systray->win, gc, 0, 0, w, bh);
-		XFreeGC(dpy, gc);
-	}
   XSync(dpy, False);
 
   if (updatebar)
