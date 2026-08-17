@@ -158,6 +158,8 @@ static const Rule rules[] = {
     {"peek",                NULL,       NULL,     0,            1,            -1},
     {"flameshot",           NULL,       NULL,     0,            1,            -1},
     {"scrcpy",              NULL,       NULL,     0,            1,            -1},
+    {"Yad",                 NULL,       NULL,     0,            1,            -1},
+    {"zenity",              NULL,       NULL,     0,            1,            -1},
     // wps
     {"wpsoffice",           NULL,       NULL,     0,            1,            -1},
     {"wpspdf",              NULL,       NULL,     0,            1,            -1},
