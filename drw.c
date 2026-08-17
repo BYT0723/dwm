@@ -227,15 +227,36 @@ void drw_fontset_free(Fnt *font) {
   }
 }
 
+#define CLR_CACHE_SZ 64
+
 void drw_clr_create(Drw *drw, Clr *dest, const char *clrname,
                     unsigned int alpha) {
+  static Clr cache[CLR_CACHE_SZ];
+  static unsigned int cachealpha[CLR_CACHE_SZ];
+  static char cachename[CLR_CACHE_SZ][8];
+  static int cacheidx = 0;
+  int i;
+
   if (!drw || !dest || !clrname)
     return;
+
+  for (i = 0; i < cacheidx; i++)
+    if (cachealpha[i] == alpha && !strcmp(cachename[i], clrname)) {
+      *dest = cache[i];
+      return;
+    }
 
   if (!XftColorAllocName(drw->dpy, drw->visual, drw->cmap, clrname, dest))
     die("error, cannot allocate color '%s'", clrname);
 
   dest->pixel = (dest->pixel & 0x00ffffffU) | (alpha << 24);
+
+  if (cacheidx < CLR_CACHE_SZ && strlen(clrname) < 8) {
+    strcpy(cachename[cacheidx], clrname);
+    cachealpha[cacheidx] = alpha;
+    cache[cacheidx] = *dest;
+    cacheidx++;
+  }
 }
 
 /* Wrapper to create color schemes. The caller has to call free(3) on the
