@@ -326,6 +326,7 @@ static void resizeclient(Client *c, int x, int y, int w, int h);
 static void resizemouse(const Arg *arg);
 static void resizerequest(XEvent *e);
 static void restack(Monitor *m);
+static void restoreclientorder(void);
 static void restorestacking(void);
 static void run(void);
 static void runautostart(void);
@@ -3610,8 +3611,63 @@ cleanup:
   if (data)
     XFree(data);
   unsetenv("DWM_RESTART");
+}
 
-  focus(NULL);
+/* rebuild each monitor's client list in the saved tile order so the tile
+   layout keeps its pre-restart ordering */
+void restoreclientorder(void) {
+  Monitor *m;
+  Client *c, **orig = NULL;
+  unsigned long i, j, n, orig_n;
+  char name[64];
+
+  for (m = mons; m; m = m->next) {
+    Atom actual, ca;
+    int fmt;
+    unsigned long extra;
+    unsigned char *data = NULL;
+    Window *seq;
+
+    snprintf(name, sizeof(name), "_DWM_CLIENTORDER_%d", m->num);
+    ca = XInternAtom(dpy, name, False);
+    if (XGetWindowProperty(dpy, root, ca, 0L, 100000L, False, XA_WINDOW,
+                           &actual, &fmt, &n, &extra, &data) != Success ||
+        !data || fmt != 32)
+      goto cleanup;
+    seq = (Window *)data;
+
+    /* snapshot the current list so clients missing from the saved order
+       keep their relative order and are appended afterwards */
+    orig_n = 0;
+    for (c = m->clients; c; c = c->next)
+      orig_n++;
+    orig = ecalloc(orig_n ? orig_n : 1, sizeof(*orig));
+    for (c = m->clients, i = 0; c; c = c->next, i++)
+      orig[i] = c;
+
+    m->clients = NULL;
+    for (i = 0; i < n; i++)
+      for (j = 0; j < orig_n; j++)
+        if (orig[j] && orig[j]->win == seq[i] && orig[j]->mon == m) {
+          attachbottom(orig[j]);
+          orig[j] = NULL;
+          break;
+        }
+    for (i = 0; i < orig_n; i++)
+      if (orig[i])
+        attachbottom(orig[i]);
+    free(orig);
+    orig = NULL;
+
+    /* re-tile so window geometry matches the restored order */
+    arrangemon(m);
+
+  cleanup:
+    if (data)
+      XFree(data);
+    XDeleteProperty(dpy, root, ca);
+  }
+  updateclientlist();
 }
 
 int main(int argc, char *argv[]) {
@@ -3633,6 +3689,7 @@ int main(int argc, char *argv[]) {
 #endif /* __OpenBSD__ */
   scan();
   restorestacking();
+  restoreclientorder();
   runautostart();
   run();
 	if (restart) {
@@ -3664,6 +3721,19 @@ int main(int argc, char *argv[]) {
           XChangeProperty(dpy, root, sa, XA_WINDOW, 32, PropModeAppend,
                           (unsigned char *)&wins[i], 1);
         XFree(wins);
+      }
+    }
+    // Store the tile order per monitor
+    {
+      char name[64];
+      for (m = mons; m; m = m->next) {
+        Client *c;
+        snprintf(name, sizeof(name), "_DWM_CLIENTORDER_%d", m->num);
+        Atom ca = XInternAtom(dpy, name, False);
+        XDeleteProperty(dpy, root, ca);
+        for (c = m->clients; c; c = c->next)
+          XChangeProperty(dpy, root, ca, XA_WINDOW, 32, PropModeAppend,
+                          (unsigned char *)&c->win, 1);
       }
     }
     setenv("DWM_RESTART", "1", 1);
