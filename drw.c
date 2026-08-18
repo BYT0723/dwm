@@ -137,8 +137,13 @@ static Fnt *xfont_create(Drw *drw, const char *fontname,
       return NULL;
     }
   } else if (fontpattern) {
-    if (!(xfont = XftFontOpenPattern(drw->dpy, fontpattern))) {
+    /* XftFontOpenPattern takes ownership of fontpattern; keep a copy so
+     * drw_text's fallback can reuse drw->fonts->pattern */
+    pattern = FcPatternDuplicate(fontpattern);
+    if (!pattern || !(xfont = XftFontOpenPattern(drw->dpy, fontpattern))) {
       fprintf(stderr, "error, cannot load font from pattern.\n");
+      if (pattern)
+        FcPatternDestroy(pattern);
       FcPatternDestroy(fontpattern); /* not consumed on failure */
       return NULL;
     }
