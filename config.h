@@ -36,6 +36,9 @@ static const unsigned int hoverpad       = 12;   /* tooltip content padding from
 static const unsigned int hovergap       = 8;  /* gap between the preview and the title */
 static const unsigned int previewborder  = 2;   /* px highlight border around the live preview, in colors[x][2] */
 
+static const int scalepreview = 4; /* tag preview size = monitor / scalepreview */
+static const int previewbar   = 1; /* 1 = tag snapshot includes the bar */
+
 static const unsigned int gappih    = 6;
 static const unsigned int gappiv    = 6;
 static const unsigned int gappoh    = 6;
@@ -217,6 +220,10 @@ static const Layout layouts[] = {
     {MODKEY | ControlMask,             KEY, tag,        {.ui = 1 << TAG}},  \
     {MODKEY | ControlMask | ShiftMask, KEY, toggletag,  {.ui = 1 << TAG}},
 
+/* toggle the tag preview; TAG is the 0-based tag index */
+#define PREVIEWTAGKEYS(KEY, TAG) \
+    {SUPKEY, KEY, previewtag, {.ui = TAG}},
+
 /* helper for spawning shell commands in the pre dwm-5.0 fashion */
 #define SHCMD(cmd)                                                             \
   {                                                                            \
@@ -324,6 +331,15 @@ static Key keys[] = {
     TAGKEYS(XK_7, 6)
     TAGKEYS(XK_8, 7)
     TAGKEYS(XK_9, 8)
+    PREVIEWTAGKEYS(XK_1, 0)
+    PREVIEWTAGKEYS(XK_2, 1)
+    PREVIEWTAGKEYS(XK_3, 2)
+    PREVIEWTAGKEYS(XK_4, 3)
+    PREVIEWTAGKEYS(XK_5, 4)
+    PREVIEWTAGKEYS(XK_6, 5)
+    PREVIEWTAGKEYS(XK_7, 6)
+    PREVIEWTAGKEYS(XK_8, 7)
+    PREVIEWTAGKEYS(XK_9, 8)
 };
 
 /* button definitions */

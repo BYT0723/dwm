@@ -237,6 +237,9 @@ struct Monitor {
   Client *stack;
   Monitor *next;
   Window barwin;
+  int previewshow;    /* 1-based tag index being previewed, 0 = none */
+  Window tagwin;      /* scaled tag preview window, below the bar */
+  Pixmap *tagmap;     /* scaled snapshot per tag */
   const Layout *lt[2];
   Pertag *pertag;
 };
@@ -371,6 +374,10 @@ static Client *taskshover(Monitor *m, int xclick, int tstart, int *tabx);
 static void hoverfire(void);
 static void hoverhide(void);
 static void hovershow(Client *c, int tx);
+static void previewtag(const Arg *arg);
+static void showtagpreview(unsigned int i);
+static void takepreview(void);
+static int tagshover(Monitor *m, int x);
 static void toggletag(const Arg *arg);
 static void toggleview(const Arg *arg);
 static void togglewin(const Arg *arg);
@@ -452,6 +459,7 @@ static Drw *tooldrw = NULL;   /* drawing context for the tooltip */
 static Client *hoverc = NULL; /* client the tooltip is shown for */
 static int hoverarm = 0;      /* 1 = pointer resting on a tab, timer running */
 static int hoverx = 0;        /* tab left edge at arm time */
+static int hoveridx = -1;     /* tag index armed for preview, -1 = none */
 static uint64_t hoverstart = 0; /* monotonic ms when the timer was armed */
 static int prevpx = 0, prevpy = 0, prevw = 0, prevh = 0; /* preview area geometry */
 static uint64_t hovernow(void);
@@ -747,6 +755,7 @@ void cleanup(void) {
 
 void cleanupmon(Monitor *mon) {
   Monitor *m;
+  size_t i;
 
   if (mon == mons)
     mons = mons->next;
@@ -755,6 +764,14 @@ void cleanupmon(Monitor *mon) {
     if (!m)
       return;
     m->next = mon->next;
+  }
+  for (i = 0; i < LENGTH(tags); i++)
+    if (mon->tagmap[i])
+      XFreePixmap(dpy, mon->tagmap[i]);
+  free(mon->tagmap);
+  if (mon->tagwin != None) {
+    XUnmapWindow(dpy, mon->tagwin);
+    XDestroyWindow(dpy, mon->tagwin);
   }
   XUnmapWindow(dpy, mon->barwin);
   XDestroyWindow(dpy, mon->barwin);
@@ -899,6 +916,7 @@ Monitor *createmon(void) {
   m->lt[0] = &layouts[0];
   m->lt[1] = &layouts[1 % LENGTH(layouts)];
   strncpy(m->ltsymbol, layouts[0].symbol, sizeof m->ltsymbol);
+  m->tagmap = ecalloc(LENGTH(tags), sizeof(Pixmap));
   m->pertag = ecalloc(1, sizeof(Pertag));
   m->pertag->curtag = m->pertag->prevtag = 1;
 
@@ -1279,12 +1297,42 @@ static Client *taskshover(Monitor *m, int xclick, int tstart, int *tabx) {
   return NULL;
 }
 
+/* resolve the tag under the pointer, mirroring the drawbar/buttonpress
+   geometry that skips vacant tags; returns the tag index or -1 */
+static int tagshover(Monitor *m, int x) {
+  Client *c;
+  unsigned int occ = 0, i;
+  int hostw = TEXTW(host), xpos = hostw;
+
+  for (c = m->clients; c; c = c->next)
+    occ |= c->tags;
+  if (x <= hostw) /* host symbol, not a tag */
+    return -1;
+  i = 0;
+  do {
+    if (!(occ & 1 << i || m->tagset[m->seltags] & 1 << i))
+      continue;
+    xpos += TEXTW(tags[i]);
+  } while (x >= xpos && ++i < LENGTH(tags));
+  return i < LENGTH(tags) ? i : -1;
+}
+
 /* re-arm or dismiss the hover state from the pointer position over the
-   tab strip; called from enter- and motion-notify */
+   tag or tab strip; called from enter- and motion-notify */
 static void hoverupdate(Monitor *m, int x) {
-  int tstart, tend, tx;
+  int tstart, tend, tx, ti;
   Client *tc;
 
+  if ((ti = tagshover(m, x)) >= 0 && m->tagmap[ti] &&
+      !(m->tagset[m->seltags] & 1 << ti)) {
+    if (m->previewshow != ti + 1) {
+      hoverhide();
+      hoverarm = 1;
+      hoveridx = ti;
+      hoverstart = hovernow();
+    }
+    return;
+  }
   tabgeometry(m, &tstart, &tend);
   if (m->bt && x > tstart && x < tend &&
       (tc = taskshover(m, x, tstart, &tx))) {
@@ -1311,15 +1359,23 @@ static void hoverfire(void) {
   if (!hoverarm)
     return;
   hoverarm = 0;
-  if (hoverc)
+  if (hoveridx >= 0) {
+    selmon->previewshow = hoveridx + 1;
+    showtagpreview(hoveridx);
+  } else if (hoverc)
     hovershow(hoverc, hoverx);
 }
 
 static void hoverhide(void) {
   hoverarm = 0;
   hoverc = NULL;
+  hoveridx = -1;
   if (toolwin != None)
     XUnmapWindow(dpy, toolwin);
+  if (selmon && selmon->tagwin != None && selmon->previewshow) {
+    selmon->previewshow = 0;
+    XUnmapWindow(dpy, selmon->tagwin);
+  }
 }
 
 /* largest byte index <= n that ends a complete UTF-8 character */
@@ -1453,6 +1509,21 @@ static void hovershow(Client *c, int tx) {
   XFlush(dpy);
 }
 
+/* build the XRender scale transform; destination coords map to source
+   coords (verified empirically: dst pixel p samples src pixel T(p)), so
+   the scale is source/destination, not destination/source */
+static void scaletransform(XTransform *tr, int sw, int dw, int sh, int dh) {
+  tr->matrix[0][0] = XDoubleToFixed((double)sw / dw);
+  tr->matrix[0][1] = 0;
+  tr->matrix[0][2] = 0;
+  tr->matrix[1][0] = 0;
+  tr->matrix[1][1] = XDoubleToFixed((double)sh / dh);
+  tr->matrix[1][2] = 0;
+  tr->matrix[2][0] = 0;
+  tr->matrix[2][1] = 0;
+  tr->matrix[2][2] = 1 << 16;
+}
+
 /* composite a live scaled snapshot of c into the preview area (x, y, w, h);
    hidden clients get an icon or a placeholder instead */
 static void hoverpreview(Client *c, int x, int y, int w, int h) {
@@ -1494,18 +1565,7 @@ static void hoverpreview(Client *c, int x, int y, int w, int h) {
     return;
   }
   XRenderSetPictureFilter(dpy, pic, FilterGood, NULL, 0);
-  /* XRender's transform maps destination coords to source coords
-     (verified empirically: dst pixel p samples src pixel T(p)),
-     so the scale must be source/destination, not destination/source */
-  tr.matrix[0][0] = XDoubleToFixed((double)c->w / iw2);
-  tr.matrix[0][1] = 0;
-  tr.matrix[0][2] = 0;
-  tr.matrix[1][0] = 0;
-  tr.matrix[1][1] = XDoubleToFixed((double)c->h / ih2);
-  tr.matrix[1][2] = 0;
-  tr.matrix[2][0] = 0;
-  tr.matrix[2][1] = 0;
-  tr.matrix[2][2] = 1 << 16;
+  scaletransform(&tr, c->w, iw2, c->h, ih2);
   XRenderSetPictureTransform(dpy, pic, &tr);
   /* the source rect must be the full source image (c->w x c->h); the
      transform maps it onto the destination rect (iw2 x ih2).
@@ -1533,6 +1593,135 @@ static void hoverrefresh(void) {
     return;
   hoverpreview(c, prevpx, prevpy, prevw, prevh);
   drw_map(tooldrw, toolwin, 0, 0, tooldrw->w, tooldrw->h);
+}
+
+/* show the scaled snapshot of tag i in the tagwin below the bar */
+void showtagpreview(unsigned int i) {
+  if (selmon->tagwin == None)
+    return;
+  if (!selmon->previewshow || !selmon->tagmap[i]) {
+    XUnmapWindow(dpy, selmon->tagwin);
+    return;
+  }
+  XSetWindowBackgroundPixmap(dpy, selmon->tagwin, selmon->tagmap[i]);
+  XCopyArea(dpy, selmon->tagmap[i], selmon->tagwin, drw->gc, 0, 0,
+            selmon->mw / scalepreview, selmon->mh / scalepreview, 0, 0);
+  XMapRaised(dpy, selmon->tagwin);
+  XSync(dpy, False);
+}
+
+/* toggle the preview of tag arg->ui (0-based index) */
+void previewtag(const Arg *arg) {
+  if (selmon->tagwin == None)
+    return;
+  if (selmon->previewshow == arg->ui + 1) {
+    selmon->previewshow = 0;
+  } else if (selmon->tagmap[arg->ui]) { /* no snapshot, nothing to show */
+    selmon->previewshow = arg->ui + 1;
+  }
+  showtagpreview(arg->ui);
+}
+
+/* render the scaled snapshot of the captured screen region img into
+   m->tagmap[i] (a dw x dh pixmap); frees img and prints on failure */
+static void previewtagshot(Monitor *m, unsigned int i, XImage *img, int dw,
+                           int dh) {
+  Pixmap full;
+  GC gc;
+  XRenderPictFormat *fmt;
+  Picture src = None, dst = None;
+  XTransform tr;
+
+  full = XCreatePixmap(dpy, m->tagwin, img->width, img->height, img->depth);
+  if (!full) {
+    XDestroyImage(img);
+    return;
+  }
+  /* drw->gc belongs to the alpha-depth drawable; PutImage needs a GC
+     matching the source pixmap depth (root may be 24-bit while the
+     bar visual is 32-bit), so use a scratch GC */
+  gc = XCreateGC(dpy, full, 0, NULL);
+  XPutImage(dpy, full, gc, img, 0, 0, 0, 0, img->width, img->height);
+  XFreeGC(dpy, gc);
+  m->tagmap[i] = XCreatePixmap(dpy, m->tagwin, dw, dh, depth);
+  if (!m->tagmap[i]) {
+    XFreePixmap(dpy, full);
+    XDestroyImage(img);
+    return;
+  }
+  /* the source pixmap depth follows the root framebuffer (which may
+     differ from the alpha visual depth), so match the format to it */
+  fmt = XRenderFindStandardFormat(
+      dpy, img->depth == 32 ? PictStandardARGB32 : PictStandardRGB24);
+  if (fmt)
+    src = XRenderCreatePicture(dpy, full, fmt, 0, NULL);
+  if (src)
+    dst = XRenderCreatePicture(dpy, m->tagmap[i],
+                               XRenderFindVisualFormat(dpy, visual), 0, NULL);
+  if (src && dst) {
+    XRenderSetPictureFilter(dpy, src, FilterGood, NULL, 0);
+    scaletransform(&tr, img->width, dw, img->height, dh);
+    XRenderSetPictureTransform(dpy, src, &tr);
+    /* the source rect is the full captured image; the transform maps it
+       onto the scaled destination. PictOpSrc copies the pixels verbatim
+       so alpha bytes from the framebuffer can't punch holes */
+    XRenderComposite(dpy, PictOpSrc, src, None, dst, 0, 0, img->width,
+                     img->height, 0, 0, dw, dh);
+  } else
+    fprintf(stderr, "dwm: XRender failed for tag preview\n");
+  if (src)
+    XRenderFreePicture(dpy, src);
+  if (dst)
+    XRenderFreePicture(dpy, dst);
+  XFreePixmap(dpy, full);
+  XDestroyImage(img);
+}
+
+/* capture scaled snapshots of the current view for all occupied tags,
+   so hovering a tag later re-views its last layout */
+void takepreview(void) {
+  Client *c;
+  unsigned int occ = 0, i;
+  int sx, sy, sw, sh, dw, dh;
+  XImage *img;
+
+  hoverhide(); /* keep the tooltip and tag preview out of the shot */
+  XSync(dpy, False);
+
+  for (c = selmon->clients; c; c = c->next)
+    occ |= c->tags;
+
+  for (i = 0; i < LENGTH(tags); i++) {
+    /* only tags that are occupied and part of the current view */
+    if (!(occ & 1 << i) || !(selmon->tagset[selmon->seltags] & 1 << i))
+      continue;
+
+    if (selmon->tagmap[i]) { /* tagmap exists, clean it */
+      XFreePixmap(dpy, selmon->tagmap[i]);
+      selmon->tagmap[i] = 0;
+    }
+
+    if (previewbar) {
+      sx = selmon->mx;
+      sy = selmon->my;
+      sw = selmon->mw;
+      sh = selmon->mh;
+    } else {
+      sx = selmon->wx;
+      sy = selmon->wy;
+      sw = selmon->ww;
+      sh = selmon->wh;
+    }
+    dw = selmon->mw / scalepreview;
+    dh = selmon->mh / scalepreview;
+
+    img = XGetImage(dpy, root, sx, sy, sw, sh, AllPlanes, ZPixmap);
+    if (!img) {
+      fprintf(stderr, "dwm: XGetImage failed for tag preview\n");
+      continue;
+    }
+    previewtagshot(selmon, i, img, dw, dh);
+  }
 }
 
 void enternotify(XEvent *e) {
@@ -2174,13 +2363,20 @@ void motionnotify(XEvent *e) {
   XMotionEvent *ev = &e->xmotion;
 
   if (ev->window == selmon->barwin) {
-    /* moving between tabs while hovering */
+    /* moving between tags/tabs while hovering */
     if (hoverinfo)
       hoverupdate(selmon, ev->x);
     return;
   }
+  for (m = mons; m; m = m->next)
+    if (ev->window == m->tagwin) {
+      hoverhide(); /* touching the preview dismisses it */
+      return;
+    }
   if (ev->window != root)
     return;
+  if (selmon->previewshow)
+    hoverhide(); /* pointer left the bar */
   if ((m = recttomon(ev->x_root, ev->y_root, 1, 1)) != mon && mon) {
     unfocus(selmon->sel, 1);
     selmon = m;
@@ -3158,6 +3354,7 @@ void toggleview(const Arg *arg) {
   int i;
 
   if (newtagset) {
+    takepreview();
     selmon->tagset[selmon->seltags] = newtagset;
 
     if (newtagset == ~0) {
@@ -3277,6 +3474,23 @@ void updatebars(void) {
                                            PointerMotionMask};
   XClassHint ch = {"dwm", "dwm"};
   for (m = mons; m; m = m->next) {
+    if (!m->tagwin) {
+      XSetWindowAttributes twa = {
+          .override_redirect = True,
+          .background_pixel = scheme[SchemeTooltip][ColBg].pixel,
+          .border_pixel = scheme[SchemeTooltip][ColBorder].pixel,
+          .colormap = cmap,
+          .event_mask = PointerMotionMask};
+      m->tagwin = XCreateWindow(dpy, root, m->wx + sp, m->by + vp + bh,
+                                m->mw / scalepreview, m->mh / scalepreview,
+                                previewborder, depth, InputOutput, visual,
+                                CWOverrideRedirect | CWBackPixel |
+                                    CWBorderPixel | CWColormap | CWEventMask,
+                                &twa);
+      XUnmapWindow(dpy, m->tagwin);
+    }
+    XMoveResizeWindow(dpy, m->tagwin, m->wx + sp, m->by + vp + bh,
+                      m->mw / scalepreview, m->mh / scalepreview);
     if (!m->barwin) {
       m->barwin = XCreateWindow(dpy, root, m->wx + sp, m->by + vp, m->ww, bh,
                         0, depth, InputOutput, visual,
@@ -3743,6 +3957,7 @@ void view(const Arg *arg) {
 
   if ((arg->ui & TAGMASK) == selmon->tagset[selmon->seltags])
     return;
+  takepreview();
   selmon->seltags ^= 1; /* toggle sel tagset */
   if (arg->ui & TAGMASK) {
     selmon->pertag->prevtag = selmon->pertag->curtag;
