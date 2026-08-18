@@ -32,6 +32,9 @@ static const          int hoverinfo      = 1;    /* 1 = hover a client tab to sh
 static const unsigned int hoverdelay     = 500; /* ms of resting on a tab before the tooltip appears */
 static const unsigned int previewh       = 360;  /* max live preview height; width scales by aspect */
 static const unsigned int previewrefresh = 300; /* ms between live preview refreshes */
+static const unsigned int hoverpad       = 12;   /* tooltip content padding from the border */
+static const unsigned int hovergap       = 8;  /* gap between the preview and the title */
+static const unsigned int previewborder  = 2;   /* px highlight border around the live preview, in colors[x][2] */
 
 static const unsigned int gappih    = 6;
 static const unsigned int gappiv    = 6;
@@ -89,7 +92,7 @@ static char *colors[][3] = {
     // empty
     [SchemeEmpty]   = { col_ab_black, col_ab_black, col_black    },
     // hover tooltip
-    [SchemeTooltip] = { col_white,    col_black,    col_blue     },
+    [SchemeTooltip] = { col_blue,     col_black,    col_cyan     },
 };
 
 #define OPAQUE        0xffU
@@ -118,7 +121,7 @@ static const unsigned int alphas[][3]      = {
     // empty
     [SchemeEmpty]   = { TRANSPARENT, TRANSPARENT,      TRANSPARENT },
     // hover tooltip
-    [SchemeTooltip] = { OPAQUE,      BG_ALPHA,         OPAQUE     },
+    [SchemeTooltip] = { OPAQUE,      TAB_SEL_BG_ALPHA, OPAQUE      },
 };
 
 /* tagging */

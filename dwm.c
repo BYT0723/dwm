@@ -181,7 +181,6 @@ typedef struct Client Client;
 struct Client {
   char name[256];
   char class[256];
-  char instance[256];
   float mina, maxa;
   float cfact;
   int x, y, w, h;
@@ -365,9 +364,10 @@ static int systrayredock(Window w);
 static Monitor *systraytomon(Monitor *m);
 static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
-static Client *tasksclick(Monitor *m, int xclick, int tstart, int tend);
 static void togglebar(const Arg *arg);
 static void togglefloating(const Arg *arg);
+static void tabgeometry(Monitor *m, int *tstart, int *tend);
+static Client *taskshover(Monitor *m, int xclick, int tstart, int *tabx);
 static void hoverfire(void);
 static void hoverhide(void);
 static void hovershow(Client *c, int tx);
@@ -502,8 +502,6 @@ void applyrules(Client *c) {
 
   strncpy(c->class, class, sizeof(c->class) - 1);
   c->class[sizeof(c->class) - 1] = '\0';
-  strncpy(c->instance, instance, sizeof(c->instance) - 1);
-  c->instance[sizeof(c->instance) - 1] = '\0';
 
   for (i = 0; i < LENGTH(rules); i++) {
     r = &rules[i];
@@ -628,7 +626,8 @@ void attachstack(Client *c) {
 }
 
 void buttonpress(XEvent *e) {
-  unsigned int i, x, stw, tstart, tend, click;
+  unsigned int i, x, stw, click;
+  int tstart, tend, tx;
   Arg arg = {0};
   Client *c;
   Monitor *m;
@@ -643,13 +642,7 @@ void buttonpress(XEvent *e) {
   }
 
   stw = systraytomon(selmon) == selmon ? getsystraywidth() : 0;
-
-  int gap_total = (int)tabgap * m->bt;
-  int tab_total = m->tw * m->bt + gap_total;
-  tstart = selmon->ww - stw - statusw - m->btw + (int)tabgap;
-  if (tabstyle&TAB_CENTER)
-    tstart += (m->btw - tab_total) / 2;
-  tend = tstart + tab_total;
+  tabgeometry(m, &tstart, &tend);
 
   if (ev->window == selmon->barwin) {
     hoverhide();
@@ -678,14 +671,17 @@ void buttonpress(XEvent *e) {
     } else if (ev->x > tstart && ev->x < tend) {
       if (m->clients) {
         click = ClkWinTitle;
-        arg.v = tasksclick(selmon, ev->x, tstart, tend);
+        arg.v = taskshover(selmon, ev->x, tstart, &tx);
       }
     }
   } else if ((c = wintoclient(ev->window))) {
+    hoverhide();
     focus(c);
     restack(selmon);
     XAllowEvents(dpy, ReplayPointer, CurrentTime);
     click = ClkClientWin;
+  } else if (ev->window == root) {
+    hoverhide();
   }
   for (i = 0; i < LENGTH(buttons); i++)
     if (click == buttons[i].click &&
@@ -1253,9 +1249,21 @@ int drawtabs(Monitor *m, int x, int w, int n) {
   return tabw;
 }
 
+/* tab row geometry on m: start and end x of the tab strip */
+static void tabgeometry(Monitor *m, int *tstart, int *tend) {
+  int stw = systraytomon(m) == m ? getsystraywidth() : 0;
+  int tab_total = m->tw * m->bt + (int)tabgap * m->bt;
+  int start = m->ww - stw - statusw - m->btw + (int)tabgap;
+
+  if (tabstyle & TAB_CENTER)
+    start += (m->btw - tab_total) / 2;
+  *tstart = start;
+  *tend = start + tab_total;
+}
+
 /* resolve the tab under the pointer; returns the client and its tab's
-   left edge, mirroring tasksclick() geometry */
-Client *taskshover(Monitor *m, int xclick, int tstart, int *tabx) {
+   left edge, mirroring the click geometry */
+static Client *taskshover(Monitor *m, int xclick, int tstart, int *tabx) {
   Client *c;
   int x;
 
@@ -1271,14 +1279,35 @@ Client *taskshover(Monitor *m, int xclick, int tstart, int *tabx) {
   return NULL;
 }
 
-uint64_t hovernow(void) {
+/* re-arm or dismiss the hover state from the pointer position over the
+   tab strip; called from enter- and motion-notify */
+static void hoverupdate(Monitor *m, int x) {
+  int tstart, tend, tx;
+  Client *tc;
+
+  tabgeometry(m, &tstart, &tend);
+  if (m->bt && x > tstart && x < tend &&
+      (tc = taskshover(m, x, tstart, &tx))) {
+    if (tc != hoverc) {
+      hoverhide();
+      hoverarm = 1;
+      hoverc = tc;
+      hoverx = tx;
+      hoverstart = hovernow();
+    }
+  } else {
+    hoverhide();
+  }
+}
+
+static uint64_t hovernow(void) {
   struct timespec ts;
 
   clock_gettime(CLOCK_MONOTONIC, &ts);
   return (uint64_t)ts.tv_sec * 1000u + (uint64_t)ts.tv_nsec / 1000000u;
 }
 
-void hoverfire(void) {
+static void hoverfire(void) {
   if (!hoverarm)
     return;
   hoverarm = 0;
@@ -1286,24 +1315,50 @@ void hoverfire(void) {
     hovershow(hoverc, hoverx);
 }
 
-void hoverhide(void) {
+static void hoverhide(void) {
   hoverarm = 0;
   hoverc = NULL;
   if (toolwin != None)
     XUnmapWindow(dpy, toolwin);
 }
 
-/* shorten src to fit maxw, appending an ellipsis */
+/* largest byte index <= n that ends a complete UTF-8 character */
+static int utf8boundary(const char *s, int n) {
+  int i = n;
+  while (i > 0) {
+    unsigned char c = (unsigned char)s[i - 1];
+    int len;
+
+    if (c < 0x80)
+      return i;
+    if ((c & 0xE0) == 0xC0)
+      len = 2;
+    else if ((c & 0xF0) == 0xE0)
+      len = 3;
+    else if ((c & 0xF8) == 0xF0)
+      len = 4;
+    else { /* continuation byte: keep walking back */
+      i--;
+      continue;
+    }
+    if (i - 1 + len <= n) /* lead byte with all its bytes within [0, n) */
+      return i - 1 + len;
+    i--; /* truncated lead byte: drop the whole character */
+  }
+  return 0;
+}
+
+/* shorten src to fit maxw, appending an ellipsis; never splits UTF-8 */
 static void hoverellipsize(const char *src, char *buf, size_t bufsz, int maxw) {
-  int n = (int)strlen(src);
+  char t[512];
+  int n = MIN((int)strlen(src), (int)sizeof(t) - 4); /* room for ellipsis */
 
   if (drw_fontset_getwidth(drw, src) <= maxw) {
     strncpy(buf, src, bufsz - 1);
     buf[bufsz - 1] = '\0';
     return;
   }
-  for (; n > 1; n--) {
-    char t[512];
+  for (; n > 1; n = utf8boundary(src, n - 1)) {
     int w;
 
     strncpy(t, src, n);
@@ -1321,11 +1376,11 @@ static void hoverellipsize(const char *src, char *buf, size_t bufsz, int maxw) {
 }
 
 /* show the hover tooltip for client c, centered above/below the tab at tx */
-void hovershow(Client *c, int tx) {
-  int pad = 8, gap = 10, iw = 0, lh, y, n = 0, gx, gy, pw, ph;
+static void hovershow(Client *c, int tx) {
+  int iw, lh, y, gx, gy, pw, ph;
   unsigned int tw, th;
   char titlebuf[512];
-  const char *lines[1];
+  const char *title;
   Monitor *m = c->mon;
   XSetWindowAttributes wa = {.override_redirect = True,
                              .background_pixel = 0,
@@ -1336,23 +1391,24 @@ void hovershow(Client *c, int tx) {
   if (!m->showbar || !hoverinfo)
     return;
   lh = drw->fonts->h;
-
-  lines[n++] = c->name;
+  title = c->name;
 
   /* live preview area: height fixed to previewh, width scales by aspect */
   if (HIDDEN(c)) {
     pw = 160; /* placeholder: just enough for the icon or "no preview" text */
     ph = 100;
   } else {
+    /* scale by height, then by width so the preview never exceeds the
+       monitor; wide-but-short windows would otherwise overflow the screen */
     double scale = MIN((double)previewh / MAX(c->h, 1), 1.0);
+    scale = MIN(scale, (double)(m->mw - (int)hoverpad * 2) / MAX(c->w, 1));
     pw = MAX(1, (int)(c->w * scale));
     ph = MAX(1, (int)(c->h * scale));
   }
 
-  /* width: preview on top, title below; title is ellipsized to fit */
-  iw = MIN((int)drw_fontset_getwidth(drw, lines[0]), 400);
-  tw = MAX(pw, iw) + pad * 2;
-  th = pad * 2 + ph + gap + lh * n;
+  /* width follows the preview; a long title is ellipsized to fit */
+  tw = pw + hoverpad * 2;
+  th = hoverpad * 2 + ph + hovergap + lh;
 
   gx = m->wx + sp + tx + m->tw / 2 - (int)tw / 2;
   if (gx < m->mx) /* left overflow: anchor to the tab's right edge instead */
@@ -1376,33 +1432,30 @@ void hovershow(Client *c, int tx) {
   drw_resize(tooldrw, tw, th);
   XMoveResizeWindow(dpy, toolwin, gx, gy, tw, th);
   drw_setscheme(tooldrw, scheme[SchemeTooltip]);
-  drw_rect(tooldrw, 0, 0, tw, th, 1, 0);         /* outer ring */
-  drw_rect(tooldrw, 1, 1, tw - 2, th - 2, 1, 0); /* second ring */
-  drw_rect(tooldrw, 2, 2, tw - 4, th - 4, 1, 1); /* inner background */
+  drw_rect(tooldrw, 0, 0, tw, th, 1, 1); /* solid background */
 
-  prevpx = pad;
-  prevpy = pad;
+  prevpx = hoverpad;
+  prevpy = hoverpad;
   prevw = pw;
   prevh = ph;
   hoverpreview(c, prevpx, prevpy, prevw, prevh);
 
-  iw = tw - pad * 2;
-  hoverellipsize(lines[0], titlebuf, sizeof(titlebuf), iw);
-  y = pad + ph + gap;
+  iw = tw - hoverpad * 2;
+  hoverellipsize(title, titlebuf, sizeof(titlebuf), iw);
+  y = hoverpad + ph + hovergap;
   if (fonts_bold_italic_set)
     drw_setfontset(tooldrw, fonts_bold_italic_set);
-  drw_text(tooldrw, pad, y, iw, lh, 0, titlebuf, 0);
+  drw_text(tooldrw, hoverpad, y, iw, lh, 0, titlebuf, 0);
   drw_setfontset(tooldrw, fonts_set);
 
   drw_map(tooldrw, toolwin, 0, 0, tw, th);
   XMapRaised(dpy, toolwin);
   XFlush(dpy);
-  hoverc = c;
 }
 
 /* composite a live scaled snapshot of c into the preview area (x, y, w, h);
    hidden clients get an icon or a placeholder instead */
-void hoverpreview(Client *c, int x, int y, int w, int h) {
+static void hoverpreview(Client *c, int x, int y, int w, int h) {
   if (!c || !tooldrw)
     return;
 
@@ -1417,50 +1470,63 @@ void hoverpreview(Client *c, int x, int y, int w, int h) {
     return;
   }
 
-  {
-    Pixmap pm = XCompositeNameWindowPixmap(dpy, c->win);
-    XWindowAttributes wa;
-    XRenderPictFormat *fmt;
-    Picture pic;
-    XTransform tr;
+  /* inset the snapshot by previewborder so the highlight border drawn
+     around the preview area sits on the background, not over the image */
+  int ix = x + (int)previewborder, iy = y + (int)previewborder,
+      iw2 = MAX(1, w - (int)previewborder * 2),
+      ih2 = MAX(1, h - (int)previewborder * 2), i;
+  Pixmap pm = XCompositeNameWindowPixmap(dpy, c->win);
+  XWindowAttributes wa;
+  XRenderPictFormat *fmt;
+  Picture pic;
+  XTransform tr;
 
-    if (!pm)
-      return;
-    if (XGetWindowAttributes(dpy, c->win, &wa) != True ||
-        !(fmt = XRenderFindVisualFormat(dpy, wa.visual))) {
-      XFreePixmap(dpy, pm);
-      return;
-    }
-    pic = XRenderCreatePicture(dpy, pm, fmt, 0, NULL);
-    if (!pic) {
-      XFreePixmap(dpy, pm);
-      return;
-    }
-    XRenderSetPictureFilter(dpy, pic, FilterGood, NULL, 0);
-    /* XRender's transform maps destination coords to source coords
-       (verified empirically: dst pixel p samples src pixel T(p)),
-       so the scale must be source/destination, not destination/source */
-    tr.matrix[0][0] = XDoubleToFixed((double)c->w / w);
-    tr.matrix[0][1] = 0;
-    tr.matrix[0][2] = 0;
-    tr.matrix[1][0] = 0;
-    tr.matrix[1][1] = XDoubleToFixed((double)c->h / h);
-    tr.matrix[1][2] = 0;
-    tr.matrix[2][0] = 0;
-    tr.matrix[2][1] = 0;
-    tr.matrix[2][2] = 1 << 16;
-    XRenderSetPictureTransform(dpy, pic, &tr);
-    /* the source rect must be the full source image (c->w x c->h); the
-       transform maps it onto the destination rect (w x h) */
-    XRenderComposite(dpy, PictOpSrc, pic, None, tooldrw->picture, 0, 0, c->w,
-                     c->h, x, y, w, h);
-    XRenderFreePicture(dpy, pic);
+  if (!pm)
+    return;
+  if (XGetWindowAttributes(dpy, c->win, &wa) != True ||
+      !(fmt = XRenderFindVisualFormat(dpy, wa.visual))) {
     XFreePixmap(dpy, pm);
+    return;
   }
+  pic = XRenderCreatePicture(dpy, pm, fmt, 0, NULL);
+  if (!pic) {
+    XFreePixmap(dpy, pm);
+    return;
+  }
+  XRenderSetPictureFilter(dpy, pic, FilterGood, NULL, 0);
+  /* XRender's transform maps destination coords to source coords
+     (verified empirically: dst pixel p samples src pixel T(p)),
+     so the scale must be source/destination, not destination/source */
+  tr.matrix[0][0] = XDoubleToFixed((double)c->w / iw2);
+  tr.matrix[0][1] = 0;
+  tr.matrix[0][2] = 0;
+  tr.matrix[1][0] = 0;
+  tr.matrix[1][1] = XDoubleToFixed((double)c->h / ih2);
+  tr.matrix[1][2] = 0;
+  tr.matrix[2][0] = 0;
+  tr.matrix[2][1] = 0;
+  tr.matrix[2][2] = 1 << 16;
+  XRenderSetPictureTransform(dpy, pic, &tr);
+  /* the source rect must be the full source image (c->w x c->h); the
+     transform maps it onto the destination rect (iw2 x ih2).
+     PictOpOver blends over the black background: PictOpSrc would copy
+     the client's alpha channel straight through, so a translucent client
+     (e.g. a semi-transparent terminal) would punch a hole through the
+     tooltip instead of showing against it */
+  XRenderComposite(dpy, PictOpOver, pic, None, tooldrw->picture, 0, 0, c->w,
+                   c->h, ix, iy, iw2, ih2);
+  XRenderFreePicture(dpy, pic);
+  XFreePixmap(dpy, pm);
+  /* highlight border in colors[x][2]; drw_rect has no border channel
+     (filled=0 draws with the fg color), so draw it directly */
+  XSetForeground(dpy, tooldrw->gc, scheme[SchemeSel][ColBorder].pixel);
+  for (i = 0; i < (int)previewborder && w - i * 2 > 0 && h - i * 2 > 0; i++)
+    XDrawRectangle(dpy, tooldrw->drawable, tooldrw->gc, x + i, y + i,
+                   w - 1 - i * 2, h - 1 - i * 2);
 }
 
 /* refresh the live preview while the tooltip is shown */
-void hoverrefresh(void) {
+static void hoverrefresh(void) {
   Client *c = hoverc;
 
   if (!c || toolwin == None)
@@ -1483,26 +1549,8 @@ void enternotify(XEvent *e) {
 		selmon = m;
 		focus(c);
 	}
-	if (ev->window == selmon->barwin && hoverinfo) {
-		int stw, gap_total, tab_total, tstart, tx;
-		Client *tc;
-
-		stw = systraytomon(selmon) == selmon ? getsystraywidth() : 0;
-		gap_total = (int)tabgap * selmon->bt;
-		tab_total = selmon->tw * selmon->bt + gap_total;
-		tstart = selmon->ww - stw - statusw - selmon->btw + (int)tabgap;
-		if (tabstyle & TAB_CENTER)
-			tstart += (selmon->btw - tab_total) / 2;
-		if (selmon->bt && ev->x > tstart && ev->x < tstart + tab_total &&
-		    (tc = taskshover(selmon, ev->x, tstart, &tx))) {
-			hoverarm = 1;
-			hoverc = tc;
-			hoverx = tx;
-			hoverstart = hovernow();
-		} else {
-			hoverhide();
-		}
-	}
+	if (ev->window == selmon->barwin && hoverinfo)
+		hoverupdate(selmon, ev->x);
 }
 
 void leavenotify(XEvent *e) {
@@ -1560,6 +1608,7 @@ void focus(Client *c) {
 void focusin(XEvent *e) {
   XFocusChangeEvent *ev = &e->xfocus;
 
+  hoverhide(); /* focus left the bar: dismiss any open tooltip */
   if (selmon->sel && ev->window != selmon->sel->win)
     setfocus(selmon->sel);
 }
@@ -2126,29 +2175,8 @@ void motionnotify(XEvent *e) {
 
   if (ev->window == selmon->barwin) {
     /* moving between tabs while hovering */
-    int stw, gap_total, tab_total, tstart, tx;
-    Client *tc;
-
-    if (!hoverinfo)
-      return;
-    stw = systraytomon(selmon) == selmon ? getsystraywidth() : 0;
-    gap_total = (int)tabgap * selmon->bt;
-    tab_total = selmon->tw * selmon->bt + gap_total;
-    tstart = selmon->ww - stw - statusw - selmon->btw + (int)tabgap;
-    if (tabstyle & TAB_CENTER)
-      tstart += (selmon->btw - tab_total) / 2;
-    if (selmon->bt && ev->x > tstart && ev->x < tstart + tab_total &&
-        (tc = taskshover(selmon, ev->x, tstart, &tx))) {
-      if (tc != hoverc) {
-        hoverhide();
-        hoverarm = 1;
-        hoverc = tc;
-        hoverx = tx;
-        hoverstart = hovernow();
-      }
-    } else {
-      hoverhide();
-    }
+    if (hoverinfo)
+      hoverupdate(selmon, ev->x);
     return;
   }
   if (ev->window != root)
@@ -2442,28 +2470,25 @@ void run(void) {
   /* main event loop */
   XSync(dpy, False);
   while (running) {
-    /* wake up when the hover delay elapses, otherwise block on X */
-    if (hoverarm) {
-      struct pollfd pfd = {.fd = ConnectionNumber(dpy), .events = POLLIN};
-      int rem = (int)(hoverstart + hoverdelay - hovernow());
-      int r = poll(&pfd, 1, MAX(rem, 0));
-      if (r == 0) {
+    /* poll is the single blocking point: it wakes on X events, on the
+       hover delay, or on the preview refresh interval; timeout -1
+       blocks indefinitely when no hover is pending */
+    struct pollfd pfd = {.fd = ConnectionNumber(dpy), .events = POLLIN};
+    int timeout = -1;
+    if (hoverarm)
+      timeout = MAX((int)(hoverstart + hoverdelay - hovernow()), 0);
+    else if (hoverc && !HIDDEN(hoverc) && previewrefresh)
+      timeout = previewrefresh;
+    int r = poll(&pfd, 1, timeout);
+    if (r == 0) {
+      if (hoverarm)
         hoverfire();
-        continue;
-      }
-      if (r < 0 && errno == EINTR)
-        continue;
-    } else if (hoverc && !HIDDEN(hoverc) && previewrefresh) {
-      /* keep the live preview fresh while the tooltip is shown */
-      struct pollfd pfd = {.fd = ConnectionNumber(dpy), .events = POLLIN};
-      int r = poll(&pfd, 1, previewrefresh);
-      if (r == 0) {
+      else
         hoverrefresh();
-        continue;
-      }
-      if (r < 0 && errno == EINTR)
-        continue;
+      continue;
     }
+    if (r < 0 && errno == EINTR)
+      continue;
     while (running && XPending(dpy) && !XNextEvent(dpy, &ev)) {
       /* flood guard: skip redundant draw events when queue backs up */
       if (XPending(dpy) > 50 &&
@@ -3079,21 +3104,6 @@ void tagmon(const Arg *arg) {
   if (!selmon->sel || !mons->next)
     return;
   sendmon(selmon->sel, dirtomon(arg->i));
-}
-
-/* resolve a click on the client tabs; returns the clicked client or NULL */
-Client *tasksclick(Monitor *m, int xclick, int tstart, int tend) {
-  Client *c;
-  int x;
-
-  for (x = tstart, c = m->clients; c; c = c->next) {
-    if (!ISVISIBLE(c))
-      continue;
-    x += m->tw + (int)tabgap;
-    if (xclick <= x)
-      break;
-  }
-  return c;
 }
 
 void togglebar(const Arg *arg) {
