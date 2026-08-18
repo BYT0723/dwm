@@ -800,8 +800,27 @@ void clientmessage(XEvent *e) {
                         || (cme->data.l[0] == 2 /* _NET_WM_STATE_TOGGLE */ &&
                             !c->isfullscreen)));
   } else if (cme->message_type == netatom[NetActiveWindow]) {
-    if (c != selmon->sel && !c->isurgent)
+    if (jump_on_activate) {
+      if (c != selmon->sel) {
+        Monitor *m = c->mon;
+        unsigned int tag;
+
+        for (tag = 0; tag < LENGTH(tags) && !(c->tags & 1 << tag); tag++)
+          ;
+        if (m != selmon) {
+          unfocus(selmon->sel, 0);
+          selmon = m;
+        }
+        if (tag < LENGTH(tags) && !(c->tags & selmon->tagset[selmon->seltags])) {
+          Arg a = {.ui = 1 << tag};
+
+          view(&a);
+        }
+        focus(c);
+      }
+    } else if (c != selmon->sel && !c->isurgent) {
       seturgent(c, 1);
+    }
   }
 }
 

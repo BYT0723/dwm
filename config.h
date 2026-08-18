@@ -30,13 +30,13 @@ static const          int autoshowhid = 1; /* 1 = focusstackhid shows hidden win
 
 static const          int hoverinfo      = 1;    /* 1 = hover a client tab to show a tooltip with client info; 0 = disabled */
 static const unsigned int hoverdelay     = 500; /* ms of resting on a tab before the tooltip appears */
-static const unsigned int previewh       = 360;  /* max live preview height; width scales by aspect */
+static const unsigned int previewh       = 240;  /* max live preview height; width scales by aspect */
 static const unsigned int previewrefresh = 300; /* ms between live preview refreshes */
 static const unsigned int hoverpad       = 12;   /* tooltip content padding from the border */
 static const unsigned int hovergap       = 8;  /* gap between the preview and the title */
 static const unsigned int previewborder  = 2;   /* px highlight border around the live preview, in colors[x][2] */
 
-static const int scalepreview = 4; /* tag preview size = monitor / scalepreview */
+static const int scalepreview = 8; /* tag preview size = monitor / scalepreview */
 static const int previewbar   = 1; /* 1 = tag snapshot includes the bar */
 
 static const unsigned int gappih    = 6;
@@ -57,6 +57,8 @@ static const unsigned int attachtop = 0; /* new window is attached to the top of
 
 static const Bool viewontag = True; /* Switch view on tag switch */
 
+static const int jump_on_activate = 1; /* 1 = _NET_ACTIVE_WINDOW (e.g. rofi -show window) jumps to the window's tag/monitor; 0 = only mark it urgent */
+
 #define ICONSIZE (bh - 2) /* or adaptively preserve 2 pixels each side */
 #define ICONSPACING 6 /* space between icon and title */
 static const char *fonts[] = {
@@ -74,7 +76,6 @@ static char col_magenta[]  = "#d33682";  /*  5: magenta  */
 static char col_cyan[]     = "#2aa198";  /*  6: cyan     */
 static char col_white[]    = "#eee8d5";  /*  7: white    */
 static char col_ab_black[] = "#000000";
-static char col_ab_white[] = "#ffffff";
 static char *colors[][3] = {
     /*                    fg            bg            border   */
     // host
@@ -87,7 +88,7 @@ static char *colors[][3] = {
     // tasks
     [SchemeNorm]    = { col_white,    col_black,    col_black    },
     [SchemeSel]     = { col_blue,     col_black,    col_cyan     },
-    [SchemeHid]     = { col_ab_white, col_ab_black, col_black    },
+    [SchemeHid]     = { col_white,    col_ab_black, col_black    },
 		// status
     [SchemeStatus]  = { col_black,    col_black,    col_black    },
     // systray
