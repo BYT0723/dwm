@@ -44,6 +44,10 @@
 #include <X11/extensions/Xinerama.h>
 #endif /* XINERAMA */
 #include <X11/Xft/Xft.h>
+#include <X11/extensions/Xcomposite.h>
+#include <poll.h>
+#include <errno.h>
+#include <time.h>
 
 #include "drw.h"
 #include "util.h"
@@ -114,6 +118,7 @@ enum {
   SchemeSystray,
   SchemeLayout,
   SchemeEmpty,
+  SchemeTooltip,
 }; /* color schemes */
 enum {
   NetSupported,
@@ -131,6 +136,7 @@ enum {
   NetWMWindowType,
   NetWMWindowTypeDock,
   NetWMWindowTypeDialog,
+  NetWMWindowTypeTooltip,
   NetClientList,
   NetWMWindowOpacity,
   NetLast
@@ -175,6 +181,7 @@ typedef struct Client Client;
 struct Client {
   char name[256];
   char class[256];
+  char instance[256];
   float mina, maxa;
   float cfact;
   int x, y, w, h;
@@ -305,6 +312,7 @@ static void hide(const Arg *arg);
 static void hidewin(Client *c);
 static void incnmaster(const Arg *arg);
 static void keypress(XEvent *e);
+static void leavenotify(XEvent *e);
 static void killclient(const Arg *arg);
 static void loadxrdb(void);
 static void layoutmenu(const Arg *arg);
@@ -360,6 +368,9 @@ static void tagmon(const Arg *arg);
 static Client *tasksclick(Monitor *m, int xclick, int tstart, int tend);
 static void togglebar(const Arg *arg);
 static void togglefloating(const Arg *arg);
+static void hoverfire(void);
+static void hoverhide(void);
+static void hovershow(Client *c, int tx);
 static void toggletag(const Arg *arg);
 static void toggleview(const Arg *arg);
 static void togglewin(const Arg *arg);
@@ -420,6 +431,7 @@ static void (*handler[LASTEvent])(XEvent *) = {
     [Expose] = expose,
     [FocusIn] = focusin,
     [KeyPress] = keypress,
+    [LeaveNotify] = leavenotify,
     [MappingNotify] = mappingnotify,
     [MapRequest] = maprequest,
     [MotionNotify] = motionnotify,
@@ -435,6 +447,16 @@ static Display *dpy;
 static Drw *drw;
 static Fnt *fonts_set;
 static Fnt *fonts_bold_italic_set;
+static Window toolwin = None; /* hover tooltip window */
+static Drw *tooldrw = NULL;   /* drawing context for the tooltip */
+static Client *hoverc = NULL; /* client the tooltip is shown for */
+static int hoverarm = 0;      /* 1 = pointer resting on a tab, timer running */
+static int hoverx = 0;        /* tab left edge at arm time */
+static uint64_t hoverstart = 0; /* monotonic ms when the timer was armed */
+static int prevpx = 0, prevpy = 0, prevw = 0, prevh = 0; /* preview area geometry */
+static uint64_t hovernow(void);
+static void hoverpreview(Client *c, int x, int y, int w, int h);
+static void hoverrefresh(void);
 static Monitor *mons, *selmon;
 static Window root, wmcheckwin;
 
@@ -480,6 +502,8 @@ void applyrules(Client *c) {
 
   strncpy(c->class, class, sizeof(c->class) - 1);
   c->class[sizeof(c->class) - 1] = '\0';
+  strncpy(c->instance, instance, sizeof(c->instance) - 1);
+  c->instance[sizeof(c->instance) - 1] = '\0';
 
   for (i = 0; i < LENGTH(rules); i++) {
     r = &rules[i];
@@ -622,12 +646,13 @@ void buttonpress(XEvent *e) {
 
   int gap_total = (int)tabgap * m->bt;
   int tab_total = m->tw * m->bt + gap_total;
-  tstart = selmon->ww - stw - statusw - m->btw;
+  tstart = selmon->ww - stw - statusw - m->btw + (int)tabgap;
   if (tabstyle&TAB_CENTER)
     tstart += (m->btw - tab_total) / 2;
   tend = tstart + tab_total;
 
   if (ev->window == selmon->barwin) {
+    hoverhide();
     i = x = 0;
     x += TEXTW(host);
     unsigned int occ = 0;
@@ -712,6 +737,10 @@ void cleanup(void) {
     free(scheme[i]);
   }
   free(scheme);
+  if (toolwin != None) {
+    drw_free(tooldrw);
+    XDestroyWindow(dpy, toolwin);
+  }
   XDestroyWindow(dpy, wmcheckwin);
   drw_free(drw);
   drw_fontset_free(fonts_bold_italic_set);
@@ -895,9 +924,11 @@ void destroynotify(XEvent *e) {
   Client *c;
   XDestroyWindowEvent *ev = &e->xdestroywindow;
 
-  if ((c = wintoclient(ev->window)))
+  if ((c = wintoclient(ev->window))) {
+    if (c == hoverc)
+      hoverhide();
     unmanage(c, 1);
-  else if (showsystray && (c = wintosystrayicon(ev->window))) {
+  } else if (showsystray && (c = wintosystrayicon(ev->window))) {
     removesystrayicon(c);
     updatesystray(1);
   }
@@ -1222,6 +1253,222 @@ int drawtabs(Monitor *m, int x, int w, int n) {
   return tabw;
 }
 
+/* resolve the tab under the pointer; returns the client and its tab's
+   left edge, mirroring tasksclick() geometry */
+Client *taskshover(Monitor *m, int xclick, int tstart, int *tabx) {
+  Client *c;
+  int x;
+
+  for (x = tstart, c = m->clients; c; c = c->next) {
+    if (!ISVISIBLE(c))
+      continue;
+    x += m->tw + (int)tabgap;
+    if (xclick <= x) {
+      *tabx = x - m->tw - (int)tabgap;
+      return c;
+    }
+  }
+  return NULL;
+}
+
+uint64_t hovernow(void) {
+  struct timespec ts;
+
+  clock_gettime(CLOCK_MONOTONIC, &ts);
+  return (uint64_t)ts.tv_sec * 1000u + (uint64_t)ts.tv_nsec / 1000000u;
+}
+
+void hoverfire(void) {
+  if (!hoverarm)
+    return;
+  hoverarm = 0;
+  if (hoverc)
+    hovershow(hoverc, hoverx);
+}
+
+void hoverhide(void) {
+  hoverarm = 0;
+  hoverc = NULL;
+  if (toolwin != None)
+    XUnmapWindow(dpy, toolwin);
+}
+
+/* shorten src to fit maxw, appending an ellipsis */
+static void hoverellipsize(const char *src, char *buf, size_t bufsz, int maxw) {
+  int n = (int)strlen(src);
+
+  if (drw_fontset_getwidth(drw, src) <= maxw) {
+    strncpy(buf, src, bufsz - 1);
+    buf[bufsz - 1] = '\0';
+    return;
+  }
+  for (; n > 1; n--) {
+    char t[512];
+    int w;
+
+    strncpy(t, src, n);
+    t[n] = '\0';
+    strcat(t, "…");
+    w = drw_fontset_getwidth(drw, t);
+    if (w <= maxw) {
+      strncpy(buf, t, bufsz - 1);
+      buf[bufsz - 1] = '\0';
+      return;
+    }
+  }
+  strncpy(buf, src, bufsz - 1);
+  buf[bufsz - 1] = '\0';
+}
+
+/* show the hover tooltip for client c, centered above/below the tab at tx */
+void hovershow(Client *c, int tx) {
+  int pad = 8, gap = 10, iw = 0, lh, y, n = 0, gx, gy, pw, ph;
+  unsigned int tw, th;
+  char titlebuf[512];
+  const char *lines[1];
+  Monitor *m = c->mon;
+  XSetWindowAttributes wa = {.override_redirect = True,
+                             .background_pixel = 0,
+                             .border_pixel = 0,
+                             .colormap = cmap,
+                             .event_mask = NoEventMask};
+
+  if (!m->showbar || !hoverinfo)
+    return;
+  lh = drw->fonts->h;
+
+  lines[n++] = c->name;
+
+  /* live preview area: height fixed to previewh, width scales by aspect */
+  if (HIDDEN(c)) {
+    pw = 160; /* placeholder: just enough for the icon or "no preview" text */
+    ph = 100;
+  } else {
+    double scale = MIN((double)previewh / MAX(c->h, 1), 1.0);
+    pw = MAX(1, (int)(c->w * scale));
+    ph = MAX(1, (int)(c->h * scale));
+  }
+
+  /* width: preview on top, title below; title is ellipsized to fit */
+  iw = MIN((int)drw_fontset_getwidth(drw, lines[0]), 400);
+  tw = MAX(pw, iw) + pad * 2;
+  th = pad * 2 + ph + gap + lh * n;
+
+  gx = m->wx + sp + tx + m->tw / 2 - (int)tw / 2;
+  if (gx < m->mx) /* left overflow: anchor to the tab's right edge instead */
+    gx = MIN(m->wx + sp + tx + m->tw, m->mx + m->mw - (int)tw);
+  gx = MAX(m->mx, MIN(gx, m->mx + m->mw - (int)tw));
+  gy = m->topbar ? m->by + vp + bh + 2 : m->by + vp - (int)th - 2;
+  gy = MAX(0, MIN(gy, sh - (int)th));
+
+  if (!toolwin) {
+    toolwin = XCreateWindow(dpy, root, gx, gy, tw, th, 0, depth, InputOutput,
+                            visual, CWOverrideRedirect | CWBackPixel |
+                                CWBorderPixel | CWColormap | CWEventMask,
+                            &wa);
+    XStoreName(dpy, toolwin, "dwm-tooltip");
+    XChangeProperty(dpy, toolwin, netatom[NetWMWindowType], XA_ATOM, 32,
+                    PropModeReplace,
+                    (unsigned char *)&netatom[NetWMWindowTypeTooltip], 1);
+    tooldrw = drw_create(dpy, screen, toolwin, tw, th, visual, depth, cmap);
+  }
+
+  drw_resize(tooldrw, tw, th);
+  XMoveResizeWindow(dpy, toolwin, gx, gy, tw, th);
+  drw_setscheme(tooldrw, scheme[SchemeTooltip]);
+  drw_rect(tooldrw, 0, 0, tw, th, 1, 0);         /* outer ring */
+  drw_rect(tooldrw, 1, 1, tw - 2, th - 2, 1, 0); /* second ring */
+  drw_rect(tooldrw, 2, 2, tw - 4, th - 4, 1, 1); /* inner background */
+
+  prevpx = pad;
+  prevpy = pad;
+  prevw = pw;
+  prevh = ph;
+  hoverpreview(c, prevpx, prevpy, prevw, prevh);
+
+  iw = tw - pad * 2;
+  hoverellipsize(lines[0], titlebuf, sizeof(titlebuf), iw);
+  y = pad + ph + gap;
+  if (fonts_bold_italic_set)
+    drw_setfontset(tooldrw, fonts_bold_italic_set);
+  drw_text(tooldrw, pad, y, iw, lh, 0, titlebuf, 0);
+  drw_setfontset(tooldrw, fonts_set);
+
+  drw_map(tooldrw, toolwin, 0, 0, tw, th);
+  XMapRaised(dpy, toolwin);
+  XFlush(dpy);
+  hoverc = c;
+}
+
+/* composite a live scaled snapshot of c into the preview area (x, y, w, h);
+   hidden clients get an icon or a placeholder instead */
+void hoverpreview(Client *c, int x, int y, int w, int h) {
+  if (!c || !tooldrw)
+    return;
+
+  if (HIDDEN(c)) {
+    if (c->icon && w >= c->icw + 8 && h >= c->ich + 8) {
+      drw_pic(tooldrw, x + (w - c->icw) / 2, y + (h - c->ich) / 2, c->icw,
+              c->ich, c->icon);
+      return;
+    }
+    drw_text(tooldrw, x, y + (h - drw->fonts->h) / 2, w, drw->fonts->h, 0,
+             "no preview", 0);
+    return;
+  }
+
+  {
+    Pixmap pm = XCompositeNameWindowPixmap(dpy, c->win);
+    XWindowAttributes wa;
+    XRenderPictFormat *fmt;
+    Picture pic;
+    XTransform tr;
+
+    if (!pm)
+      return;
+    if (XGetWindowAttributes(dpy, c->win, &wa) != True ||
+        !(fmt = XRenderFindVisualFormat(dpy, wa.visual))) {
+      XFreePixmap(dpy, pm);
+      return;
+    }
+    pic = XRenderCreatePicture(dpy, pm, fmt, 0, NULL);
+    if (!pic) {
+      XFreePixmap(dpy, pm);
+      return;
+    }
+    XRenderSetPictureFilter(dpy, pic, FilterGood, NULL, 0);
+    /* XRender's transform maps destination coords to source coords
+       (verified empirically: dst pixel p samples src pixel T(p)),
+       so the scale must be source/destination, not destination/source */
+    tr.matrix[0][0] = XDoubleToFixed((double)c->w / w);
+    tr.matrix[0][1] = 0;
+    tr.matrix[0][2] = 0;
+    tr.matrix[1][0] = 0;
+    tr.matrix[1][1] = XDoubleToFixed((double)c->h / h);
+    tr.matrix[1][2] = 0;
+    tr.matrix[2][0] = 0;
+    tr.matrix[2][1] = 0;
+    tr.matrix[2][2] = 1 << 16;
+    XRenderSetPictureTransform(dpy, pic, &tr);
+    /* the source rect must be the full source image (c->w x c->h); the
+       transform maps it onto the destination rect (w x h) */
+    XRenderComposite(dpy, PictOpSrc, pic, None, tooldrw->picture, 0, 0, c->w,
+                     c->h, x, y, w, h);
+    XRenderFreePicture(dpy, pic);
+    XFreePixmap(dpy, pm);
+  }
+}
+
+/* refresh the live preview while the tooltip is shown */
+void hoverrefresh(void) {
+  Client *c = hoverc;
+
+  if (!c || toolwin == None)
+    return;
+  hoverpreview(c, prevpx, prevpy, prevw, prevh);
+  drw_map(tooldrw, toolwin, 0, 0, tooldrw->w, tooldrw->h);
+}
+
 void enternotify(XEvent *e) {
 	Client *c;
 	Monitor *m;
@@ -1236,6 +1483,33 @@ void enternotify(XEvent *e) {
 		selmon = m;
 		focus(c);
 	}
+	if (ev->window == selmon->barwin && hoverinfo) {
+		int stw, gap_total, tab_total, tstart, tx;
+		Client *tc;
+
+		stw = systraytomon(selmon) == selmon ? getsystraywidth() : 0;
+		gap_total = (int)tabgap * selmon->bt;
+		tab_total = selmon->tw * selmon->bt + gap_total;
+		tstart = selmon->ww - stw - statusw - selmon->btw + (int)tabgap;
+		if (tabstyle & TAB_CENTER)
+			tstart += (selmon->btw - tab_total) / 2;
+		if (selmon->bt && ev->x > tstart && ev->x < tstart + tab_total &&
+		    (tc = taskshover(selmon, ev->x, tstart, &tx))) {
+			hoverarm = 1;
+			hoverc = tc;
+			hoverx = tx;
+			hoverstart = hovernow();
+		} else {
+			hoverhide();
+		}
+	}
+}
+
+void leavenotify(XEvent *e) {
+	XCrossingEvent *ev = &e->xcrossing;
+
+	if (ev->window == selmon->barwin)
+		hoverhide();
 }
 
 void expose(XEvent *e) {
@@ -1850,6 +2124,33 @@ void motionnotify(XEvent *e) {
   Monitor *m;
   XMotionEvent *ev = &e->xmotion;
 
+  if (ev->window == selmon->barwin) {
+    /* moving between tabs while hovering */
+    int stw, gap_total, tab_total, tstart, tx;
+    Client *tc;
+
+    if (!hoverinfo)
+      return;
+    stw = systraytomon(selmon) == selmon ? getsystraywidth() : 0;
+    gap_total = (int)tabgap * selmon->bt;
+    tab_total = selmon->tw * selmon->bt + gap_total;
+    tstart = selmon->ww - stw - statusw - selmon->btw + (int)tabgap;
+    if (tabstyle & TAB_CENTER)
+      tstart += (selmon->btw - tab_total) / 2;
+    if (selmon->bt && ev->x > tstart && ev->x < tstart + tab_total &&
+        (tc = taskshover(selmon, ev->x, tstart, &tx))) {
+      if (tc != hoverc) {
+        hoverhide();
+        hoverarm = 1;
+        hoverc = tc;
+        hoverx = tx;
+        hoverstart = hovernow();
+      }
+    } else {
+      hoverhide();
+    }
+    return;
+  }
   if (ev->window != root)
     return;
   if ((m = recttomon(ev->x_root, ev->y_root, 1, 1)) != mon && mon) {
@@ -2140,14 +2441,38 @@ void run(void) {
   XEvent ev;
   /* main event loop */
   XSync(dpy, False);
-  while (running && !XNextEvent(dpy, &ev)) {
-      /* flood guard: skip redundant draw events when queue backs up */
-    if (XPending(dpy) > 50 &&
-        (ev.type == PropertyNotify || ev.type == Expose || ev.type == NoExpose)) {
-      continue;
+  while (running) {
+    /* wake up when the hover delay elapses, otherwise block on X */
+    if (hoverarm) {
+      struct pollfd pfd = {.fd = ConnectionNumber(dpy), .events = POLLIN};
+      int rem = (int)(hoverstart + hoverdelay - hovernow());
+      int r = poll(&pfd, 1, MAX(rem, 0));
+      if (r == 0) {
+        hoverfire();
+        continue;
+      }
+      if (r < 0 && errno == EINTR)
+        continue;
+    } else if (hoverc && !HIDDEN(hoverc) && previewrefresh) {
+      /* keep the live preview fresh while the tooltip is shown */
+      struct pollfd pfd = {.fd = ConnectionNumber(dpy), .events = POLLIN};
+      int r = poll(&pfd, 1, previewrefresh);
+      if (r == 0) {
+        hoverrefresh();
+        continue;
+      }
+      if (r < 0 && errno == EINTR)
+        continue;
     }
-    if (handler[ev.type])
-      handler[ev.type](&ev); /* call handler */
+    while (running && XPending(dpy) && !XNextEvent(dpy, &ev)) {
+      /* flood guard: skip redundant draw events when queue backs up */
+      if (XPending(dpy) > 50 &&
+          (ev.type == PropertyNotify || ev.type == Expose || ev.type == NoExpose)) {
+        continue;
+      }
+      if (handler[ev.type])
+        handler[ev.type](&ev); /* call handler */
+    }
   }
 }
 
@@ -2507,6 +2832,8 @@ void setup(void) {
       XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
   netatom[NetWMWindowTypeDialog] =
       XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
+  netatom[NetWMWindowTypeTooltip] =
+      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_TOOLTIP", False);
   netatom[NetWMWindowOpacity] =
       XInternAtom(dpy, "_NET_WM_WINDOW_OPACITY", False);
   netatom[NetClientList] = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
@@ -2762,7 +3089,7 @@ Client *tasksclick(Monitor *m, int xclick, int tstart, int tend) {
   for (x = tstart, c = m->clients; c; c = c->next) {
     if (!ISVISIBLE(c))
       continue;
-    x += m->tw;
+    x += m->tw + (int)tabgap;
     if (xclick <= x)
       break;
   }
@@ -2915,6 +3242,8 @@ void unmapnotify(XEvent *e) {
   XUnmapEvent *ev = &e->xunmap;
 
   if ((c = wintoclient(ev->window))) {
+    if (c == hoverc)
+      hoverhide();
     if (ev->send_event)
       setclientstate(c, WithdrawnState);
     else
@@ -2933,7 +3262,9 @@ void updatebars(void) {
                              .background_pixel = 0,
                              .border_pixel = 0,
                              .colormap = cmap,
-                             .event_mask = ButtonPressMask | ExposureMask};
+                             .event_mask = ButtonPressMask | ExposureMask |
+                                           EnterWindowMask | LeaveWindowMask |
+                                           PointerMotionMask};
   XClassHint ch = {"dwm", "dwm"};
   for (m = mons; m; m = m->next) {
     if (!m->barwin) {

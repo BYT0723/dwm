@@ -21,12 +21,17 @@ static const          char host[]      = "";
 #define TAB_CENTER       0x01
 #define TAB_CUSTOM_WIDTH 0x02
 
-static const unsigned int tabstyle = TAB_CENTER | TAB_CUSTOM_WIDTH;
-static const unsigned int tabwidth = 16;
-static const char         tabtext[] = "{class}"; /* tab text template; placeholders: {title}, {class} */
-static const unsigned int tabradius = 8;
-static const unsigned int tabgap = 4;
+static const unsigned int tabstyle    = TAB_CENTER | TAB_CUSTOM_WIDTH;
+static const unsigned int tabwidth    = 24;
+static const char         tabtext[]   = "{title}"; /* tab text template; placeholders: {title}, {class} */
+static const unsigned int tabradius   = 8;
+static const unsigned int tabgap      = 4;
 static const          int autoshowhid = 1; /* 1 = focusstackhid shows hidden windows permanently; 0 = preview, re-hide on switch away */
+
+static const          int hoverinfo      = 1;    /* 1 = hover a client tab to show a tooltip with client info; 0 = disabled */
+static const unsigned int hoverdelay     = 500; /* ms of resting on a tab before the tooltip appears */
+static const unsigned int previewh       = 360;  /* max live preview height; width scales by aspect */
+static const unsigned int previewrefresh = 300; /* ms between live preview refreshes */
 
 static const unsigned int gappih    = 6;
 static const unsigned int gappiv    = 6;
@@ -75,7 +80,7 @@ static char *colors[][3] = {
     [SchemeLayout]  = { col_green,    col_black,    col_ab_black },
     // tasks
     [SchemeNorm]    = { col_white,    col_black,    col_black    },
-    [SchemeSel]     = { col_blue,     col_black,     col_cyan     },
+    [SchemeSel]     = { col_blue,     col_black,    col_cyan     },
     [SchemeHid]     = { col_ab_white, col_ab_black, col_black    },
 		// status
     [SchemeStatus]  = { col_black,    col_black,    col_black    },
@@ -83,6 +88,8 @@ static char *colors[][3] = {
     [SchemeSystray] = { col_white,    col_black,    col_black    },
     // empty
     [SchemeEmpty]   = { col_ab_black, col_ab_black, col_black    },
+    // hover tooltip
+    [SchemeTooltip] = { col_white,    col_black,    col_blue     },
 };
 
 #define OPAQUE        0xffU
@@ -110,6 +117,8 @@ static const unsigned int alphas[][3]      = {
     [SchemeSystray] = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     // empty
     [SchemeEmpty]   = { TRANSPARENT, TRANSPARENT,      TRANSPARENT },
+    // hover tooltip
+    [SchemeTooltip] = { OPAQUE,      BG_ALPHA,         OPAQUE     },
 };
 
 /* tagging */
@@ -217,7 +226,6 @@ static const char *floatcmd[]        = {"./.dwm/dwm-launcher.sh",     "term",   
 static const char *roficmd[]         = {"./.dwm/dwm-launcher.sh",     "apps",       NULL};
 static const char *powercmd[]        = {"./.dwm/dwm-launcher.sh",     "powermenu",  NULL};
 static const char *mpdcmd[]          = {"./.dwm/dwm-launcher.sh",     "mpd",        NULL};
-static const char *linkcmd[]         = {"./.dwm/dwm-launcher.sh",     "quicklinks", NULL};
 static const char *modulecmd[]       = {"./.dwm/dwm-launcher.sh",     "modules",    NULL};
 static const char *wallpapercmd[]    = {"./.dwm/dwm-launcher.sh",     "wallpaper",  NULL};
 static const char *screenshotmenu[]  = {"./.dwm/dwm-launcher.sh",     "screenshot", NULL};
@@ -252,7 +260,6 @@ static Key keys[] = {
     {MODKEY,                       XK_w,                     spawn,          {.v = wallpapercmd}},
     {MODKEY|ShiftMask,             XK_m,                     spawn,          {.v = mpdcmd}},
     {MODKEY|ControlMask,           XK_m,                     spawn,          {.v = powercmd}},
-    {MODKEY|ShiftMask,             XK_l,                     spawn,          {.v = linkcmd}},
     // layout
     {MODKEY,                       XK_t,                     setlayout,      {.v = &layouts[0]}},
     {MODKEY,                       XK_f,                     setlayout,      {.v = &layouts[1]}},
