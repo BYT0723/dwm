@@ -1450,6 +1450,13 @@ static void hoverellipsize(const char *src, char *buf, size_t bufsz, int maxw) {
   buf[bufsz - 1] = '\0';
 }
 
+/* scale factor fitting a sw x sh region into the preview area: at most
+   previewh tall, at most the monitor width minus hoverpad wide */
+static double previewscale(Monitor *m, int sw, int sh) {
+  double scale = MIN((double)previewh / MAX(sh, 1), 1.0);
+  return MIN(scale, (double)(m->mw - (int)hoverpad * 2) / MAX(sw, 1));
+}
+
 /* show the hover tooltip for client c, centered above/below the tab at tx */
 static void hovershow(Client *c, int tx) {
   int iw, lh, y, gx, gy, pw, ph;
@@ -1475,8 +1482,8 @@ static void hovershow(Client *c, int tx) {
   } else {
     /* scale by height, then by width so the preview never exceeds the
        monitor; wide-but-short windows would otherwise overflow the screen */
-    double scale = MIN((double)previewh / MAX(c->h, 1), 1.0);
-    scale = MIN(scale, (double)(m->mw - (int)hoverpad * 2) / MAX(c->w, 1));
+    double scale = previewscale(m, c->w, c->h);
+
     pw = MAX(1, (int)(c->w * scale));
     ph = MAX(1, (int)(c->h * scale));
   }
@@ -1614,18 +1621,59 @@ static void hoverrefresh(void) {
   drw_map(tooldrw, toolwin, 0, 0, tooldrw->w, tooldrw->h);
 }
 
-/* show the scaled snapshot of tag i in the tagwin below the bar */
+/* tag preview target size for a sw x sh source region, using the same
+   scale as the hover tooltip preview */
+static void tagpreviewsize(Monitor *m, int sw, int sh, int *dw, int *dh) {
+  double scale = previewscale(m, sw, sh);
+
+  *dw = MAX(1, (int)(sw * scale));
+  *dh = MAX(1, (int)(sh * scale));
+}
+
+/* show the scaled snapshot of tag i in the tagwin below the bar, laid
+   out like the hover tooltip: snapshot inset by previewborder, padding
+   hoverpad, highlight border on the padding edge */
 void showtagpreview(unsigned int i) {
+  unsigned int tw, th, bw, dep, ww, wh;
+  Window r;
+  int x, y, n, iw2, ih2;
+  XWindowAttributes wa;
+
   if (selmon->tagwin == None)
     return;
   if (!selmon->previewshow || !selmon->tagmap[i]) {
     XUnmapWindow(dpy, selmon->tagwin);
     return;
   }
-  XSetWindowBackgroundPixmap(dpy, selmon->tagwin, selmon->tagmap[i]);
-  XCopyArea(dpy, selmon->tagmap[i], selmon->tagwin, drw->gc, 0, 0,
-            selmon->mw / scalepreview, selmon->mh / scalepreview, 0, 0);
+  if (!XGetGeometry(dpy, selmon->tagmap[i], &r, &x, &y, &tw, &th, &bw, &dep))
+    return;
+  ww = tw + (unsigned int)hoverpad * 2;
+  wh = th + (unsigned int)hoverpad * 2;
+  /* plain background so a resize fills exposed pixels with the tooltip
+     color, never a snapshot tile */
+  XSetWindowBackground(dpy, selmon->tagwin,
+                       scheme[SchemeTooltip][ColBg].pixel);
+  if (XGetWindowAttributes(dpy, selmon->tagwin, &wa) &&
+      ((unsigned)wa.width != ww || (unsigned)wa.height != wh))
+    XMoveResizeWindow(dpy, selmon->tagwin, selmon->wx + sp,
+                      selmon->by + vp + bh, ww, wh);
+  /* map before drawing: draws on an unmapped window are discarded on
+     the first map, which would show an empty preview; the server
+     processes map + copy in order, so no flash */
   XMapRaised(dpy, selmon->tagwin);
+  /* inset the snapshot by previewborder, like hoverpreview, so the
+     highlight border below wraps it on all four sides */
+  iw2 = MAX(1, (int)tw - (int)previewborder * 2);
+  ih2 = MAX(1, (int)th - (int)previewborder * 2);
+  XCopyArea(dpy, selmon->tagmap[i], selmon->tagwin, drw->gc, 0, 0, iw2, ih2,
+            (int)hoverpad + (int)previewborder,
+            (int)hoverpad + (int)previewborder);
+  /* XDrawRectangle's w/h span to x+w inclusive; use the snapshot area
+     (tw x th) so the border exactly wraps the inset image */
+  XSetForeground(dpy, drw->gc, scheme[SchemeSel][ColBorder].pixel);
+  for (n = 0; n < (int)previewborder && tw - n * 2 > 0 && th - n * 2 > 0; n++)
+    XDrawRectangle(dpy, selmon->tagwin, drw->gc, hoverpad + n, hoverpad + n,
+                   tw - 1 - n * 2, th - 1 - n * 2);
   XSync(dpy, False);
 }
 
@@ -1701,7 +1749,7 @@ static void previewtagshot(Monitor *m, unsigned int i, XImage *img, int dw,
 void takepreview(void) {
   Client *c;
   unsigned int occ = 0, i;
-  int sx, sy, sw, sh, dw, dh;
+  int dw, dh;
   XImage *img;
 
   hoverhide(); /* keep the tooltip and tag preview out of the shot */
@@ -1720,25 +1768,14 @@ void takepreview(void) {
       selmon->tagmap[i] = 0;
     }
 
-    if (previewbar) {
-      sx = selmon->mx;
-      sy = selmon->my;
-      sw = selmon->mw;
-      sh = selmon->mh;
-    } else {
-      sx = selmon->wx;
-      sy = selmon->wy;
-      sw = selmon->ww;
-      sh = selmon->wh;
-    }
-    dw = selmon->mw / scalepreview;
-    dh = selmon->mh / scalepreview;
-
-    img = XGetImage(dpy, root, sx, sy, sw, sh, AllPlanes, ZPixmap);
+    /* snapshot the whole monitor including the bar */
+    img = XGetImage(dpy, root, selmon->mx, selmon->my, selmon->mw, selmon->mh,
+                    AllPlanes, ZPixmap);
     if (!img) {
       fprintf(stderr, "dwm: XGetImage failed for tag preview\n");
       continue;
     }
+    tagpreviewsize(selmon, selmon->mw, selmon->mh, &dw, &dh);
     previewtagshot(selmon, i, img, dw, dh);
   }
 }
@@ -3493,23 +3530,26 @@ void updatebars(void) {
                                            PointerMotionMask};
   XClassHint ch = {"dwm", "dwm"};
   for (m = mons; m; m = m->next) {
+    int dw, dh;
+
+    tagpreviewsize(m, m->mw, m->mh, &dw, &dh);
     if (!m->tagwin) {
       XSetWindowAttributes twa = {
           .override_redirect = True,
           .background_pixel = scheme[SchemeTooltip][ColBg].pixel,
-          .border_pixel = scheme[SchemeTooltip][ColBorder].pixel,
+          .border_pixel = 0,
           .colormap = cmap,
           .event_mask = PointerMotionMask};
       m->tagwin = XCreateWindow(dpy, root, m->wx + sp, m->by + vp + bh,
-                                m->mw / scalepreview, m->mh / scalepreview,
-                                previewborder, depth, InputOutput, visual,
+                                dw + hoverpad * 2, dh + hoverpad * 2, 0, depth,
+                                InputOutput, visual,
                                 CWOverrideRedirect | CWBackPixel |
                                     CWBorderPixel | CWColormap | CWEventMask,
                                 &twa);
       XUnmapWindow(dpy, m->tagwin);
     }
     XMoveResizeWindow(dpy, m->tagwin, m->wx + sp, m->by + vp + bh,
-                      m->mw / scalepreview, m->mh / scalepreview);
+                      dw + hoverpad * 2, dh + hoverpad * 2);
     if (!m->barwin) {
       m->barwin = XCreateWindow(dpy, root, m->wx + sp, m->by + vp, m->ww, bh,
                         0, depth, InputOutput, visual,

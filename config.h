@@ -36,9 +36,6 @@ static const unsigned int hoverpad       = 12;   /* tooltip content padding from
 static const unsigned int hovergap       = 8;  /* gap between the preview and the title */
 static const unsigned int previewborder  = 2;   /* px highlight border around the live preview, in colors[x][2] */
 
-static const int scalepreview = 8; /* tag preview size = monitor / scalepreview */
-static const int previewbar   = 1; /* 1 = tag snapshot includes the bar */
-
 static const unsigned int gappih    = 6;
 static const unsigned int gappiv    = 6;
 static const unsigned int gappoh    = 6;
