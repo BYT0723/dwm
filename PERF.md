@@ -1,5 +1,33 @@
 # Performance Log
 
+## glyphcache: 逐字符宽度缓存扩展到任意 codepoint (2026-08-20)
+
+| Idea | Baseline → Result | Verdict | Why |
+|------|-------------------|---------|-----|
+| charwidth[256] 单字节缓存 → glyphcache[1024] codepoint 哈希表 | FcCharSetHasChar 35.34% → 0.01%（100 samples） | **kept** | 状态栏文本几乎全为 3 字节 UTF-8（Nerd Font 图标/中文/emoji），原缓存仅覆盖单字节 ASCII 完全失效。字体链固定 → 同 codepoint 渲染字体唯一，宽度稳定。双路径收益：updatestatus 的 TEXTW 测量（25.15%）+ drawstatusbar 绘制（10.01%） |
+
+### 方法
+`perf record -p <dwm> -i -F 99 --call-graph dwarf` 3min（同前）。
+
+### Baseline（76 samples, 2026-08-20）
+- FcCharSetHasChar 35.34%（XftCharExists 内部）：drw_text→drw_fontset_getwidth→updatestatus 25.15% + drw_text→drawstatusbar 10.01%
+
+### After（100 samples）
+- FcCharSetHasChar: 0.01%（1 sample）
+- 新热点：libc memcpy 36.60%（XGetImage←takepreview←view←keypress），交互触发，非每帧路径 → 见下条
+
+### 实现
+drw.c：`glyphcache[1024]` 开放寻址哈希（key=codepoint），命中条件仅 `usedfont==drw->fonts`；put 有界探测（1024 上限）防全满死循环。命中分支 `text += utf8charlen`（原单字节版对多字节字符会破坏 UTF-8 解析，已随扩展修正）。fallback 字符（如中文→Noto）仍不缓存，量少。
+
+## takepreview: XGetImage 一次截图复用 (2026-08-20)
+
+| Idea | Baseline → Result | Verdict | Why |
+|------|-------------------|---------|-----|
+| 每占用 tag 各截一次全屏 → 循环外截一次，N 个 tag 共用 | 截屏 memcpy 采样 36.6%（N 次全屏拷贝）→ 1 次 | **kept** | 所有 tag 源图像相同（同一 selmon 区域），tagpreviewsize 不依赖 tag 索引 → 尺寸相同。行为差异：XGetImage 失败时保留旧 tagmap（原为跳过该 tag） |
+
+### 实现
+dwm.c：`XGetImage` + `tagpreviewsize` 移到占用 tag 循环外；`previewtagshot` 不再 `XDestroyImage(img)`，调用方 `takepreview` 循环后统一释放。
+
 ## drawstatusbar: malloc → stack buffer (2026-08-12)
 
 | Idea | Baseline → Result | Verdict | Why |

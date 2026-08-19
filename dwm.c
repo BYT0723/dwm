@@ -1687,7 +1687,7 @@ void previewtag(const Arg *arg) {
 }
 
 /* render the scaled snapshot of the captured screen region img into
-   m->tagmap[i] (a dw x dh pixmap); frees img and prints on failure */
+   m->tagmap[i] (a dw x dh pixmap); the caller owns img and frees it */
 static void previewtagshot(Monitor *m, unsigned int i, XImage *img, int dw,
                            int dh) {
   Pixmap full;
@@ -1698,7 +1698,6 @@ static void previewtagshot(Monitor *m, unsigned int i, XImage *img, int dw,
 
   full = XCreatePixmap(dpy, m->tagwin, img->width, img->height, img->depth);
   if (!full) {
-    XDestroyImage(img);
     return;
   }
   /* drw->gc belongs to the alpha-depth drawable; PutImage needs a GC
@@ -1710,7 +1709,6 @@ static void previewtagshot(Monitor *m, unsigned int i, XImage *img, int dw,
   m->tagmap[i] = XCreatePixmap(dpy, m->tagwin, dw, dh, depth);
   if (!m->tagmap[i]) {
     XFreePixmap(dpy, full);
-    XDestroyImage(img);
     return;
   }
   /* the source pixmap depth follows the root framebuffer (which may
@@ -1738,7 +1736,6 @@ static void previewtagshot(Monitor *m, unsigned int i, XImage *img, int dw,
   if (dst)
     XRenderFreePicture(dpy, dst);
   XFreePixmap(dpy, full);
-  XDestroyImage(img);
 }
 
 /* capture scaled snapshots of the current view for all occupied tags,
@@ -1755,6 +1752,16 @@ void takepreview(void) {
   for (c = selmon->clients; c; c = c->next)
     occ |= c->tags;
 
+  /* snapshot the whole monitor including the bar once; every occupied
+     tag scales the same source image, so capture it a single time */
+  img = XGetImage(dpy, root, selmon->mx, selmon->my, selmon->mw, selmon->mh,
+                  AllPlanes, ZPixmap);
+  if (!img) {
+    fprintf(stderr, "dwm: XGetImage failed for tag preview\n");
+    return;
+  }
+  tagpreviewsize(selmon, selmon->mw, selmon->mh, &dw, &dh);
+
   for (i = 0; i < LENGTH(tags); i++) {
     /* only tags that are occupied and part of the current view */
     if (!(occ & 1 << i) || !(selmon->tagset[selmon->seltags] & 1 << i))
@@ -1765,16 +1772,9 @@ void takepreview(void) {
       selmon->tagmap[i] = 0;
     }
 
-    /* snapshot the whole monitor including the bar */
-    img = XGetImage(dpy, root, selmon->mx, selmon->my, selmon->mw, selmon->mh,
-                    AllPlanes, ZPixmap);
-    if (!img) {
-      fprintf(stderr, "dwm: XGetImage failed for tag preview\n");
-      continue;
-    }
-    tagpreviewsize(selmon, selmon->mw, selmon->mh, &dw, &dh);
     previewtagshot(selmon, i, img, dw, dh);
   }
+  XDestroyImage(img);
 }
 
 void enternotify(XEvent *e) {
