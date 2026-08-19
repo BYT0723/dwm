@@ -14,8 +14,39 @@
 
 #define AA_SAMPLES 8 /* subsamples per pixel for rounded-corner coverage */
 
-static unsigned int charwidth[256];   /* 单字节字符在主字体上的宽度缓存 */
-static unsigned char charvalid[256];  /* 对应缓存是否有效 */
+#define GLYPHCACHE_SIZE 1024
+static struct {
+  long codepoint;
+  unsigned int width;
+  unsigned char valid;
+} glyphcache[GLYPHCACHE_SIZE];
+
+static int glyphcache_get(long cp, unsigned int *w) {
+  size_t i = (unsigned long)cp % GLYPHCACHE_SIZE;
+  while (glyphcache[i].valid) {
+    if (glyphcache[i].codepoint == cp) {
+      *w = glyphcache[i].width;
+      return 1;
+    }
+    if (++i == GLYPHCACHE_SIZE)
+      i = 0;
+  }
+  return 0;
+}
+
+static void glyphcache_put(long cp, unsigned int w) {
+  size_t i = (unsigned long)cp % GLYPHCACHE_SIZE, n;
+  for (n = 0; n < GLYPHCACHE_SIZE; n++) {
+    if (!glyphcache[i].valid || glyphcache[i].codepoint == cp) {
+      glyphcache[i].codepoint = cp;
+      glyphcache[i].width = w;
+      glyphcache[i].valid = 1;
+      return;
+    }
+    if (++i == GLYPHCACHE_SIZE)
+      i = 0;
+  }
+}
 
 static const unsigned char utfbyte[UTF_SIZ + 1] = {0x80, 0, 0xC0, 0xE0, 0xF0};
 static const unsigned char utfmask[UTF_SIZ + 1] = {0xC0, 0x80, 0xE0, 0xF0,
@@ -568,10 +599,8 @@ int drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h,
     while (*text) {
       utf8charlen = utf8decode(text, &utf8codepoint, UTF_SIZ);
 
-      /* 逐字符宽度缓存：主字体可渲染的单字节字符命中时跳过 Xft 调用 */
-      if (utf8charlen == 1 && utf8codepoint < 256 &&
-          usedfont == drw->fonts && charvalid[utf8codepoint]) {
-        tmpw = charwidth[utf8codepoint];
+      /* 逐字符宽度缓存：主字体可渲染的字符命中时跳过 Xft 调用 */
+      if (usedfont == drw->fonts && glyphcache_get(utf8codepoint, &tmpw)) {
         if (ew + ellipsis_width <= w) {
           /* keep track where the ellipsis still fits */
           ellipsis_x = x + ew;
@@ -585,8 +614,8 @@ int drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h,
           else
             utf8strlen = ellipsis_len;
         } else {
-          utf8strlen += 1;
-          text += 1;
+          utf8strlen += utf8charlen;
+          text += utf8charlen;
           ew += tmpw;
         }
         continue;
@@ -597,12 +626,10 @@ int drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h,
                      XftCharExists(drw->dpy, curfont->xfont, utf8codepoint);
         if (charexists) {
           drw_font_getexts(curfont, text, utf8charlen, &tmpw, NULL);
-          /* 仅缓存主字体可渲染、单字节、且无 fallback 切换的字符 */
-          if (usedfont == drw->fonts && curfont == usedfont &&
-              utf8charlen == 1 && utf8codepoint < 256) {
-            charwidth[utf8codepoint] = tmpw;
-            charvalid[utf8codepoint] = 1;
-          }
+          /* 仅缓存主字体渲染的字符：字体链固定，同 codepoint 的
+           * 渲染字体唯一，宽度稳定，命中即复用 */
+          if (usedfont == drw->fonts && curfont == usedfont)
+            glyphcache_put(utf8codepoint, tmpw);
           if (ew + ellipsis_width <= w) {
             /* keep track where the ellipsis still fits */
             ellipsis_x = x + ew;
