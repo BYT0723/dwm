@@ -345,6 +345,7 @@ static int sendevent(Window w, Atom proto, int m, long d0, long d1, long d2, lon
 static void sendmon(Client *c, Monitor *m);
 static void setcfact(const Arg *arg);
 static void setclientstate(Client *c, long state);
+static void setcurrentmon(Monitor *m);
 static void setfocus(Client *c);
 static void setfullscreen(Client *c, int fullscreen);
 static void setlayout(const Arg *arg);
@@ -802,15 +803,11 @@ void clientmessage(XEvent *e) {
   } else if (cme->message_type == netatom[NetActiveWindow]) {
     if (jump_on_activate) {
       if (c != selmon->sel) {
-        Monitor *m = c->mon;
         unsigned int tag;
 
         for (tag = 0; tag < LENGTH(tags) && !(c->tags & 1 << tag); tag++)
           ;
-        if (m != selmon) {
-          unfocus(selmon->sel, 0);
-          selmon = m;
-        }
+        setcurrentmon(c->mon);
         if (tag < LENGTH(tags) && !(c->tags & selmon->tagset[selmon->seltags])) {
           Arg a = {.ui = 1 << tag};
 
@@ -1858,42 +1855,42 @@ void focusin(XEvent *e) {
     setfocus(selmon->sel);
 }
 
-void focusmon(const Arg *arg) {
-  Monitor *m;
+void setcurrentmon(Monitor *m) {
+  Window root_return, child_return;
+  int root_x, root_y, win_x, win_y;
+  unsigned int mask;
 
-  if (!mons->next)
-    return;
-  if ((m = dirtomon(arg->i)) == selmon)
+  if (m == selmon)
     return;
   unfocus(selmon->sel, 0);
 
-	Window root_return, child_return;
-	int root_x, root_y, win_x, win_y;
-	unsigned int mask;
-
-	if (XQueryPointer(dpy, root, &root_return, &child_return, &root_x,
-	                    &root_y, &win_x, &win_y, &mask)) {
-		/* remember old monitor pointer position */
-		if (INMON(selmon, root_x, root_y)) {
-			selmon->last_mouse_pos[0] = root_x;
-			selmon->last_mouse_pos[1] = root_y;
-		} else {
-			selmon->last_mouse_pos[0] = selmon->mx + selmon->mw/2;
-			selmon->last_mouse_pos[1] = selmon->my + selmon->mh/2;
-		}
-		/* warp when pointer is outside target monitor */
-		if (!INMON(m, root_x, root_y)) {
-			int tx = m->last_mouse_pos[0];
-			int ty = m->last_mouse_pos[1];
-			if (!INMON(m, tx, ty)) {
-				tx = m->mx + m->mw/2;
-				ty = m->my + m->mh/2;
-			}
-			XWarpPointer(dpy, None, root, 0, 0, 0, 0, tx, ty);
-		}
-	}
+  if (XQueryPointer(dpy, root, &root_return, &child_return, &root_x,
+                      &root_y, &win_x, &win_y, &mask)) {
+    /* remember old monitor pointer position */
+    if (INMON(selmon, root_x, root_y)) {
+      selmon->last_mouse_pos[0] = root_x;
+      selmon->last_mouse_pos[1] = root_y;
+    } else {
+      selmon->last_mouse_pos[0] = selmon->mx + selmon->mw/2;
+      selmon->last_mouse_pos[1] = selmon->my + selmon->mh/2;
+    }
+    /* warp when pointer is outside target monitor */
+    if (!INMON(m, root_x, root_y)) {
+      int tx = m->last_mouse_pos[0];
+      int ty = m->last_mouse_pos[1];
+      if (!INMON(m, tx, ty)) {
+        tx = m->mx + m->mw/2;
+        ty = m->my + m->mh/2;
+      }
+      XWarpPointer(dpy, None, root, 0, 0, 0, 0, tx, ty);
+    }
+  }
   selmon = m;
   focus(NULL);
+}
+
+void focusmon(const Arg *arg) {
+  setcurrentmon(dirtomon(arg->i));
 }
 
 void focusstackvis(const Arg *arg) { focusstack(arg->i, 0); }
