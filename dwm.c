@@ -454,7 +454,7 @@ static Clr **scheme;
 static Display *dpy;
 static Drw *drw;
 static Fnt *fonts_set;
-static Fnt *fonts_bold_italic_set;
+static Fnt *fonts_highlight_set;
 static Window toolwin = None; /* hover tooltip window */
 static Drw *tooldrw = NULL;   /* drawing context for the tooltip */
 static Client *hoverc = NULL; /* client the tooltip is shown for */
@@ -748,7 +748,7 @@ void cleanup(void) {
   }
   XDestroyWindow(dpy, wmcheckwin);
   drw_free(drw);
-  drw_fontset_free(fonts_bold_italic_set);
+  drw_fontset_free(fonts_highlight_set);
   XSync(dpy, False);
   XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
   XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
@@ -1222,7 +1222,7 @@ int drawtabs(Monitor *m, int x, int w, int n) {
     x += MAX(((int)w - (tabw * n + gap_total))/2, 0);
 
   for (c = m->clients; c; c = c->next) {
-    int bold, tw, cx;
+    int highlight, tw, cx;
     char text[256];
 
     if (!ISVISIBLE(c))
@@ -1234,9 +1234,9 @@ int drawtabs(Monitor *m, int x, int w, int n) {
     else
       scm = SchemeNorm;
     drw_setscheme(drw, scheme[scm]);
-    bold = scm == SchemeSel && fonts_bold_italic_set;
-    if (bold)
-      drw_setfontset(drw, fonts_bold_italic_set);
+    highlight = scm == SchemeSel && fonts_highlight_set;
+    if (highlight)
+      drw_setfontset(drw, fonts_highlight_set);
 
     if (remainder >= 0) {
       if (remainder == 0)
@@ -1276,7 +1276,7 @@ int drawtabs(Monitor *m, int x, int w, int n) {
     // floating marker
     if (c->isfloating)
       drw_rect(drw, x + tabw - tabradius - boxw, (bh-boxw)/2, boxw, boxw, c->isfixed, 0);
-    if (bold)
+    if (highlight)
       drw_setfontset(drw, fonts_set);
     x += tabw + (int)tabgap;
   }
@@ -1522,8 +1522,8 @@ static void hovershow(Client *c, int tx) {
   iw = tw - hoverpad * 2;
   hoverellipsize(title, titlebuf, sizeof(titlebuf), iw);
   y = hoverpad + ph + hovergap;
-  if (fonts_bold_italic_set)
-    drw_setfontset(tooldrw, fonts_bold_italic_set);
+  if (fonts_highlight_set)
+    drw_setfontset(tooldrw, fonts_highlight_set);
   drw_text(tooldrw, hoverpad, y, iw, lh, 0, titlebuf, 0);
   drw_setfontset(tooldrw, fonts_set);
 
@@ -3038,21 +3038,7 @@ void setup(void) {
   drw = drw_create(dpy, screen, root, sw, sh, visual, depth, cmap);
   if (!(fonts_set = drw_fontset_create(drw, fonts, LENGTH(fonts))))
     die("no fonts could be loaded.");
-  {
-    FcPattern *bolditalicpat[LENGTH(fonts)];
-    int i;
-
-    for (i = 0; i < LENGTH(fonts); i++) {
-      if (!(bolditalicpat[i] = FcNameParse((FcChar8 *)fonts[i])))
-        continue;
-      FcPatternAddInteger(bolditalicpat[i], FC_WEIGHT, FC_WEIGHT_BOLD);
-      FcPatternAddInteger(bolditalicpat[i], FC_SLANT, FC_SLANT_ITALIC);
-    }
-    fonts_bold_italic_set = drw_fontset_create_pattern(drw, bolditalicpat, LENGTH(fonts));
-    for (i = 0; i < LENGTH(fonts); i++)
-      if (bolditalicpat[i])
-        FcPatternDestroy(bolditalicpat[i]);
-  }
+  fonts_highlight_set = drw_fontset_create(drw, fonts_highlight, LENGTH(fonts_highlight));
   drw_setfontset(drw, fonts_set); /* drw_fontset_create overwrites drw->fonts */
 
 	// NOTE: halving lpad avoids rounding cracks in status text width

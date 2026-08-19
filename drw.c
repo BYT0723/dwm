@@ -232,33 +232,6 @@ Fnt *drw_fontset_create(Drw *drw, const char *fonts[], size_t fontcount) {
   return (drw->fonts = ret);
 }
 
-Fnt *drw_fontset_create_pattern(Drw *drw, FcPattern *patterns[],
-                                size_t fontcount) {
-  Fnt *cur, *ret = NULL;
-  FcResult result;
-  size_t i;
-
-  if (!drw || !patterns)
-    return NULL;
-
-  /* XftFontMatch resolves each request pattern to a concrete font
-   * (FC_FILE etc.); libxft >= 2.3.8 XftFontOpenPattern no longer
-   * matches by itself and requires those fields to be present */
-  for (i = 1; i <= fontcount; i++) {
-    FcPattern *match;
-    if (!patterns[fontcount - i])
-      continue;
-    if (!(match = XftFontMatch(drw->dpy, drw->screen,
-                               patterns[fontcount - i], &result)))
-      continue;
-    if ((cur = xfont_create(drw, NULL, match))) {
-      cur->next = ret;
-      ret = cur;
-    }
-  }
-  return ret;
-}
-
 void drw_fontset_free(Fnt *font) {
   if (font) {
     drw_fontset_free(font->next);

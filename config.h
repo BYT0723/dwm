@@ -64,6 +64,12 @@ static const char *fonts[] = {
     "Noto Sans Mono CJK SC:pixelsize=16:antialias=true;autohint=true",
 };
 
+static const char *fonts_highlight[] = {
+    "Symbols Nerd Font Mono:pixelsize=16:antialias=true;autohint=true",
+    "CaskaydiaCove Nerd Font:pixelsize=16:weight=bold:slant=italic:antialias=true;autohint=true",
+    "Noto Sans Mono CJK SC:pixelsize=16:weight=bold:antialias=true;autohint=true",
+};
+
 static char col_black[]    = "#073642";  /*  0: black    */
 static char col_red[]      = "#dc322f";  /*  1: red      */
 static char col_green[]    = "#859900";  /*  2: green    */
