@@ -237,6 +237,7 @@ static const Layout layouts[] = {
 /* commands */
 static const char *termcmd[]         = {"./.dwm/dwm-launcher.sh",     "term",       NULL};
 static const char *floatcmd[]        = {"./.dwm/dwm-launcher.sh",     "term",       "float", NULL};
+static const char *fmcmd[]           = {"./.dwm/dwm-launcher.sh",     "fm",         NULL};
 static const char *roficmd[]         = {"./.dwm/dwm-launcher.sh",     "apps",       NULL};
 static const char *powercmd[]        = {"./.dwm/dwm-launcher.sh",     "powermenu",  NULL};
 static const char *mpdcmd[]          = {"./.dwm/dwm-launcher.sh",     "mpd",        NULL};
@@ -260,9 +261,10 @@ static Key keys[] = {
     // custom shell script
     {MODKEY,                       XK_Return,                spawn,          {.v = termcmd}},
     {MODKEY,                       XK_n,                     spawn,          {.v = floatcmd}},
+    {MODKEY,                       XK_e,                     spawn,          {.v = fmcmd}},
     {MODKEY,                       XK_a,                     spawn,          {.v = screenshotarea}},
     {MODKEY|ShiftMask,             XK_a,                     spawn,          {.v = screenshotmenu}},
-    {MODKEY,                       XK_r,                     spawn,          {.v = screencast}},
+    {MODKEY|ShiftMask,             XK_r,                     spawn,          {.v = screencast}},
     {0,                            XF86XK_AudioLowerVolume,  spawn,          {.v = vol_down}},
     {0,                            XF86XK_AudioRaiseVolume,  spawn,          {.v = vol_up}},
     {0,                            XF86XK_AudioMute,         spawn,          {.v = vol_toggle}},

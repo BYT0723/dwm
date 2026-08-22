@@ -14,9 +14,6 @@
 
 #define AA_SAMPLES 8 /* subsamples per pixel for rounded-corner coverage */
 
-static unsigned int charwidth[256];   /* 单字节字符在主字体上的宽度缓存 */
-static unsigned char charvalid[256];  /* 对应缓存是否有效 */
-
 static const unsigned char utfbyte[UTF_SIZ + 1] = {0x80, 0, 0xC0, 0xE0, 0xF0};
 static const unsigned char utfmask[UTF_SIZ + 1] = {0xC0, 0x80, 0xE0, 0xF0,
                                                    0xF8};
@@ -541,41 +538,11 @@ int drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h,
     while (*text) {
       utf8charlen = utf8decode(text, &utf8codepoint, UTF_SIZ);
 
-      /* 逐字符宽度缓存：主字体可渲染的单字节字符命中时跳过 Xft 调用 */
-      if (utf8charlen == 1 && utf8codepoint < 256 &&
-          usedfont == drw->fonts && charvalid[utf8codepoint]) {
-        tmpw = charwidth[utf8codepoint];
-        if (ew + ellipsis_width <= w) {
-          /* keep track where the ellipsis still fits */
-          ellipsis_x = x + ew;
-          ellipsis_w = w - ew;
-          ellipsis_len = utf8strlen;
-        }
-        if (ew + tmpw > w) {
-          overflow = 1;
-          if (!render)
-            x += tmpw;
-          else
-            utf8strlen = ellipsis_len;
-        } else {
-          utf8strlen += 1;
-          text += 1;
-          ew += tmpw;
-        }
-        continue;
-      }
-
       for (curfont = drw->fonts; curfont; curfont = curfont->next) {
         charexists = charexists ||
                      XftCharExists(drw->dpy, curfont->xfont, utf8codepoint);
         if (charexists) {
           drw_font_getexts(curfont, text, utf8charlen, &tmpw, NULL);
-          /* 仅缓存主字体可渲染、单字节、且无 fallback 切换的字符 */
-          if (usedfont == drw->fonts && curfont == usedfont &&
-              utf8charlen == 1 && utf8codepoint < 256) {
-            charwidth[utf8codepoint] = tmpw;
-            charvalid[utf8codepoint] = 1;
-          }
           if (ew + ellipsis_width <= w) {
             /* keep track where the ellipsis still fits */
             ellipsis_x = x + ew;
