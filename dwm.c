@@ -1782,10 +1782,14 @@ void enternotify(XEvent *e) {
 	Monitor *m;
 	XCrossingEvent *ev = &e->xcrossing;
 
-	if ((ev->mode != NotifyNormal || ev->detail == NotifyInferior) && ev->window != root)
+	if (ev->mode != NotifyNormal && ev->window != root)
 		return;
 	c = wintoclient(ev->window);
 	m = c ? c->mon : wintomon(ev->window);
+	/* entering a sub-window of a client on the current monitor must not
+	 * steal focus, but a pointer crossing into another monitor must follow */
+	if (ev->detail == NotifyInferior && ev->window != root && m == selmon)
+		return;
 	if (m != selmon) {
 		unfocus(selmon->sel, 1);
 		selmon = m;
@@ -1815,7 +1819,6 @@ void expose(XEvent *e) {
 }
 
 void focus(Client *c) {
-
   if (!c || !ISVISIBLE(c))
     for (c = selmon->stack; c && (!ISVISIBLE(c) || HIDDEN(c)); c = c->snext);
   if (selmon->sel && selmon->sel != c) {
