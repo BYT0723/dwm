@@ -1034,7 +1034,7 @@ void drawbar(Monitor *m) {
 
   w = TEXTW(host);
   drw_setscheme(drw, scheme[SchemeHost]);
-  x += drw_rounded(drw, x, 0, bh, tabradius, RoundedLeft);
+  drw_rounded(drw, x, 0, bh, tabradius, RoundedLeft);
   x = drw_text(drw, x, 0, w, bh, lpad, host, 0);
 
   for (i = 0; i < LENGTH(tags); i++) {

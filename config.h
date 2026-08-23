@@ -92,7 +92,7 @@ static char *colors[][3] = {
     [SchemeNorm]    = { col_white,    col_black,    col_black    },
     [SchemeSel]     = { col_blue,     col_black,    col_cyan     },
     [SchemeHid]     = { col_white,    col_ab_black, col_black    },
-		// status
+    // status
     [SchemeStatus]  = { col_black,    col_black,    col_black    },
     // systray
     [SchemeSystray] = { col_white,    col_black,    col_black    },
@@ -137,8 +137,8 @@ static const char *tags[] = { "", "", "", "", "", "", "", "
 
 static const Rule rules[] = {
     /* xprop(1):
-     *	WM_CLASS(STRING) = instance, class
-     *	WM_NAME(STRING) = title
+     * WM_CLASS(STRING) = instance, class
+     * WM_NAME(STRING) = title
      */
     /* class                instance    title     tags mask     isfloating    monitor */
     {"firefox",             NULL,       NULL,     1 << 1,       0,            -1},
@@ -192,7 +192,7 @@ static const float mfact          = 0.55; /* factor of master area size [0.05..0
 static const int   nmaster        = 1;    /* number of clients in master area */
 static const int   resizehints    = 1; /* 1 means respect size hints in tiled resizals */
 static const int   lockfullscreen = 1; /* 1 will force focus on the fullscreen window */
-static const int 	 refreshrate    = 260; /* refresh rate (per second) for client move/resize */
+static const int   refreshrate    = 120; /* refresh rate (per second) for client move/resize */
 
 #define FORCE_VSPLIT 1 /* nrowgrid layout: force two clients to always split vertically */
 #include "vanitygaps.c"
@@ -353,16 +353,16 @@ static Key keys[] = {
 static Button buttons[] = {
     /* click          event   mask     button          function argument */
     //hostname
-		{  ClkHost,       0,      Button1, spawn,          {.v = roficmd}},
- 		{  ClkHost,       0,      Button3, spawn,          {.v = powercmd}},
+    {  ClkHost,       0,      Button1, spawn,          {.v = roficmd}},
+    {  ClkHost,       0,      Button3, spawn,          {.v = powercmd}},
     // tag
     {  ClkTagBar,     0,      Button1, view,           {0}},
     {  ClkTagBar,     0,      Button3, toggleview,     {0}},
     {  ClkTagBar,     MODKEY, Button1, tag,            {0}},
     {  ClkTagBar,     MODKEY, Button3, toggletag,      {0}},
     // layout
-		{  ClkLtSymbol,   0,      Button1, setlayout,      {0}},
-		{  ClkLtSymbol,   0,      Button3, layoutmenu,     {0}},
+    {  ClkLtSymbol,   0,      Button1, setlayout,      {0}},
+    {  ClkLtSymbol,   0,      Button3, layoutmenu,     {0}},
     // task
     {  ClkWinTitle,   0,      Button1, togglewin,      {0}},
     {  ClkWinTitle,   0,      Button2, killclient,     {0}},
