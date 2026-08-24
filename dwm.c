@@ -356,6 +356,7 @@ static void seturgent(Client *c, int urg);
 static void show(const Arg *arg);
 static void showall(const Arg *arg);
 static void showhide(Client *c);
+static void unmapwindow_quiet(Client *c);
 static void showwin(Client *c);
 static void sigchld(int unused);
 static void sighup(int unused);
@@ -368,6 +369,7 @@ static int systrayredock(Window w);
 static Monitor *systraytomon(Monitor *m);
 static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
+static void settagdir(int dir);
 static void togglebar(const Arg *arg);
 static void togglefloating(const Arg *arg);
 static void tabgeometry(Monitor *m, int *tstart, int *tend);
@@ -447,6 +449,7 @@ static void (*handler[LASTEvent])(XEvent *) = {
     [ResizeRequest] = resizerequest,
     [UnmapNotify] = unmapnotify};
 static Atom wmatom[WMLast], netatom[NetLast], xatom[XLast];
+static Atom slideatom;
 static int restart = 0;
 static int running = 1;
 static Cur *cursor[CurLast];
@@ -2165,22 +2168,11 @@ void hidewin(Client *c) {
   if (!c || HIDDEN(c))
     return;
 
-  Window w = c->win;
-  static XWindowAttributes ra, ca;
-
   // more or less taken directly from blackbox's hide() function
   XGrabServer(dpy);
-  XGetWindowAttributes(dpy, root, &ra);
-  XGetWindowAttributes(dpy, w, &ca);
-  // prevent UnmapNotify events
-  XSelectInput(dpy, root, ra.your_event_mask & ~SubstructureNotifyMask);
-  XSelectInput(dpy, w, ca.your_event_mask & ~StructureNotifyMask);
-  XUnmapWindow(dpy, w);
+  unmapwindow_quiet(c); /* unmap without delivering UnmapNotify to dwm */
   setclientstate(c, IconicState);
-	// refresh tab icon after IconicState; alpha follows client state
-	updateicon(c);
-  XSelectInput(dpy, root, ra.your_event_mask);
-  XSelectInput(dpy, w, ca.your_event_mask);
+  updateicon(c); /* refresh tab icon after IconicState; alpha follows state */
   XUngrabServer(dpy);
 }
 
@@ -3103,6 +3095,7 @@ void setup(void) {
   xatom[Manager] = XInternAtom(dpy, "MANAGER", False);
   xatom[Xembed] = XInternAtom(dpy, "_XEMBED", False);
   xatom[XembedInfo] = XInternAtom(dpy, "_XEMBED_INFO", False);
+  slideatom = XInternAtom(dpy, "_DWM_SLIDE_DIR", False);
   /* init cursors */
   cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
   cursor[CurResize] = drw_cur_create(drw, XC_sizing);
@@ -3152,29 +3145,37 @@ void seturgent(Client *c, int urg) {
   XFree(wmh);
 }
 
+/* unmap a window without letting dwm treat it as destroyed: temporarily drop
+ * the event masks that would deliver UnmapNotify to dwm (mirrors hidewin) */
+static void unmapwindow_quiet(Client *c) {
+  Window w = c->win;
+  static XWindowAttributes ra, ca;
+
+  XGetWindowAttributes(dpy, root, &ra);
+  XGetWindowAttributes(dpy, w, &ca);
+  XSelectInput(dpy, root, ra.your_event_mask & ~SubstructureNotifyMask);
+  XSelectInput(dpy, w, ca.your_event_mask & ~StructureNotifyMask);
+  XUnmapWindow(dpy, w);
+  XSelectInput(dpy, root, ra.your_event_mask);
+  XSelectInput(dpy, w, ca.your_event_mask);
+}
+
 void showhide(Client *c) {
   if (!c)
     return;
   if (ISVISIBLE(c)) {
     /* show clients top down */
     XMoveWindow(dpy, c->win, c->x, c->y);
-    if ((!c->mon->lt[c->mon->sellt]->arrange || c->isfloating) &&
-        !c->isfullscreen)
+    if ((!c->mon->lt[c->mon->sellt]->arrange || c->isfloating) && !c->isfullscreen)
       resize(c, c->x, c->y, c->w, c->h, 0);
+    XMapRaised(dpy, c->win);
     showhide(c->snext);
   } else {
     /* hide clients bottom up */
     showhide(c->snext);
-
-  	static XWindowAttributes ra;
-		XGetWindowAttributes(dpy, root, &ra);
-
-    if (c->tags < selmon->tagset[selmon->seltags])
-      XMoveWindow(dpy, c->win, -c->w * 3/2, c->y);
-    else if (c->tags > selmon->tagset[selmon->seltags])
-      XMoveWindow(dpy, c->win, ra.width * 3/2, c->y);
+    unmapwindow_quiet(c);
   }
-	updateicon(c);
+  updateicon(c);
 }
 
 void sigchld(int unused) {
@@ -3996,6 +3997,25 @@ void updatewmhints(Client *c) {
   }
 }
 
+/* mark windows leaving/entering the view so picom slides them:
+   1 = slide out to the left / in from the right,
+   2 = the opposite, 0 = untouched (normal appear/disappear applies) */
+static void settagdir(int dir) {
+  unsigned int oldtagset = selmon->tagset[selmon->seltags ^ 1];
+  unsigned int newtagset = selmon->tagset[selmon->seltags];
+  Client *c;
+
+  for (c = selmon->clients; c; c = c->next) {
+    unsigned long val = 0;
+    if ((c->tags & oldtagset) && !(c->tags & newtagset))
+      val = dir;              /* leaving the view: slide out */
+    else if ((c->tags & newtagset) && !(c->tags & oldtagset))
+      val = 3 - dir;          /* entering: slide in from the other side */
+    XChangeProperty(dpy, c->win, slideatom, XA_CARDINAL, 32,
+                    PropModeReplace, (unsigned char *)&val, 1);
+  }
+}
+
 void view(const Arg *arg) {
   int i;
   unsigned int tmptag;
@@ -4032,6 +4052,10 @@ void view(const Arg *arg) {
     togglebar(NULL);
 
   selmon->tagset[selmon->seltags] = arg->ui & TAGMASK;
+
+  /* mark leaving/entering windows so picom slides them (0 = untouched) */
+  settagdir(selmon->pertag->curtag > selmon->pertag->prevtag ? 1 : 2);
+
   focus(NULL);
   arrange(selmon);
 }
