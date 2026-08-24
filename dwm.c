@@ -348,6 +348,7 @@ static void sighup(int unused);
 static void sigterm(int unused);
 static void spawn(const Arg *arg);
 static void status2dwalk(Monitor *m, char *stext, int stopx, int *x, int *cmdidx);
+static int status2d_width(Monitor *m, char *stext);
 static void statusclick(Monitor *m, int xclick, int stw, int button);
 static void systraydock(Window w);
 static int systrayredock(Window w);
@@ -1036,7 +1037,7 @@ void drawbar(Monitor *m) {
   w = blw = TEXTW(m->ltsymbol);
   drw_setscheme(drw, scheme[SchemeLayout]);
   x = drw_text(drw, x, 0, w - tabr, bh, lpad, m->ltsymbol, 0, 0);
-  x += drw_rounded(drw, x, 0, bh, tabradius, RoundedRight);
+  x += drw_rounded(drw, x, 0, bh, tabr, RoundedRight);
 
   x += tabgap;
 
@@ -1090,12 +1091,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
   text[j] = '\0';
 
   /* compute width of the status text */
-  {
-    int cmdidx;
-
-    w = 0;
-    status2dwalk(m, text, INT_MAX, &w, &cmdidx);
-  }
+  w = status2d_width(m, text);
   iscode = 0;
   text = textbuf;
 
@@ -1259,7 +1255,7 @@ int drawtabs(Monitor *m, int x, int w, int n) {
       cxx = x + tabr;
       contentw = tabw - tabr * 2;
       minpad = 0;
-      drw_rounded(drw, x, 0, bh, tabradius, RoundedLeft);
+      drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
     }
     if (c->icon && contentw - minpad >= (int)(c->icw + ICONSPACING)) {
       cx = MAX(minpad, (contentw - tw - (int)(c->icw + ICONSPACING)) / 2);
@@ -1270,7 +1266,7 @@ int drawtabs(Monitor *m, int x, int w, int n) {
       drw_text(drw, cxx, 0, contentw, bh, cx, text, 0, 0);
     }
     if (tabradius > 0)
-      drw_rounded(drw, x + tabw - tabr, 0, bh, tabradius, RoundedRight);
+      drw_rounded(drw, x + tabw - tabr, 0, bh, tabr, RoundedRight);
 
     // floating marker
     if (c->isfloating)
@@ -3226,6 +3222,30 @@ void statusclick(Monitor *m, int xclick, int stw, int button) {
   statuscmdn = cmdidx;
 }
 
+/* advance past the status2d code at *s and return its horizontal
+   advance ('f' digits, ')' tabgap); other codes advance 0 */
+static int status2d_advance(char **s) {
+  int adv = 0;
+  char *p = *s;
+
+  if (*p == 'f') {
+    adv = atoi(p + 1);
+    while (p[1] && p[1] != '^')
+      p++;
+    *s = p;
+  } else if (*p == ')' && tabradius > 0)
+    adv = (int)tabgap;
+  return adv;
+}
+
+/* total drawn width of a status2d text */
+static int status2d_width(Monitor *m, char *stext) {
+  int w = 0, cmdidx;
+
+  status2dwalk(m, stext, INT_MAX, &w, &cmdidx);
+  return w;
+}
+
 /* walk the status2d segments of stext, adding each segment's width to
    *x until *x reaches stopx (INT_MAX for the total width). Records the
    last statuscmd index in *cmdidx. On portrait monitors drawstatusbar
@@ -3261,18 +3281,10 @@ void status2dwalk(Monitor *m, char *stext, int stopx, int *x, int *cmdidx) {
     }
     if (isCode) {
       /* only the first char after '^' is the code identifier */
-      if (s == text && *s == 'f') {
-        *x += atoi(s + 1);
-        while (s[1] && s[1] != '^')
-          s++;
-        continue;
-      }
-      if (s == text && tabradius > 0 && (*s == '(' || *s == ')')) {
-        if (*s == ')')
-          *x += tabgap;
+      if (s == text && (*s == 'f' || *s == '(' || *s == ')')) {
+        *x += status2d_advance(&s);
         if (*x >= stopx)
           break;
-        continue;
       }
       continue;
     }
@@ -3708,23 +3720,9 @@ void updatesizehints(Client *c) {
 }
 
 void updatestatus(void) {
-  if (!gettextprop(root, XA_WM_NAME, stext, sizeof(stext))) {
+  if (!gettextprop(root, XA_WM_NAME, stext, sizeof(stext)))
     strcpy(stext, "dwm-" VERSION);
-    statusw = TEXTW(stext);
-  } else {
-    char *text, *s, ch;
-    statusw = 0;
-    for (text = s = stext; *s; s++) {
-      if ((unsigned char)(*s) < ' ') {
-        ch = *s;
-        *s = '\0';
-        statusw += TEXTW(text);
-        *s = ch;
-        text = s + 1;
-      }
-    }
-    statusw += TEXTW(text);
-  }
+  statusw = status2d_width(selmon, stext) + 2 * sp;
   drawbar(selmon);
 }
 
