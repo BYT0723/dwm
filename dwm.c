@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <ctype.h>
 #include <sys/stat.h>
 #include <limits.h>
 #include <stdint.h>
@@ -69,21 +70,6 @@
 #define HEIGHT(X) ((X)->h + 2 * (X)->bw)
 #define TAGMASK ((1 << LENGTH(tags)) - 1)
 #define TEXTW(X) (drw_fontset_getwidth(drw, (X)) + lrpad)
-#define XRDB_LOAD_COLOR(R,V)    if (XrmGetResource(xrdb, R, NULL, &type, &value) == True) { \
-                                  if (value.addr != NULL && strnlen(value.addr, 8) == 7 && value.addr[0] == '#') { \
-                                    int i = 1; \
-                                    for (; i <= 6; i++) { \
-                                      if (value.addr[i] < 48) break; \
-                                      if (value.addr[i] > 57 && value.addr[i] < 65) break; \
-                                      if (value.addr[i] > 70 && value.addr[i] < 97) break; \
-                                      if (value.addr[i] > 102) break; \
-                                    } \
-                                    if (i == 7) { \
-                                      strncpy(V, value.addr, 7); \
-                                      V[7] = '\0'; \
-                                    } \
-                                  } \
-                                }
 #define INMON(m, x, y) \
     ((m) && \
      (x) >= (m)->mx && (x) < (m)->mx + (m)->mw && \
@@ -427,6 +413,7 @@ static int lrpad;       /* sum of left and right padding for text */
 static int lpad;        /* left padding for text, equal lrpad/2  */
 static int vp;          /* vertical padding for bar */
 static int sp;          /* side padding for bar */
+static int tabr;        /* bar tab corner radius */
 static int (*xerrorxlib)(Display *, XErrorEvent *);
 static unsigned int numlockmask = 0;
 static void (*handler[LASTEvent])(XEvent *) = {
@@ -1034,8 +1021,8 @@ void drawbar(Monitor *m) {
 
   w = TEXTW(host);
   drw_setscheme(drw, scheme[SchemeHost]);
-  drw_rounded(drw, x, 0, bh, tabradius, RoundedLeft);
-  x = drw_text(drw, x, 0, w, bh, lpad, host, 0);
+  drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
+  x = drw_text(drw, x, 0, w, bh, lpad, host, 0, 1);
 
   for (i = 0; i < LENGTH(tags); i++) {
     /* Do not draw vacant tags */
@@ -1043,13 +1030,12 @@ void drawbar(Monitor *m) {
       continue;
     w = TEXTW(tags[i]);
     drw_setscheme(drw, scheme[m->tagset[m->seltags] & 1 << i ? SchemeTagSel : SchemeTagNorm]);
-    drw_text(drw, x, 0, w, bh, lpad, tags[i], urg & 1 << i);
+    drw_text(drw, x, 0, w, bh, lpad, tags[i], urg & 1 << i,0);
     x += w;
   }
   w = blw = TEXTW(m->ltsymbol);
   drw_setscheme(drw, scheme[SchemeLayout]);
-  int r = MIN(tabradius, bh / 2);
-  x = drw_text(drw, x, 0, w - r, bh, lpad, m->ltsymbol, 0);
+  x = drw_text(drw, x, 0, w - tabr, bh, lpad, m->ltsymbol, 0, 0);
   x += drw_rounded(drw, x, 0, bh, tabradius, RoundedRight);
 
   x += tabgap;
@@ -1072,9 +1058,22 @@ void drawbars(void) {
     updatesystray(0);
 }
 
+/* 1 if s is an "#RRGGBB" color string */
+static int ishexcolor(const char *s) {
+  int i;
+
+  if (!s || s[0] != '#' || strnlen(s, 8) != 7)
+    return 0;
+  for (i = 1; i < 7; i++)
+    if (!isxdigit((unsigned char)s[i]))
+      return 0;
+  return 1;
+}
+
 int drawstatusbar(Monitor *m, int bh, char *stext) {
-  int ret, i, j, w, x;
-  short isCode = 0;
+  int ret, i, j, w, x, stw;
+  short iscode = 0;
+  int radiusnext = 0;
   char *text;
   char textbuf[1024];
 
@@ -1097,82 +1096,90 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
     w = 0;
     status2dwalk(m, text, INT_MAX, &w, &cmdidx);
   }
-  isCode = 0;
+  iscode = 0;
   text = textbuf;
 
   ret = m->ww - w - 2 * sp;
-	x = systraytomon(m) == selmon ? ret-getsystraywidth() : ret;
+  stw = systraytomon(m) == selmon ? getsystraywidth() : 0;
+  x = ret - stw;
 
   drw_setscheme(drw, scheme[LENGTH(colors)]);
   drw->scheme[ColFg] = scheme[SchemeEmpty][ColFg];
   drw->scheme[ColBg] = scheme[SchemeEmpty][ColBg];
-  drw_rect(drw, x, 0, w + getsystraywidth(), bh, 1, 1);
+  drw_rect(drw, x, 0, w + stw, bh, 1, 1);
 
   /* process status text */
   i = -1;
   while (text[++i]) {
-    if (text[i] == '^' && !isCode) {
-      isCode = 1;
+    if (text[i] == '^' && !iscode) {
+      iscode = 1;
 
       text[i] = '\0';
       if (strlen(text) > 0) {
         w = TEXTW(text);
-        drw_text(drw, x, 0, w, bh, lpad, text, 0);
+        drw_text(drw, x, 0, w, bh, lpad, text, 0, radiusnext);
+        radiusnext = 0;
         x += w;
       }
 
-      /* process code */
-      while (text[++i] != '^') {
-        if (text[i] == 'c') {
+      /* process code; stop at the closing '^' or at the end of the
+       * string (an unterminated code must not read past the buffer) */
+      while (text[++i] && text[i] != '^') {
+        if (text[i] == 'c' || text[i] == 'b') {
           char buf[8];
           int n = 0;
           while (n < 7 && (text + i + 1)[n] && (text + i + 1)[n] != '^')
             n++;
           memcpy(buf, (char *)text + i + 1, n);
           buf[n] = '\0';
-          drw_clr_create(drw, &drw->scheme[ColFg], buf, alphas[SchemeStatus][0]);
-          i += n;
-        } else if (text[i] == 'b') {
-          char buf[8];
-          int n = 0;
-          while (n < 7 && (text + i + 1)[n] && (text + i + 1)[n] != '^')
-            n++;
-          memcpy(buf, (char *)text + i + 1, n);
-          buf[n] = '\0';
-          drw_clr_create(drw, &drw->scheme[ColBg], buf, alphas[SchemeStatus][1]);
+          if (ishexcolor(buf))
+            drw_clr_create(drw, &drw->scheme[text[i] == 'c' ? ColFg : ColBg],
+                           buf, alphas[SchemeStatus][text[i] == 'c' ? 0 : 1]);
           i += n;
         } else if (text[i] == 'd') {
           drw->scheme[ColFg] = scheme[SchemeStatus][ColFg];
           drw->scheme[ColBg] = scheme[SchemeStatus][ColBg];
         } else if (text[i] == 'r') {
-          int rx = atoi(text + ++i);
-          while (text[++i] != ',');
-          int ry = atoi(text + ++i);
-          while (text[++i] != ',');
-          int rw = atoi(text + ++i);
-          while (text[++i] != ',');
-          int rh = atoi(text + ++i);
+          int rx, ry, rw, rh;
+
+          rx = atoi(text + ++i);
+          while (text[i] && text[i] != ',')
+            i++;
+          ry = text[i] ? atoi(text + ++i) : 0;
+          while (text[i] && text[i] != ',')
+            i++;
+          rw = text[i] ? atoi(text + ++i) : 0;
+          while (text[i] && text[i] != ',')
+            i++;
+          rh = text[i] ? atoi(text + ++i) : 0;
 
           drw_rect(drw, rx + x, ry, rw, rh, 1, 0);
         } else if (text[i] == 'f')
           x += atoi(text + ++i);
         else if (text[i] == '(' && tabradius > 0) {
-          x += drw_rounded(drw, x, 0, bh, tabradius, RoundedLeft);
+          drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
+          radiusnext++;
         } else if (text[i] == ')' && tabradius > 0) {
-          x += drw_rounded(drw, x, 0, bh, tabradius, RoundedRight);
+          drw_setscheme(drw, scheme[SchemeEmpty]);
+          drw_rect(drw, x-tabr, 0, tabr, bh, 1, 1);
+          drw_setscheme(drw, scheme[SchemeStatus]);
+          drw_rounded(drw, x-tabr, 0, bh, tabr, RoundedRight);
           x += tabgap;
         }
       }
 
+      if (!text[i])
+        break; /* unterminated code: drop the rest of the text */
+
       text = text + i + 1;
       i = -1;
-      isCode = 0;
+      iscode = 0;
     }
   }
 
-  if (!isCode) {
+  if (!iscode) {
     w = TEXTW(text);
-    drw_text(drw, x, 0, w, bh, lpad, text, 0);
+    drw_text(drw, x, 0, w, bh, lpad, text, 0, 0);
   }
 
   drw_setscheme(drw, scheme[SchemeNorm]);
@@ -1238,44 +1245,36 @@ int drawtabs(Monitor *m, int x, int w, int n) {
     if (highlight)
       drw_setfontset(drw, fonts_highlight_set);
 
-    if (remainder >= 0) {
-      if (remainder == 0)
-        tabw--;
-      remainder--;
-    }
+    if (remainder == 0)
+      tabw--;
+    remainder--;
 
     tabtext_expand(c, text, sizeof(text));
     tw = TEXTW(text) - lrpad;
 
+    /* content area: the rounded-cap branch insets it by the cap radius;
+       icon+text are centered inside it, minpad is the left stop */
+    int cxx = x, contentw = tabw, minpad = (int)lpad;
     if (tabradius > 0) {
-      int r = MIN(tabradius, bh / 2);
-      int diam = r * 2;
+      cxx = x + tabr;
+      contentw = tabw - tabr * 2;
+      minpad = 0;
       drw_rounded(drw, x, 0, bh, tabradius, RoundedLeft);
-
-      if (c->icon && tabw-diam >= c->icw + ICONSPACING) {
-        cx = MAX(0, ((int)(tabw - diam) - tw - (int)(c->icw + ICONSPACING)) / 2);
-        drw_text(drw, x+r, 0, tabw-diam, bh, cx + c->icw + ICONSPACING, text, 0);
-        drw_pic(drw, x + r + cx, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
-      } else {
-        cx = MAX(0, ((int)(tabw - diam) - tw) / 2);
-        drw_text(drw, x+r, 0, tabw-diam, bh, cx, text, 0);
-      }
-
-      drw_rounded(drw, x + tabw - r, 0, bh, tabradius, RoundedRight);
-    } else {
-      if (c->icon && tabw-lrpad >= c->icw + ICONSPACING) {
-        cx = MAX((int)lpad, ((int)tabw - tw - (int)(c->icw + ICONSPACING)) / 2);
-        drw_text(drw, x, 0, tabw, bh, cx + c->icw + ICONSPACING, text, 0);
-        drw_pic(drw, x + cx, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
-      } else {
-        cx = MAX((int)lpad, ((int)tabw - tw) / 2);
-        drw_text(drw, x, 0, tabw, bh, cx, text, 0);
-      }
     }
+    if (c->icon && contentw - minpad >= (int)(c->icw + ICONSPACING)) {
+      cx = MAX(minpad, (contentw - tw - (int)(c->icw + ICONSPACING)) / 2);
+      drw_text(drw, cxx, 0, contentw, bh, cx + c->icw + ICONSPACING, text, 0, 0);
+      drw_pic(drw, cxx + cx, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
+    } else {
+      cx = MAX(minpad, (contentw - tw) / 2);
+      drw_text(drw, cxx, 0, contentw, bh, cx, text, 0, 0);
+    }
+    if (tabradius > 0)
+      drw_rounded(drw, x + tabw - tabr, 0, bh, tabradius, RoundedRight);
 
     // floating marker
     if (c->isfloating)
-      drw_rect(drw, x + tabw - tabradius - boxw, (bh-boxw)/2, boxw, boxw, c->isfixed, 0);
+      drw_rect(drw, x + tabw - tabr - boxw, (bh-boxw)/2, boxw, boxw, c->isfixed, 0);
     if (highlight)
       drw_setfontset(drw, fonts_set);
     x += tabw + (int)tabgap;
@@ -1524,7 +1523,7 @@ static void hovershow(Client *c, int tx) {
   y = hoverpad + ph + hovergap;
   if (fonts_highlight_set)
     drw_setfontset(tooldrw, fonts_highlight_set);
-  drw_text(tooldrw, hoverpad, y, iw, lh, 0, titlebuf, 0);
+  drw_text(tooldrw, hoverpad, y, iw, lh, 0, titlebuf, 0, 0);
   drw_setfontset(tooldrw, fonts_set);
 
   drw_map(tooldrw, toolwin, 0, 0, tw, th);
@@ -1560,7 +1559,7 @@ static void hoverpreview(Client *c, int x, int y, int w, int h) {
       return;
     }
     drw_text(tooldrw, x, y + (h - drw->fonts->h) / 2, w, drw->fonts->h, 0,
-             "no preview", 0);
+             "no preview", 0, 0);
     return;
   }
 
@@ -2232,28 +2231,36 @@ void killclient(const Arg *arg) {
   }
 }
 
-void loadxrdb() {
-  char *resm;
-  XrmDatabase xrdb;
+/* copy an "#RRGGBB" resource value into dest; invalid values are ignored */
+static void xrdb_color(XrmDatabase xrdb, const char *name, char *dest) {
   char *type;
   XrmValue value;
 
-  resm = XResourceManagerString(dpy);
+  if (XrmGetResource(xrdb, name, NULL, &type, &value) != True ||
+      !ishexcolor(value.addr))
+    return;
+  strncpy(dest, value.addr, 7);
+  dest[7] = '\0';
+}
 
-  if (resm != NULL) {
-    xrdb = XrmGetStringDatabase(resm);
-    if (xrdb != NULL) {
-      XRDB_LOAD_COLOR("dwm.col_black", col_black);
-      XRDB_LOAD_COLOR("dwm.col_red", col_red);
-      XRDB_LOAD_COLOR("dwm.col_green", col_green);
-      XRDB_LOAD_COLOR("dwm.col_yellow", col_yellow);
-      XRDB_LOAD_COLOR("dwm.col_blue", col_blue);
-      XRDB_LOAD_COLOR("dwm.col_magenta", col_magenta);
-      XRDB_LOAD_COLOR("dwm.col_cyan", col_cyan);
-      XRDB_LOAD_COLOR("dwm.col_white", col_white);
-      XrmDestroyDatabase(xrdb);
-    }
-  }
+void loadxrdb() {
+  XrmDatabase xrdb;
+  char *resm = XResourceManagerString(dpy);
+
+  if (resm == NULL)
+    return;
+  xrdb = XrmGetStringDatabase(resm);
+  if (xrdb == NULL)
+    return;
+  xrdb_color(xrdb, "dwm.col_black", col_black);
+  xrdb_color(xrdb, "dwm.col_red", col_red);
+  xrdb_color(xrdb, "dwm.col_green", col_green);
+  xrdb_color(xrdb, "dwm.col_yellow", col_yellow);
+  xrdb_color(xrdb, "dwm.col_blue", col_blue);
+  xrdb_color(xrdb, "dwm.col_magenta", col_magenta);
+  xrdb_color(xrdb, "dwm.col_cyan", col_cyan);
+  xrdb_color(xrdb, "dwm.col_white", col_white);
+  XrmDestroyDatabase(xrdb);
 }
 
 
@@ -2925,14 +2932,10 @@ void setfocus(Client *c) {
             CurrentTime, 0, 0, 0);
 }
 
-Layout *last_layout;
+static const Layout *last_layout;
 void fullscreen(const Arg *arg) {
   if (selmon->showbar) {
-    for (last_layout = (Layout *)layouts;
-         last_layout != selmon->lt[selmon->sellt] &&
-         (unsigned int)(last_layout - (Layout *)layouts) < LENGTH(layouts);
-         last_layout++)
-      ;
+    last_layout = selmon->lt[selmon->sellt];
     setlayout(&((Arg){.v = &layouts[2]}));
   } else {
     setlayout(&((Arg){.v = last_layout}));
@@ -3049,6 +3052,7 @@ void setup(void) {
 	/* lpad = lrpad/2; */
 	lpad = drw->fonts->h/2;
 	lrpad = lpad * 2;
+  tabr = MIN(tabradius, lpad);
 
   bh = drw->fonts->h + barfontpad * 2;
   sp = sidepad;
@@ -3264,7 +3268,6 @@ void status2dwalk(Monitor *m, char *stext, int stopx, int *x, int *cmdidx) {
         continue;
       }
       if (s == text && tabradius > 0 && (*s == '(' || *s == ')')) {
-        *x += tabradius;
         if (*s == ')')
           *x += tabgap;
         if (*x >= stopx)
@@ -3348,9 +3351,7 @@ void togglebar(const Arg *arg) {
   selmon->showbar = selmon->pertag->showbars[selmon->pertag->curtag] =
       !selmon->showbar;
   updatebarpos(selmon);
-  XMoveResizeWindow(dpy, selmon->barwin, selmon->wx + sp, selmon->by + vp,
-                  selmon->ww - 2 * sp -
-                  (systraytomon(selmon) == selmon ? getsystraywidth() : 0), bh);
+  resizebarwin(selmon);
   if (showsystray) {
     XWindowChanges wc;
     if (!selmon->showbar)

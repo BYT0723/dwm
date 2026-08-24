@@ -72,9 +72,6 @@ Drw *drw_create(Display *dpy, int screen, Window root, unsigned int w,
   drw->visual = visual;
   drw->depth = depth;
   drw->cmap = cmap;
-  drw->visual = visual;
-  drw->depth = depth;
-  drw->cmap = cmap;
   drw->drawable = XCreatePixmap(dpy, root, w, h, depth);
   drw->picture = XRenderCreatePicture(
       dpy, drw->drawable, XRenderFindVisualFormat(dpy, visual), 0, NULL);
@@ -489,8 +486,7 @@ int drw_rounded(Drw *drw, int x, int y, unsigned int h, int radius, int side) {
   return r;
 }
 
-int drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h,
-             unsigned int lpad, const char *text, int invert) {
+int drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h, unsigned int lpad, const char *text, int invert, int skip_pad) {
   int i, ty, ellipsis_x = 0;
   unsigned int tmpw, ew, ellipsis_w = 0, ellipsis_len;
   XftDraw *d = NULL;
@@ -522,9 +518,12 @@ int drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h,
     if (w < lpad) {
       return x + w;
     }
-    XFillRectangle(drw->dpy, drw->drawable, drw->gc, x, y, w, h);
+    if (skip_pad)
+      x += lpad;
+    XFillRectangle(drw->dpy, drw->drawable, drw->gc, x, y, skip_pad?w-lpad:w, h);
     d = XftDrawCreate(drw->dpy, drw->drawable, drw->visual, drw->cmap);
-    x += lpad;
+    if (!skip_pad)
+      x += lpad;
     w -= lpad;
   }
 
@@ -587,7 +586,7 @@ int drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h,
       w -= ew;
     }
     if (render && overflow)
-      drw_text(drw, ellipsis_x, y, ellipsis_w, h, 0, "...", invert);
+      drw_text(drw, ellipsis_x, y, ellipsis_w, h, 0, "...", invert, 0);
 
     if (!*text || overflow) {
       break;
@@ -667,14 +666,14 @@ void drw_map(Drw *drw, Window win, int x, int y, unsigned int w,
 unsigned int drw_fontset_getwidth(Drw *drw, const char *text) {
   if (!drw || !drw->fonts || !text)
     return 0;
-  return drw_text(drw, 0, 0, 0, 0, 0, text, 0);
+  return drw_text(drw, 0, 0, 0, 0, 0, text, 0, 0);
 }
 
 unsigned int drw_fontset_getwidth_clamp(Drw *drw, const char *text,
                                         unsigned int n) {
   unsigned int tmp = 0;
   if (drw && drw->fonts && text && n)
-    tmp = drw_text(drw, 0, 0, 0, 0, 0, text, n);
+    tmp = drw_text(drw, 0, 0, 0, 0, 0, text, n, 0);
   return MIN(n, tmp);
 }
 

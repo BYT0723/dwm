@@ -38,8 +38,8 @@ static const unsigned int previewborder  = 2;   /* px highlight border around th
 
 static const unsigned int gappih    = 6;
 static const unsigned int gappiv    = 6;
-static const unsigned int gappoh    = 6;
-static const unsigned int gappov    = 6;
+static const unsigned int gappoh    = 12;
+static const unsigned int gappov    = 12;
 static                int smartgaps = 0;   /* 1 means no outer gap when there is only one window */
 
 static const unsigned int systraypinning          = 0;  /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
@@ -96,10 +96,10 @@ static char *colors[][3] = {
     [SchemeStatus]  = { col_black,    col_black,    col_black    },
     // systray
     [SchemeSystray] = { col_white,    col_black,    col_black    },
-    // empty
-    [SchemeEmpty]   = { col_ab_black, col_ab_black, col_black    },
     // hover tooltip
     [SchemeTooltip] = { col_blue,     col_black,    col_cyan     },
+    // empty
+    [SchemeEmpty]   = { col_ab_black, col_ab_black, col_black    },
 };
 
 #define OPAQUE        0xffU
@@ -125,10 +125,10 @@ static const unsigned int alphas[][3]      = {
     [SchemeStatus]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     // systray
     [SchemeSystray] = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
-    // empty
-    [SchemeEmpty]   = { TRANSPARENT, TRANSPARENT,      TRANSPARENT },
     // hover tooltip
     [SchemeTooltip] = { OPAQUE,      TAB_SEL_BG_ALPHA, OPAQUE      },
+    // empty
+    [SchemeEmpty]   = { TRANSPARENT, TRANSPARENT,      TRANSPARENT },
 };
 
 /* tagging */
