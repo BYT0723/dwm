@@ -22,7 +22,7 @@ static const          char host[]      = "";
 #define TAB_CUSTOM_WIDTH 0x02
 
 static const unsigned int tabstyle    = TAB_CENTER | TAB_CUSTOM_WIDTH;
-static const unsigned int tabwidth    = 24;
+static const unsigned int tabwidth    = 20;
 static const char         tabtext[]   = "{title}"; /* tab text template; placeholders: {title}, {class} */
 static const unsigned int tabradius   = 8;
 static const unsigned int tabgap      = 4;
@@ -59,15 +59,15 @@ static const int jump_on_activate = 1; /* 1 = _NET_ACTIVE_WINDOW (e.g. rofi -sho
 #define ICONSIZE (bh - 2) /* or adaptively preserve 2 pixels each side */
 #define ICONSPACING 6 /* space between icon and title */
 static const char *fonts[] = {
-    "Symbols Nerd Font Mono:pixelsize=16:antialias=true;autohint=true",
-    "CaskaydiaCove Nerd Font:pixelsize=16:antialias=true;autohint=true",
-    "Noto Sans Mono CJK SC:pixelsize=16:antialias=true;autohint=true",
+    "Symbols Nerd Font Mono:pixelsize=14:antialias=true;autohint=true",
+    "CaskaydiaCove Nerd Font:pixelsize=14:antialias=true;autohint=true",
+    "Noto Sans Mono CJK SC:pixelsize=14:antialias=true;autohint=true",
 };
 
 static const char *fonts_highlight[] = {
-    "Symbols Nerd Font Mono:pixelsize=16:antialias=true;autohint=true",
-    "CaskaydiaCove Nerd Font:pixelsize=16:weight=bold:slant=italic:antialias=true;autohint=true",
-    "Noto Sans Mono CJK SC:pixelsize=16:weight=bold:antialias=true;autohint=true",
+    "Symbols Nerd Font Mono:pixelsize=14:antialias=true;autohint=true",
+    "CaskaydiaCove Nerd Font:pixelsize=14:weight=bold:slant=italic:antialias=true;autohint=true",
+    "Noto Sans Mono CJK SC:pixelsize=14:weight=bold:antialias=true;autohint=true",
 };
 
 static char col_black[]    = "#073642";  /*  0: black    */
@@ -132,8 +132,10 @@ static const unsigned int alphas[][3]      = {
 };
 
 /* tagging */
-static const char *tags[] = {"dev(1)", "web(2)", "chat(3)", "util(4)", "misc(5)", "dl(6)", "vid(7)", "mus(8)", "game(9)"};
-// static const char *tags[] = {"", "", "󰭹", "", "", "", "", "", ""};
+/* tags[] only defines the number of tags (TAGMASK depends on LENGTH(tags)); its text is not rendered. */
+static const char tagtext[] = "{icon} {name}"; /* tag text template; placeholders: {name}, {icon}, {index} */
+static const char *tags[] = {"", "", "󰭹", "", "", "", "", "", ""};
+static const char *tag_names[] = {"dev", "web", "chat", "util", "misc", "dl", "vid", "mus", "game"};
 
 static const Rule rules[] = {
     /* xprop(1):
@@ -166,7 +168,7 @@ static const Rule rules[] = {
     {"heroic",              NULL,       NULL,     1 << 8,       0,            -1},
 
     // all tags
-    {"bilichat-tui",        NULL,       NULL,     (1<<10)-1,      1,            -1},
+    {"bilichat-tui",        NULL,       NULL,     (1<<10)-1,    1,            -1},
 
     // other only floating
     {"float-term",          NULL,       NULL,     0,            1,            -1},
@@ -230,55 +232,32 @@ static const Layout layouts[] = {
     {SUPKEY, KEY, previewtag, {.ui = TAG}},
 
 /* helper for spawning shell commands in the pre dwm-5.0 fashion */
-#define SHCMD(cmd)                                                             \
-  {                                                                            \
-    .v = (const char *[]) { "/bin/sh", "-c", cmd, NULL }                       \
-  }
+#define SHCMD(cmd) { .v = (const char *[]) { "/bin/sh", "-c", cmd, NULL } }
+#define LAUNCHCMD(...) { .v = (const char *[]) { "/bin/sh", "-c", "$HOME/.dwm/dwm-launcher.sh \"$@\"", "dwm-launcher", __VA_ARGS__, NULL } }
 
-/* commands */
-static const char *termcmd[]         = {"./.dwm/dwm-launcher.sh",     "term",       NULL};
-static const char *floatcmd[]        = {"./.dwm/dwm-launcher.sh",     "term",       "float", NULL};
-static const char *fmcmd[]           = {"./.dwm/dwm-launcher.sh",     "fm",         NULL};
-static const char *roficmd[]         = {"./.dwm/dwm-launcher.sh",     "apps",       NULL};
-static const char *windowscmd[]      = {"./.dwm/dwm-launcher.sh",     "windows",    NULL};
-static const char *powercmd[]        = {"./.dwm/dwm-launcher.sh",     "powermenu",  NULL};
-static const char *mpdcmd[]          = {"./.dwm/dwm-launcher.sh",     "mpd",        NULL};
-static const char *modulecmd[]       = {"./.dwm/dwm-launcher.sh",     "modules",    NULL};
-static const char *wallpapercmd[]    = {"./.dwm/dwm-launcher.sh",     "wallpaper",  NULL};
-static const char *screenshotmenu[]  = {"./.dwm/dwm-launcher.sh",     "screenshot", NULL};
-static const char *screenshotarea[]  = {"./.dwm/dwm-launcher.sh",     "screenshot", "pure", NULL};
-static const char *screencast[]      = {"./.dwm/dwm-launcher.sh",     "screencast", NULL};
-static const char *vol_up[]          = {"./.dwm/tools/volume.sh",     "up",         NULL};
-static const char *vol_down[]        = {"./.dwm/tools/volume.sh",     "down",       NULL};
-static const char *vol_toggle[]      = {"./.dwm/tools/volume.sh",     "toggle",     NULL};
-static const char *brightness_up[]   = {"./.dwm/tools/brightness.sh", "up",         NULL};
-static const char *brightness_down[] = {"./.dwm/tools/brightness.sh", "down",       NULL};
 // don't change or surround it by {}
-static const char *layoutmenu_cmd   = "./.dwm/dwm-layoutmenu.sh";
-// status click event command
-static const char *statuscmd[] = {"/bin/sh", "-c", "./.dwm/dwm-statuscmd.sh $INDEX $BUTTON", NULL};
+static const char *layoutmenu_cmd   = "$HOME/.dwm/dwm-layoutmenu.sh";
 
 static Key keys[] = {
-    /* modifier                     key         function        argument */
-    // custom shell script
-    {MODKEY,                       XK_Return,                spawn,          {.v = termcmd}},
-    {MODKEY,                       XK_n,                     spawn,          {.v = floatcmd}},
-    {MODKEY,                       XK_e,                     spawn,          {.v = fmcmd}},
-    {MODKEY,                       XK_w,                     spawn,          {.v = windowscmd}},
-    {MODKEY,                       XK_a,                     spawn,          {.v = screenshotarea}},
-    {MODKEY|ShiftMask,             XK_a,                     spawn,          {.v = screenshotmenu}},
-    {MODKEY|ShiftMask,             XK_r,                     spawn,          {.v = screencast}},
-    {0,                            XF86XK_AudioLowerVolume,  spawn,          {.v = vol_down}},
-    {0,                            XF86XK_AudioRaiseVolume,  spawn,          {.v = vol_up}},
-    {0,                            XF86XK_AudioMute,         spawn,          {.v = vol_toggle}},
-    {0,                            XF86XK_MonBrightnessDown, spawn,          {.v = brightness_down}},
-    {0,                            XF86XK_MonBrightnessUp,   spawn,          {.v = brightness_up}},
+    /* modifier                    key                       function        argument */
+    {MODKEY,                       XK_Return,                spawn,          LAUNCHCMD("term")},
+    {MODKEY,                       XK_n,                     spawn,          LAUNCHCMD("term", "float")},
+    {MODKEY,                       XK_e,                     spawn,          LAUNCHCMD("fm")},
+    {0,                            XF86XK_AudioLowerVolume,  spawn,          SHCMD("$HOME/.dwm/tools/volume.sh down")},
+    {0,                            XF86XK_AudioRaiseVolume,  spawn,          SHCMD("$HOME/.dwm/tools/volume.sh up")},
+    {0,                            XF86XK_AudioMute,         spawn,          SHCMD("$HOME/.dwm/tools/volume.sh toggle")},
+    {0,                            XF86XK_MonBrightnessDown, spawn,          SHCMD("$HOME/.dwm/tools/brightness.sh down")},
+    {0,                            XF86XK_MonBrightnessUp,   spawn,          SHCMD("$HOME/.dwm/tools/brightness.sh up")},
     // rofi
-    {MODKEY,                       XK_d,                     spawn,          {.v = roficmd}},
-    {MODKEY,                       XK_m,                     spawn,          {.v = modulecmd}},
-    {MODKEY|ShiftMask,             XK_w,                     spawn,          {.v = wallpapercmd}},
-    {MODKEY|ShiftMask,             XK_m,                     spawn,          {.v = mpdcmd}},
-    {MODKEY|ControlMask,           XK_m,                     spawn,          {.v = powercmd}},
+    {MODKEY,                       XK_w,                     spawn,          LAUNCHCMD("windows")},
+    {MODKEY,                       XK_a,                     spawn,          LAUNCHCMD("screenshot", "pure")},
+    {MODKEY|ShiftMask,             XK_a,                     spawn,          LAUNCHCMD("screenshot")},
+    {MODKEY|ShiftMask,             XK_r,                     spawn,          LAUNCHCMD("screencast")},
+    {MODKEY,                       XK_d,                     spawn,          LAUNCHCMD("apps")},
+    {MODKEY,                       XK_m,                     spawn,          LAUNCHCMD("modules")},
+    {MODKEY|ShiftMask,             XK_w,                     spawn,          LAUNCHCMD("wallpaper")},
+    {MODKEY|ShiftMask,             XK_m,                     spawn,          LAUNCHCMD("mpd")},
+    {MODKEY|ControlMask,           XK_m,                     spawn,          LAUNCHCMD("powermenu")},
     // layout
     {MODKEY,                       XK_t,                     setlayout,      {.v = &layouts[0]}},
     {MODKEY,                       XK_f,                     setlayout,      {.v = &layouts[1]}},
@@ -351,13 +330,16 @@ static Key keys[] = {
     PREVIEWTAGKEYS(XK_9, 8)
 };
 
+// status click event command
+static const char *statuscmd[] = {"/bin/sh", "-c", "$HOME/.dwm/dwm-statuscmd.sh $INDEX $BUTTON", NULL};
+
 /* button definitions */
 /* click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
 static Button buttons[] = {
     /* click          event   mask     button          function argument */
     //hostname
-    {  ClkHost,       0,      Button1, spawn,          {.v = roficmd}},
-    {  ClkHost,       0,      Button3, spawn,          {.v = powercmd}},
+    {  ClkHost,       0,      Button1, spawn,          LAUNCHCMD("apps")},
+    {  ClkHost,       0,      Button3, spawn,          LAUNCHCMD("powermenu")},
     // tag
     {  ClkTagBar,     0,      Button1, view,           {0}},
     {  ClkTagBar,     0,      Button3, toggleview,     {0}},

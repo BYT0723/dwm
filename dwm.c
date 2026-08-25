@@ -366,6 +366,10 @@ static void previewtag(const Arg *arg);
 static void showtagpreview(unsigned int i);
 static void takepreview(void);
 static int tagshover(Monitor *m, int x);
+static int tagtextw(unsigned int i);
+typedef const char *(*template_resolve)(const char *f, size_t *plen, void *ctx);
+static void template_expand(const char *fmt, template_resolve resolve, void *ctx, char *buf, size_t len);
+static const char *tag_placeholder(const char *f, size_t *plen, void *ctx);
 static void toggletag(const Arg *arg);
 static void toggleview(const Arg *arg);
 static void togglewin(const Arg *arg);
@@ -472,8 +476,7 @@ struct Pertag {
   int nmasters[LENGTH(tags) + 1];        /* number of windows in master area */
   float mfacts[LENGTH(tags) + 1];        /* mfacts per tag */
   unsigned int sellts[LENGTH(tags) + 1]; /* selected layouts */
-  const Layout
-      *ltidxs[LENGTH(tags) + 1][2];    /* matrix of tags and layouts indexes  */
+  const Layout *ltidxs[LENGTH(tags) + 1][2];    /* matrix of tags and layouts indexes  */
   int showbars[LENGTH(tags) + 1];      /* display bar for the current tag */
 };
 
@@ -652,7 +655,7 @@ void buttonpress(XEvent *e) {
       /* Do not reserve space for vacant tags */
       if (!(occ & 1 << i || m->tagset[m->seltags] & 1 << i))
         continue;
-      x += TEXTW(tags[i]);
+      x += tagtextw(i);
     } while (ev->x >= x && ++i < LENGTH(tags));
     if (ev->x <= TEXTW(host)) {
       click = ClkHost;
@@ -1026,12 +1029,14 @@ void drawbar(Monitor *m) {
   x = drw_text(drw, x, 0, w, bh, lpad, host, 0, 1);
 
   for (i = 0; i < LENGTH(tags); i++) {
+    char text[64];
     /* Do not draw vacant tags */
     if (!(occ & 1 << i || m->tagset[m->seltags] & 1 << i))
       continue;
-    w = TEXTW(tags[i]);
+    template_expand(tagtext, tag_placeholder, &i, text, sizeof(text));
+    w = TEXTW(text);
     drw_setscheme(drw, scheme[m->tagset[m->seltags] & 1 << i ? SchemeTagSel : SchemeTagNorm]);
-    drw_text(drw, x, 0, w, bh, lpad, tags[i], urg & 1 << i,0);
+    drw_text(drw, x, 0, w, bh, lpad, text, urg & 1 << i,0);
     x += w;
   }
   w = blw = TEXTW(m->ltsymbol);
@@ -1186,28 +1191,67 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
   return ret;
 }
 
-/* expand tabtext template ({title}, {class}) into buf */
-static void tabtext_expand(Client *c, char *buf, size_t len) {
-  const char *f = tabtext;
+/* expand a template string ({name}, {icon}, ...) into buf */
+static void template_expand(const char *fmt, template_resolve resolve, void *ctx, char *buf, size_t len) {
   size_t n = 0;
 
-  while (*f && n < len - 1) {
-    const char *val = NULL;
+  while (*fmt && n < len - 1) {
+    const char *val;
+    size_t plen;
 
-    if (!strncmp(f, "{title}", 7))
-      val = c->name;
-    else if (!strncmp(f, "{class}", 7))
-      val = c->class;
-
-    if (val) {
-      strncpy(buf + n, val, len - n - 1);
-      n += MIN(strlen(val), len - n - 1);
-      f += 7;
+    if (*fmt == '{' && (val = resolve(fmt, &plen, ctx))) {
+      size_t vlen = MIN(strlen(val), len - n - 1);
+      strncpy(buf + n, val, vlen);
+      n += vlen;
+      fmt += plen;
     } else {
-      buf[n++] = *f++;
+      buf[n++] = *fmt++;
     }
   }
   buf[n] = '\0';
+}
+
+/* resolve {title}, {class} against a client */
+static const char *tab_placeholder(const char *f, size_t *plen, void *ctx) {
+  Client *c = ctx;
+
+  if (!strncmp(f, "{title}", 7)) {
+    *plen = 7;
+    return c->name;
+  }
+  if (!strncmp(f, "{class}", 7)) {
+    *plen = 7;
+    return c->class;
+  }
+  return NULL;
+}
+
+/* resolve {name}, {icon}, {index} against a 0-based tag index */
+static const char *tag_placeholder(const char *f, size_t *plen, void *ctx) {
+  unsigned int i = *(unsigned int *)ctx;
+
+  if (!strncmp(f, "{name}", 6)) {
+    *plen = 6;
+    return tag_names[i];
+  }
+  if (!strncmp(f, "{icon}", 6)) {
+    *plen = 6;
+    return tags[i];
+  }
+  if (!strncmp(f, "{index}", 7)) {
+    static char buf[16];
+    *plen = 7;
+    snprintf(buf, sizeof buf, "%u", i + 1);
+    return buf;
+  }
+  return NULL;
+}
+
+/* rendered width of tag i, shared by drawbar/buttonpress/tagshover */
+static int tagtextw(unsigned int i) {
+  char text[64];
+  template_expand(tagtext, tag_placeholder, &i, text, sizeof(text));
+  return TEXTW(text);
 }
 
 /* draw client tabs, starting at x within the remaining bar width w;
@@ -1249,7 +1293,7 @@ int drawtabs(Monitor *m, int x, int w, int n) {
     if (remainder-- > 0)
       tabw++;
 
-    tabtext_expand(c, text, sizeof(text));
+    template_expand(tabtext, tab_placeholder, c, text, sizeof(text));
     tw = TEXTW(text) - lrpad;
 
     /* content area: the rounded-cap branch insets it by the cap radius;
@@ -1327,7 +1371,7 @@ static int tagshover(Monitor *m, int x) {
   do {
     if (!(occ & 1 << i || m->tagset[m->seltags] & 1 << i))
       continue;
-    xpos += TEXTW(tags[i]);
+    xpos += tagtextw(i);
   } while (x >= xpos && ++i < LENGTH(tags));
   return i < LENGTH(tags) ? i : -1;
 }
