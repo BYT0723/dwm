@@ -132,8 +132,8 @@ static const unsigned int alphas[][3]      = {
 };
 
 /* tagging */
-// static const char *tags[] = {"1", "2", "3", "4", "5", "6", "7", "8", "9"};
-static const char *tags[] = { "", "", "", "", "", "", "", "", ""};
+static const char *tags[] = {"dev(1)", "web(2)", "chat(3)", "util(4)", "misc(5)", "dl(6)", "vid(7)", "mus(8)", "game(9)"};
+// static const char *tags[] = {"", "", "󰭹", "", "", "", "", "", ""};
 
 static const Rule rules[] = {
     /* xprop(1):
@@ -142,15 +142,16 @@ static const Rule rules[] = {
      */
     /* class                instance    title     tags mask     isfloating    monitor */
     {"firefox",             NULL,       NULL,     1 << 1,       0,            -1},
+    {"chromium",            NULL,       NULL,     1 << 1,       0,            -1},
+    {"Tor Browser",         NULL,       NULL,     1 << 1,       0,            -1},
 
     {"TelegramDesktop",     NULL,       NULL,     1 << 2,       0,            -1},
-    {"electronic-wechat",   NULL,       NULL,     1 << 2,       0,            -1},
-    {"wechat.exe",          NULL,       NULL,     1 << 2,       0,            -1},
     {"wechat",              NULL,       NULL,     1 << 2,       0,            -1},
     {"QQ",                  NULL,       NULL,     1 << 2,       0,            -1},
 
     {"DBeaver",             NULL,       NULL,     1 << 3,       0,            -1},
     {"resp",                NULL,       NULL,     1 << 3,       0,            -1},
+    {"sqlitebrowser",       NULL,       NULL,     1 << 3,       0,            -1},
 
     {"xunlei",              NULL,       NULL,     1 << 5,       1,            -1},
     {"qBittorrent",         NULL,       NULL,     1 << 5,       0,            -1},
@@ -239,6 +240,7 @@ static const char *termcmd[]         = {"./.dwm/dwm-launcher.sh",     "term",   
 static const char *floatcmd[]        = {"./.dwm/dwm-launcher.sh",     "term",       "float", NULL};
 static const char *fmcmd[]           = {"./.dwm/dwm-launcher.sh",     "fm",         NULL};
 static const char *roficmd[]         = {"./.dwm/dwm-launcher.sh",     "apps",       NULL};
+static const char *windowscmd[]      = {"./.dwm/dwm-launcher.sh",     "windows",    NULL};
 static const char *powercmd[]        = {"./.dwm/dwm-launcher.sh",     "powermenu",  NULL};
 static const char *mpdcmd[]          = {"./.dwm/dwm-launcher.sh",     "mpd",        NULL};
 static const char *modulecmd[]       = {"./.dwm/dwm-launcher.sh",     "modules",    NULL};
@@ -262,6 +264,7 @@ static Key keys[] = {
     {MODKEY,                       XK_Return,                spawn,          {.v = termcmd}},
     {MODKEY,                       XK_n,                     spawn,          {.v = floatcmd}},
     {MODKEY,                       XK_e,                     spawn,          {.v = fmcmd}},
+    {MODKEY,                       XK_w,                     spawn,          {.v = windowscmd}},
     {MODKEY,                       XK_a,                     spawn,          {.v = screenshotarea}},
     {MODKEY|ShiftMask,             XK_a,                     spawn,          {.v = screenshotmenu}},
     {MODKEY|ShiftMask,             XK_r,                     spawn,          {.v = screencast}},
@@ -273,7 +276,7 @@ static Key keys[] = {
     // rofi
     {MODKEY,                       XK_d,                     spawn,          {.v = roficmd}},
     {MODKEY,                       XK_m,                     spawn,          {.v = modulecmd}},
-    {MODKEY,                       XK_w,                     spawn,          {.v = wallpapercmd}},
+    {MODKEY|ShiftMask,             XK_w,                     spawn,          {.v = wallpapercmd}},
     {MODKEY|ShiftMask,             XK_m,                     spawn,          {.v = mpdcmd}},
     {MODKEY|ControlMask,           XK_m,                     spawn,          {.v = powercmd}},
     // layout
