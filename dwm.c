@@ -1081,6 +1081,9 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
   text = textbuf;
 
   i = -1, j = 0;
+  /* 0x7f is a cut marker: on portrait monitors (wh > ww) everything
+     before the last marker is dropped, keeping only the segment after
+     it; on landscape monitors the marker is just ignored */
   while (stext[++i]) {
     if ((unsigned char)stext[i] == 0x7f) {
       if (m->wh > m->ww)
@@ -1092,16 +1095,13 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
 
   /* compute width of the status text */
   w = status2d_width(m, text);
-  iscode = 0;
   text = textbuf;
 
   ret = m->ww - w - 2 * sp;
   stw = systraytomon(m) == selmon ? getsystraywidth() : 0;
   x = ret - stw;
 
-  drw_setscheme(drw, scheme[LENGTH(colors)]);
-  drw->scheme[ColFg] = scheme[SchemeEmpty][ColFg];
-  drw->scheme[ColBg] = scheme[SchemeEmpty][ColBg];
+  drw_setscheme(drw, scheme[SchemeStatus]);
   drw_rect(drw, x, 0, w + stw, bh, 1, 1);
 
   /* process status text */
@@ -1153,11 +1153,14 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
         } else if (text[i] == 'f')
           x += atoi(text + ++i);
         else if (text[i] == '(' && tabradius > 0) {
+          drw_setscheme(drw, scheme[SchemeEmpty]);
+          drw_rect(drw, x, 0, tabr, bh, 1, 0);
+          drw_setscheme(drw, scheme[SchemeStatus]);
           drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
-          radiusnext++;
+          radiusnext = 1;
         } else if (text[i] == ')' && tabradius > 0) {
           drw_setscheme(drw, scheme[SchemeEmpty]);
-          drw_rect(drw, x-tabr, 0, tabr, bh, 1, 1);
+          drw_rect(drw, x-tabr, 0, tabr + tabgap, bh, 1, 0);
           drw_setscheme(drw, scheme[SchemeStatus]);
           drw_rounded(drw, x-tabr, 0, bh, tabr, RoundedRight);
           x += tabgap;
@@ -1241,9 +1244,10 @@ int drawtabs(Monitor *m, int x, int w, int n) {
     if (highlight)
       drw_setfontset(drw, fonts_highlight_set);
 
-    if (remainder == 0)
-      tabw--;
-    remainder--;
+    /* distribute the avail % n excess pixels: the first `remainder`
+       tabs get one extra pixel */
+    if (remainder-- > 0)
+      tabw++;
 
     tabtext_expand(c, text, sizeof(text));
     tw = TEXTW(text) - lrpad;
