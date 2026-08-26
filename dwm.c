@@ -1081,7 +1081,9 @@ static int ishexcolor(const char *s) {
 int drawstatusbar(Monitor *m, int bh, char *stext) {
   int ret, i, j, w, x, stw;
   short iscode = 0;
-  int radiusnext = 0;
+  /* 1 = the next text run draws right after a '(' cap, so its left
+     padding must be skipped to keep the rounded corner visible */
+  int skip_pad = 0;
   char *text;
   char textbuf[1024];
 
@@ -1120,8 +1122,8 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
       text[i] = '\0';
       if (strlen(text) > 0) {
         w = TEXTW(text);
-        drw_text(drw, x, 0, w, bh, lpad, text, 0, radiusnext);
-        radiusnext = 0;
+        drw_text(drw, x, 0, w, bh, lpad, text, 0, skip_pad);
+        skip_pad = 0;
         x += w;
       }
 
@@ -1160,11 +1162,13 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
         } else if (text[i] == 'f')
           x += atoi(text + ++i);
         else if (text[i] == '(' && tabradius > 0) {
+          /* start a rounded-left cap; the following text run keeps its
+             padding off so the cap stays visible behind the glyphs */
           drw_setscheme(drw, scheme[SchemeEmpty]);
           drw_rect(drw, x, 0, tabr, bh, 1, 0);
           drw_setscheme(drw, scheme[SchemeStatus]);
           drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
-          radiusnext = 1;
+          skip_pad = 1;
         } else if (text[i] == ')' && tabradius > 0) {
           drw_setscheme(drw, scheme[SchemeEmpty]);
           drw_rect(drw, x-tabr, 0, tabr + tabgap, bh, 1, 0);
