@@ -805,6 +805,8 @@ void clientmessage(XEvent *e) {
           view(&a);
         }
         focus(c);
+        if (c)
+          restack(selmon);
       }
     } else if (c != selmon->sel && !c->isurgent) {
       seturgent(c, 1);
