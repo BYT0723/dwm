@@ -1268,7 +1268,7 @@ int drawtabs(Monitor *m, int x, int w, int n) {
   remainder = avail % n;
   tabw = tabwidth * drw_fontset_getwidth(drw, " ") + lrpad;
   if (tabw * n >= avail || !(tabstyle & TAB_CUSTOM_WIDTH))
-    tabw = (1.0 / (double)n) * avail + 1;
+    tabw = avail / n + 1;
 
   if (tabstyle&TAB_CENTER)
     x += MAX(((int)w - (tabw * n + gap_total))/2, 0);
@@ -1291,22 +1291,22 @@ int drawtabs(Monitor *m, int x, int w, int n) {
       drw_setfontset(drw, fonts_highlight_set);
 
     /* distribute the avail % n excess pixels: the first `remainder`
-       tabs get one extra pixel */
-    if (remainder-- > 0)
-      tabw++;
+       tabs keep the +1 from the ceiling division, the rest shrink
+       back to avail / n */
+    if (remainder == 0)
+      tabw--;
+    remainder--;
 
     template_expand(tabtext, tab_placeholder, c, text, sizeof(text));
     tw = TEXTW(text) - lrpad;
 
     /* content area: the rounded-cap branch insets it by the cap radius;
        icon+text are centered inside it, minpad is the left stop */
-    int cxx = x, contentw = tabw, minpad = (int)lpad;
-    if (tabradius > 0) {
-      cxx = x + tabr;
-      contentw = tabw - tabr * 2;
-      minpad = 0;
+    int cxx = x + tabr;
+    int contentw = MAX(tabw - tabr * 2, 0);
+    int minpad = tabr > 0 ? 0 : (int)lpad;
+    if (tabr > 0)
       drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
-    }
     if (c->icon && contentw - minpad >= (int)(c->icw + ICONSPACING)) {
       cx = MAX(minpad, (contentw - tw - (int)(c->icw + ICONSPACING)) / 2);
       drw_text(drw, cxx, 0, contentw, bh, cx + c->icw + ICONSPACING, text, 0, 0);
@@ -1315,7 +1315,7 @@ int drawtabs(Monitor *m, int x, int w, int n) {
       cx = MAX(minpad, (contentw - tw) / 2);
       drw_text(drw, cxx, 0, contentw, bh, cx, text, 0, 0);
     }
-    if (tabradius > 0)
+    if (tabr > 0)
       drw_rounded(drw, x + tabw - tabr, 0, bh, tabr, RoundedRight);
 
     // floating marker
@@ -1349,11 +1349,10 @@ static Client *taskshover(Monitor *m, int xclick, int tstart, int *tabx) {
   for (x = tstart, c = m->clients; c; c = c->next) {
     if (!ISVISIBLE(c))
       continue;
+    *tabx = x;
     x += m->tw + (int)tabgap;
-    if (xclick <= x) {
-      *tabx = x - m->tw - (int)tabgap;
+    if (xclick <= x)
       return c;
-    }
   }
   return NULL;
 }
