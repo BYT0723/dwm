@@ -3398,18 +3398,29 @@ Monitor *systraytomon(Monitor *m) {
 
 void tag(const Arg *arg) {
   if (selmon->sel && arg->ui & TAGMASK) {
-    selmon->sel->tags = arg->ui & TAGMASK;
+    Client *c = selmon->sel;
+    unsigned int t = arg->ui & TAGMASK;
+    c->tags = t;
     focus(NULL);
     arrange(selmon);
     if (viewontag)
       view(arg);
+    if (focusonmove && t && !(t & (t - 1)) && ISVISIBLE(c) && !HIDDEN(c))
+      focus(c);
   }
 }
 
 void tagmon(const Arg *arg) {
-  if (!selmon->sel || !mons->next)
+  Client *c = selmon->sel;
+  Monitor *m;
+  if (!c || !mons->next)
     return;
-  sendmon(selmon->sel, dirtomon(arg->i));
+  m = dirtomon(arg->i);
+  sendmon(c, m);
+  if (focusonmove && !HIDDEN(c)) {
+    setcurrentmon(m);
+    focus(c);
+  }
 }
 
 void togglebar(const Arg *arg) {

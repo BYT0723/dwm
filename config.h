@@ -54,6 +54,8 @@ static const unsigned int attachtop = 0; /* new window is attached to the top of
 
 static const Bool viewontag = True; /* Switch view on tag switch */
 
+static const Bool focusonmove = True; /* focus follows the client moved by tag/tagmon */
+
 static const int jump_on_activate = 1; /* 1 = _NET_ACTIVE_WINDOW (e.g. rofi -show window) jumps to the window's tag/monitor; 0 = only mark it urgent */
 
 #define ICONSIZE (bh - 2) /* or adaptively preserve 2 pixels each side */
