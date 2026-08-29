@@ -63,7 +63,7 @@
   (MAX(0, MIN((x) + (w), (m)->wx + (m)->ww) - MAX((x), (m)->wx)) *             \
    MAX(0, MIN((y) + (h), (m)->wy + (m)->wh) - MAX((y), (m)->wy)))
 #define ISVISIBLE(C) ((C->tags & C->mon->tagset[C->mon->seltags]))
-#define HIDDEN(C) ((getstate(C->win) == IconicState))
+#define HIDDEN(C) ((C)->hidden)
 #define LENGTH(X) (sizeof X / sizeof X[0])
 #define MOUSEMASK (BUTTONMASK | PointerMotionMask)
 #define WIDTH(X) ((X)->w + 2 * (X)->bw)
@@ -175,6 +175,7 @@ struct Client {
   int bw, oldbw;
   unsigned int tags;
   int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
+  int hidden; /* 1 = IconicState, mirrors WM_STATE set by hidewin/showwin */
   unsigned int icw, ich, icon_alpha;
   Picture icon;
   Client *next;
@@ -2253,6 +2254,7 @@ void hidewin(Client *c) {
   XSelectInput(dpy, root, ra.your_event_mask & ~SubstructureNotifyMask);
   XSelectInput(dpy, w, ca.your_event_mask & ~StructureNotifyMask);
   XUnmapWindow(dpy, w);
+  c->hidden = 1;
   setclientstate(c, IconicState);
   // refresh tab icon after IconicState; alpha follows client state
   updateicon(c);
@@ -2374,6 +2376,7 @@ void manage(Window w, XWindowAttributes *wa) {
   c->oldbw = wa->border_width;
   c->cfact = 1.0;
   c->icon_alpha = 0;
+  c->hidden = getstate(w) == IconicState;
 
   updatetitle(c);
   if (XGetTransientForHint(dpy, w, &trans) && (t = wintoclient(trans))) {
@@ -4032,6 +4035,7 @@ void showwin(Client *c) {
     return;
 
   XMapWindow(dpy, c->win);
+  c->hidden = 0;
   setclientstate(c, NormalState);
   arrange(c->mon);
 }
@@ -4044,12 +4048,8 @@ void updatetitle(Client *c) {
 }
 
 void updateicon(Client *c) {
-  Monitor *m;
-  int scm = SchemeNorm;
-  for (m = mons; m; m = m->next)
-    if (m->sel == c)
-      scm = SchemeSel;
-  if (HIDDEN(c))
+  int scm = c->mon->sel == c ? SchemeSel : SchemeNorm;
+  if (c->hidden)
     scm = SchemeHid;
 
   unsigned int new_alpha = alphas[scm][0];
