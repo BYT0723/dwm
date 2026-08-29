@@ -3433,10 +3433,11 @@ void tag(const Arg *arg) {
     c->tags = t;
     focus(NULL);
     arrange(selmon);
-    if (viewontag)
+    if (focusonmove) {
       view(arg);
-    if (focusonmove && t && !(t & (t - 1)) && ISVISIBLE(c) && !HIDDEN(c))
-      focus(c);
+      if (t && !(t & (t - 1)) && !HIDDEN(c))
+        focus(c);
+    }
   }
 }
 

@@ -27,8 +27,8 @@ static const char         tabtext[]   = "{title}"; /* tab text template; placeho
 static const unsigned int tabradius   = 8;
 static const unsigned int tabgap      = 4;
 static const unsigned int tabborder   = 1; /* tab outline width in px; 0 = no outline */
-static const          int autoshowhid = 1; /* 1 = focusstackhid shows hidden windows permanently; 0 = preview, re-hide on switch away */
 
+// tag and client preview
 static const          int hoverinfo      = 1;    /* 1 = hover a client tab to show a tooltip with client info; 0 = disabled */
 static const unsigned int hoverdelay     = 500; /* ms of resting on a tab before the tooltip appears */
 static const unsigned int previewh       = 240;  /* max live preview height; width scales by aspect */
@@ -37,27 +37,25 @@ static const unsigned int hoverpad       = 12;   /* tooltip content padding from
 static const unsigned int hovergap       = 8;  /* gap between the preview and the title */
 static const unsigned int previewborder  = 2;   /* px highlight border around the live preview, in colors[x][2] */
 
+// layout gap
 static const unsigned int gappih    = 6;
 static const unsigned int gappiv    = 6;
 static const unsigned int gappoh    = 12;
 static const unsigned int gappov    = 12;
 static                int smartgaps = 0;   /* 1 means no outer gap when there is only one window */
 
+// systray
+static const          int showsystray             = 1;  /* 0 means no systray */
 static const unsigned int systraypinning          = 0;  /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
 static const unsigned int systrayspacing          = 4;  /* systray spacing */
 static const          int systraypinningfailfirst = 1;  /* 1: if pinning fails, display systray on the first monitor, False: display systray on the last monitor*/
-static const          int showsystray             = 1;  /* 0 means no systray */
 static const          int systraypad              = 4;
-/* systray icon order, left to right; "..." = slot for unlisted icons */
-static const char     *systrayorder[]            = { "fcitx", "...", "easyeffects", "nm-applet", "udiskie", NULL };
+static const          char *systrayorder[]        = { "fcitx", "...", "easyeffects", "nm-applet", "udiskie", NULL };
 
-static const unsigned int attachtop = 0; /* new window is attached to the top of the stack */
-
-static const Bool viewontag = True; /* Switch view on tag switch */
-
-static const Bool focusonmove = True; /* focus follows the client moved by tag/tagmon */
-
-static const int jump_on_activate = 1; /* 1 = _NET_ACTIVE_WINDOW (e.g. rofi -show window) jumps to the window's tag/monitor; 0 = only mark it urgent */
+static const          int autoshowhid      = 1; /* 1 = focusstackhid shows hidden windows permanently; 0                                = preview, re-hide on switch away */
+static const unsigned int attachtop        = 0; /* new window is attached to the top of the stack */
+static const          int focusonmove      = 1; /* switch view and focus follow the client moved by tag/tagmon */
+static const          int jump_on_activate = 1; /* 1 = _NET_ACTIVE_WINDOW (e.g. rofi -show window) jumps to the window's tag/monitor; 0 = only mark it urgent */
 
 #define ICONSIZE (bh - 2) /* or adaptively preserve 2 pixels each side */
 #define ICONSPACING 6 /* space between icon and title */
