@@ -72,6 +72,7 @@ int drw_rounded_border(Drw *drw, int x, int y, unsigned int h, int radius,
                        int side, int bwidth);
 void drw_rect(Drw *drw, int x, int y, unsigned int w, unsigned int h,
               int filled, int invert);
+void drw_rect_border(Drw *drw, int x, int y, unsigned int w, unsigned int h);
 int drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h,
              unsigned int lpad, const char *text, int invert, int skip_pad);
 void drw_pic(Drw *drw, int x, int y, unsigned int w, unsigned int h,

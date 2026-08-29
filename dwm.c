@@ -997,22 +997,27 @@ Monitor *dirtomon(int dir) {
   return m;
 }
 
-/* text-colored outline around a rounded-cap tab spanning [x, x + w): caps
-   get the arc-following border, the flat middle gets top/bottom lines */
+/* SchemeStatus border-colored outline around a rounded-cap tab spanning
+   [x, x + w): caps get the arc-following border, the flat middle gets
+   top/bottom lines. The outline reads the ColBorder channel, so every tab
+   shares one border color regardless of its own scheme. */
 static void drawtabborder(int x, int w) {
   if (tabborder <= 0 || tabborder >= bh || w <= 0)
     return;
+  Clr *prev = drw->scheme;
+  drw_setscheme(drw, scheme[SchemeStatus]);
   if (tabr > 0 && w > 2 * tabr) {
     drw_rounded_border(drw, x, 0, bh, tabr, RoundedLeft, tabborder);
     drw_rounded_border(drw, x + w - tabr, 0, bh, tabr, RoundedRight, tabborder);
-    drw_rect(drw, x + tabr, 0, w - 2 * tabr, tabborder, 1, 0);
-    drw_rect(drw, x + tabr, bh - tabborder, w - 2 * tabr, tabborder, 1, 0);
+    drw_rect_border(drw, x + tabr, 0, w - 2 * tabr, tabborder);
+    drw_rect_border(drw, x + tabr, bh - tabborder, w - 2 * tabr, tabborder);
   } else {
-    drw_rect(drw, x, 0, w, tabborder, 1, 0);
-    drw_rect(drw, x, bh - tabborder, w, tabborder, 1, 0);
-    drw_rect(drw, x, 0, tabborder, bh, 1, 0);
-    drw_rect(drw, x + w - tabborder, 0, tabborder, bh, 1, 0);
+    drw_rect_border(drw, x, 0, w, tabborder);
+    drw_rect_border(drw, x, bh - tabborder, w, tabborder);
+    drw_rect_border(drw, x, 0, tabborder, bh);
+    drw_rect_border(drw, x + w - tabborder, 0, tabborder, bh);
   }
+  drw_setscheme(drw, prev);
 }
 
 void drawbar(Monitor *m) {

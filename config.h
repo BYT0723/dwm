@@ -96,7 +96,7 @@ static char *colors[][3] = {
     [SchemeSel]     = { col_blue,     col_black,    col_cyan     },
     [SchemeHid]     = { col_white,    col_ab_black, col_black    },
     // status
-    [SchemeStatus]  = { col_white,    col_black,    col_black    },
+    [SchemeStatus]  = { col_white,    col_black,    col_white    },
     // systray
     [SchemeSystray] = { col_white,    col_black,    col_black    },
     // hover tooltip

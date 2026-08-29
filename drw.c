@@ -367,19 +367,36 @@ void drw_rect(Drw *drw, int x, int y, unsigned int w, unsigned int h,
     XDrawRectangle(drw->dpy, drw->drawable, drw->gc, x, y, w - 1, h - 1);
 }
 
+/* border RGB with alpha forced opaque: outlines must stay visible even
+ * when the scheme's border alpha is TRANSPARENT */
+static unsigned long drw_border_pixel(Drw *drw) {
+  return (drw->scheme[ColBorder].pixel & 0x00ffffffU) | 0xff000000U;
+}
+
+/* expand a 32-bit aarrggbb pixel into a 16-bit-per-channel XRenderColor */
+static XRenderColor drw_xrender_color(unsigned long p) {
+  return (XRenderColor){.red = ((p >> 16) & 0xff) * 0x101,
+                        .green = ((p >> 8) & 0xff) * 0x101,
+                        .blue = (p & 0xff) * 0x101,
+                        .alpha = ((p >> 24) & 0xff) * 0x101};
+}
+
+/* filled rectangle in the border color, painted via XRender so the outline
+ * shares the rounded caps' alpha behavior on the ARGB drawable */
+void drw_rect_border(Drw *drw, int x, int y, unsigned int w, unsigned int h) {
+  if (!drw || !drw->scheme)
+    return;
+  XRenderColor rc = drw_xrender_color(drw_border_pixel(drw));
+  XRenderFillRectangle(drw->dpy, PictOpOver, drw->picture, &rc, x, y, w, h);
+}
+
 /* Refill a solid color source only on color change. The pixel value is
  * stored as-is (non-premultiplied), matching how the rest of the bar is
  * painted directly with XFillRectangle/XFillArc. */
 static void drw_rounded_refill(Drw *drw, Picture pic, unsigned long *cache,
-                               int color, int r, int h) {
-  if (*cache != drw->scheme[color].pixel) {
-    unsigned long p = drw->scheme[color].pixel;
-    unsigned char a = (p >> 24) & 0xff, cr = (p >> 16) & 0xff;
-    unsigned char cg = (p >> 8) & 0xff, cb = p & 0xff;
-    XRenderColor rc = {.red = cr * 0x101,
-                       .green = cg * 0x101,
-                       .blue = cb * 0x101,
-                       .alpha = a * 0x101};
+                               unsigned long p, int r, int h) {
+  if (*cache != p) {
+    XRenderColor rc = drw_xrender_color(p);
     XRenderFillRectangle(drw->dpy, PictOpSrc, pic, &rc, 0, 0, r, h);
     *cache = p;
   }
@@ -568,9 +585,10 @@ static int drw_rounded_impl(Drw *drw, int x, int y, unsigned int h, int radius,
   }
 
   if (outline)
-    drw_rounded_refill(drw, bpic, &cached_bpixel, ColFg, r, h);
+    drw_rounded_refill(drw, bpic, &cached_bpixel, drw_border_pixel(drw), r, h);
   else
-    drw_rounded_refill(drw, color_pic, &cached_pixel, ColBg, r, h);
+    drw_rounded_refill(drw, color_pic, &cached_pixel,
+                       drw->scheme[ColBg].pixel, r, h);
 
   m = (side == RoundedLeft) ? 0 : 1;
   XRenderComposite(drw->dpy, PictOpOver, outline ? bpic : color_pic,
