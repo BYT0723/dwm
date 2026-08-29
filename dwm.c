@@ -2621,9 +2621,14 @@ void propertynotify(XEvent *e) {
 
   if ((ev->window == root) && (ev->atom == XA_WM_NAME))
     updatestatus();
-  else if (ev->state == PropertyDelete)
+  else if (ev->state == PropertyDelete && ev->atom != wmatom[WMState])
     return; /* ignore */
   else if ((c = wintoclient(ev->window))) {
+    if (ev->atom == wmatom[WMState]) {
+      /* WM_STATE can be rewritten by the client or external tools;
+         re-sync the cached hidden flag so HIDDEN() stays accurate */
+      c->hidden = getstate(c->win) == IconicState;
+    }
     switch (ev->atom) {
     default:
       break;
@@ -3603,9 +3608,10 @@ void unmapnotify(XEvent *e) {
   if ((c = wintoclient(ev->window))) {
     if (c == hoverc)
       hoverhide();
-    if (ev->send_event)
+    if (ev->send_event) {
+      c->hidden = 0;
       setclientstate(c, WithdrawnState);
-    else
+    } else
       unmanage(c, 0);
   } else if ((c = wintosystrayicon(ev->window))) {
     /* KLUDGE! sometimes icons occasionally unmap their windows, but do
