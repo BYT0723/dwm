@@ -3991,7 +3991,7 @@ void updatesystrayicongeom(Client *i, int w, int h) {
       i->w = (int)((float)i->w * (float)newh / (float)i->h);
       i->h = newh;
     }
-    i->y = systraypad;
+    i->y = (bh - 2 * tabborder - newh) / 2;
   }
 }
 
