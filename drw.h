@@ -68,6 +68,8 @@ Picture drw_picture_create_resized(Drw *drw, char *src, unsigned int src_w,
 
 /* Drawing functions */
 int drw_rounded(Drw *drw, int x, int y, unsigned int h, int radius, int side);
+int drw_rounded_border(Drw *drw, int x, int y, unsigned int h, int radius,
+                       int side, int bwidth);
 void drw_rect(Drw *drw, int x, int y, unsigned int w, unsigned int h,
               int filled, int invert);
 int drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h,

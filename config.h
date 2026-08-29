@@ -26,6 +26,7 @@ static const unsigned int tabwidth    = 20;
 static const char         tabtext[]   = "{title}"; /* tab text template; placeholders: {title}, {class} */
 static const unsigned int tabradius   = 8;
 static const unsigned int tabgap      = 4;
+static const unsigned int tabborder   = 1; /* tab outline width in px; 0 = no outline */
 static const          int autoshowhid = 1; /* 1 = focusstackhid shows hidden windows permanently; 0 = preview, re-hide on switch away */
 
 static const          int hoverinfo      = 1;    /* 1 = hover a client tab to show a tooltip with client info; 0 = disabled */

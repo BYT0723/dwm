@@ -275,6 +275,7 @@ static void detachstack(Client *c);
 static Monitor *dirtomon(int dir);
 static void drawbar(Monitor *m);
 static void drawbars(void);
+static void drawtabborder(int x, int w);
 static int drawstatusbar(Monitor *m, int bh, char *text);
 static int drawtabs(Monitor *m, int x, int w, int n);
 static void enternotify(XEvent *e);
@@ -996,8 +997,26 @@ Monitor *dirtomon(int dir) {
   return m;
 }
 
+/* text-colored outline around a rounded-cap tab spanning [x, x + w): caps
+   get the arc-following border, the flat middle gets top/bottom lines */
+static void drawtabborder(int x, int w) {
+  if (tabborder <= 0 || tabborder >= bh || w <= 0)
+    return;
+  if (tabr > 0 && w > 2 * tabr) {
+    drw_rounded_border(drw, x, 0, bh, tabr, RoundedLeft, tabborder);
+    drw_rounded_border(drw, x + w - tabr, 0, bh, tabr, RoundedRight, tabborder);
+    drw_rect(drw, x + tabr, 0, w - 2 * tabr, tabborder, 1, 0);
+    drw_rect(drw, x + tabr, bh - tabborder, w - 2 * tabr, tabborder, 1, 0);
+  } else {
+    drw_rect(drw, x, 0, w, tabborder, 1, 0);
+    drw_rect(drw, x, bh - tabborder, w, tabborder, 1, 0);
+    drw_rect(drw, x, 0, tabborder, bh, 1, 0);
+    drw_rect(drw, x + w - tabborder, 0, tabborder, bh, 1, 0);
+  }
+}
+
 void drawbar(Monitor *m) {
-  int x = 0, w, tw = 0, stw = 0, n = 0;
+  int x = 0, w, tw = 0, stw = 0, n = 0, gx = 0;
   unsigned int i, occ = 0, urg = 0;
   Client *c;
 
@@ -1026,6 +1045,7 @@ void drawbar(Monitor *m) {
   }
 
   w = TEXTW(host);
+  gx = x;
   drw_setscheme(drw, scheme[SchemeHost]);
   drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
   x = drw_text(drw, x, 0, w, bh, lpad, host, 0, 1);
@@ -1045,6 +1065,7 @@ void drawbar(Monitor *m) {
   drw_setscheme(drw, scheme[SchemeLayout]);
   x = drw_text(drw, x, 0, w - tabr, bh, lpad, m->ltsymbol, 0, 0);
   x += drw_rounded(drw, x, 0, bh, tabr, RoundedRight);
+  drawtabborder(gx, x - gx);
 
   x += tabgap;
 
@@ -1079,7 +1100,7 @@ static int ishexcolor(const char *s) {
 }
 
 int drawstatusbar(Monitor *m, int bh, char *stext) {
-  int ret, i, j, w, x, stw;
+  int ret, i, j, w, x, stw, tabstart;
   short iscode = 0;
   /* 1 = the next text run draws right after a '(' cap, so its left
      padding must be skipped to keep the rounded corner visible */
@@ -1109,6 +1130,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
   ret = m->ww - w - 2 * sp;
   stw = systraytomon(m) == selmon ? getsystraywidth() : 0;
   x = ret - stw;
+  tabstart = x;
 
   drw_setscheme(drw, scheme[SchemeStatus]);
   drw_rect(drw, x, 0, w + stw, bh, 1, 1);
@@ -1164,6 +1186,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
         else if (text[i] == '(' && tabradius > 0) {
           /* start a rounded-left cap; the following text run keeps its
              padding off so the cap stays visible behind the glyphs */
+          tabstart = x;
           drw_setscheme(drw, scheme[SchemeEmpty]);
           drw_rect(drw, x, 0, tabr, bh, 1, 0);
           drw_setscheme(drw, scheme[SchemeStatus]);
@@ -1174,6 +1197,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
           drw_rect(drw, x-tabr, 0, tabr + tabgap, bh, 1, 0);
           drw_setscheme(drw, scheme[SchemeStatus]);
           drw_rounded(drw, x-tabr, 0, bh, tabr, RoundedRight);
+          drawtabborder(tabstart, x - tabstart);
           x += tabgap;
         }
       }
@@ -1321,6 +1345,7 @@ int drawtabs(Monitor *m, int x, int w, int n) {
     }
     if (tabr > 0)
       drw_rounded(drw, x + tabw - tabr, 0, bh, tabr, RoundedRight);
+    drawtabborder(x, tabw);
 
     // floating marker
     if (c->isfloating)

@@ -367,13 +367,48 @@ void drw_rect(Drw *drw, int x, int y, unsigned int w, unsigned int h,
     XDrawRectangle(drw->dpy, drw->drawable, drw->gc, x, y, w - 1, h - 1);
 }
 
-int drw_rounded(Drw *drw, int x, int y, unsigned int h, int radius, int side) {
-  static Pixmap ampm[2], cpm;
-  static Picture amask[2], color_pic;
-  static int cached_r = -1;
+/* Refill a solid color source only on color change. The pixel value is
+ * stored as-is (non-premultiplied), matching how the rest of the bar is
+ * painted directly with XFillRectangle/XFillArc. */
+static void drw_rounded_refill(Drw *drw, Picture pic, unsigned long *cache,
+                               int color, int r, int h) {
+  if (*cache != drw->scheme[color].pixel) {
+    unsigned long p = drw->scheme[color].pixel;
+    unsigned char a = (p >> 24) & 0xff, cr = (p >> 16) & 0xff;
+    unsigned char cg = (p >> 8) & 0xff, cb = p & 0xff;
+    XRenderColor rc = {.red = cr * 0x101,
+                       .green = cg * 0x101,
+                       .blue = cb * 0x101,
+                       .alpha = a * 0x101};
+    XRenderFillRectangle(drw->dpy, PictOpSrc, pic, &rc, 0, 0, r, h);
+    *cache = p;
+  }
+}
+
+/* Upload an 8-bit coverage buffer into pm and wrap it as an A8 picture. */
+static void drw_rounded_makeimg(Drw *drw, Pixmap *pm, Picture *pic,
+                                unsigned char *data, int r, int h) {
+  GC gc = XCreateGC(drw->dpy, *pm, 0, NULL);
+  XImage img = {r, h, 0, ZPixmap, (char *)data, ImageByteOrder(drw->dpy),
+                BitmapUnit(drw->dpy), BitmapBitOrder(drw->dpy), 8, 8, 0, 8, 0,
+                0, 0};
+  XInitImage(&img);
+  XPutImage(drw->dpy, *pm, gc, &img, 0, 0, 0, 0, r, h);
+  XFreeGC(drw->dpy, gc);
+  *pic = XRenderCreatePicture(
+      drw->dpy, *pm, XRenderFindStandardFormat(drw->dpy, PictStandardA8), 0,
+      NULL);
+}
+
+static int drw_rounded_impl(Drw *drw, int x, int y, unsigned int h, int radius,
+                            int side, int outline, int bwidth) {
+  static Pixmap ampm[2], cpm, bmpm[2], bpm;
+  static Picture amask[2], color_pic, bmask[2], bpic;
+  static unsigned char *fdata[2];
+  static int cached_r = -1, cached_bw = -1;
   static unsigned int cached_h = 0;
-  static unsigned long cached_pixel = 0;
-  int r, m, i, j;
+  static unsigned long cached_pixel = ~0UL, cached_bpixel = ~0UL;
+  int r, m;
 
   if (!drw || !drw->scheme)
     return 0;
@@ -381,48 +416,69 @@ int drw_rounded(Drw *drw, int x, int y, unsigned int h, int radius, int side) {
   if (r <= 0)
     return 0;
 
-  /* Generate per-pixel coverage masks once per (r, h): amask[0] is the left
-   * cap, amask[1] its horizontal mirror. Coverage is 0..255 by AA_SAMPLES x
+  /* Fill coverage masks, cached once per (r, h): amask[0] is the left cap,
+   * amask[1] its horizontal mirror. Coverage is 0..255 by AA_SAMPLES x
    * AA_SAMPLES subsampling: the corner circle is centered at (r, r) for the
    * top arc and at (r, h - r) for the bottom arc, and the middle band is
    * fully covered. */
   if (cached_r != r || cached_h != h) {
-    GC gc;
     int ns = AA_SAMPLES * AA_SAMPLES;
     double rr = (double)r * r;
-    unsigned char *data = ecalloc((size_t)r * h, 1);
 
     if (color_pic != None) {
       XRenderFreePicture(drw->dpy, color_pic);
       XFreePixmap(drw->dpy, cpm);
     }
-    cpm = XCreatePixmap(drw->dpy, drw->root, r, h, 32);
-    if (!cpm) {
-      free(data);
-      return 0;
+    if (bpic != None) {
+      XRenderFreePicture(drw->dpy, bpic);
+      XFreePixmap(drw->dpy, bpm);
     }
+    if (fdata[0]) {
+      free(fdata[0]);
+      free(fdata[1]);
+    }
+    fdata[0] = ecalloc((size_t)r * h, 1);
+    fdata[1] = ecalloc((size_t)r * h, 1);
+    cpm = XCreatePixmap(drw->dpy, drw->root, r, h, 32);
+    if (!cpm)
+      return 0;
     color_pic = XRenderCreatePicture(
         drw->dpy, cpm, XRenderFindStandardFormat(drw->dpy, PictStandardARGB32),
         0, NULL);
     if (!color_pic) {
-      free(data);
       XFreePixmap(drw->dpy, cpm);
       cpm = None;
       return 0;
     }
-    cached_pixel = 0;
+    bpm = XCreatePixmap(drw->dpy, drw->root, r, h, 32);
+    if (!bpm)
+      return 0;
+    bpic = XRenderCreatePicture(
+        drw->dpy, bpm, XRenderFindStandardFormat(drw->dpy, PictStandardARGB32),
+        0, NULL);
+    if (!bpic) {
+      XFreePixmap(drw->dpy, bpm);
+      bpm = None;
+      return 0;
+    }
+    cached_pixel = ~0UL;
+    cached_bpixel = ~0UL;
 
     for (m = 0; m < 2; m++) {
       if (amask[m] != None)
         XRenderFreePicture(drw->dpy, amask[m]);
       if (ampm[m] != None)
         XFreePixmap(drw->dpy, ampm[m]);
+      if (bmask[m] != None)
+        XRenderFreePicture(drw->dpy, bmask[m]);
+      if (bmpm[m] != None)
+        XFreePixmap(drw->dpy, bmpm[m]);
 
-      for (j = 0; j < (int)h; j++)
-        for (i = 0; i < r; i++) {
+      for (int j = 0; j < (int)h; j++)
+        for (int i = 0; i < r; i++) {
           int px = m ? r - 1 - i : i;
           if (j >= r && j < h - r) {
-            data[(size_t)j * r + i] = 255;
+            fdata[m][(size_t)j * r + i] = 255;
           } else {
             int sx, sy, n = 0;
             double cy = (j < r) ? r : (h - r);
@@ -433,57 +489,106 @@ int drw_rounded(Drw *drw, int x, int y, unsigned int h, int radius, int side) {
                 if (dx * dx + dy * dy <= rr)
                   n++;
               }
-            data[(size_t)j * r + i] = (unsigned char)((n * 255 + ns / 2) / ns);
+            fdata[m][(size_t)j * r + i] =
+                (unsigned char)((n * 255 + ns / 2) / ns);
           }
         }
 
       ampm[m] = XCreatePixmap(drw->dpy, drw->root, r, h, 8);
-      if (!ampm[m]) {
-        free(data);
+      if (!ampm[m])
         return 0;
-      }
-      gc = XCreateGC(drw->dpy, ampm[m], 0, NULL);
-      XImage img = {r, (int)h, 0, ZPixmap, (char *)data,
-                    ImageByteOrder(drw->dpy), BitmapUnit(drw->dpy),
-                    BitmapBitOrder(drw->dpy), 8, 8, 0, 8, 0, 0, 0};
-      XInitImage(&img);
-      XPutImage(drw->dpy, ampm[m], gc, &img, 0, 0, 0, 0, r, h);
-      XFreeGC(drw->dpy, gc);
-      amask[m] = XRenderCreatePicture(
-          drw->dpy, ampm[m], XRenderFindStandardFormat(drw->dpy, PictStandardA8),
-          0, NULL);
+      drw_rounded_makeimg(drw, &ampm[m], &amask[m], fdata[m], r, (int)h);
       if (!amask[m]) {
-        free(data);
         XFreePixmap(drw->dpy, ampm[m]);
         ampm[m] = None;
         return 0;
       }
     }
-    free(data);
     cached_r = r;
     cached_h = h;
+    cached_bw = -1; /* force border rebuild for the new size */
   }
 
-  /* Refill the solid color source only on color change. The pixel value is
-   * stored as-is (non-premultiplied), matching how the rest of the bar is
-   * painted directly with XFillRectangle/XFillArc. */
-  if (cached_pixel != drw->scheme[ColBg].pixel) {
-    unsigned long p = drw->scheme[ColBg].pixel;
-    unsigned char a = (p >> 24) & 0xff, cr = (p >> 16) & 0xff;
-    unsigned char cg = (p >> 8) & 0xff, cb = p & 0xff;
-    XRenderColor rc = {.red = cr * 0x101,
-                       .green = cg * 0x101,
-                       .blue = cb * 0x101,
-                       .alpha = a * 0x101};
-    XRenderFillRectangle(drw->dpy, PictOpSrc, color_pic, &rc, 0, 0, r, h);
-    cached_pixel = p;
+  /* Outline masks, cached per (r, h, bwidth): the bwidth-wide band just
+   * inside the shape edge, antialiased by AA_SAMPLES subsampling. The signed
+   * distance d to the arc/straight edge is negative inside, so a sample lies
+   * on the border when -bwidth < d <= 0. The inner straight edge (shared with
+   * the flat tab body) naturally falls outside the band, so neighbouring caps
+   * join seamlessly without special-casing. */
+  if (outline && cached_bw != bwidth) {
+    unsigned char *bdata = ecalloc((size_t)r * h, 1);
+    int ns = AA_SAMPLES * AA_SAMPLES;
+    double rr = (double)r * r;
+    double lo2 = (r > bwidth) ? (double)(r - bwidth) * (r - bwidth) : -1.0;
+
+    for (m = 0; m < 2; m++) {
+      if (bmask[m] != None)
+        XRenderFreePicture(drw->dpy, bmask[m]);
+      if (bmpm[m] != None)
+        XFreePixmap(drw->dpy, bmpm[m]);
+      bmpm[m] = None;
+      bmask[m] = None;
+
+      for (int j = 0; j < (int)h; j++)
+        for (int i = 0; i < r; i++) {
+          int px = m ? r - 1 - i : i;
+          int n = 0;
+          for (int sy = 0; sy < AA_SAMPLES; sy++)
+            for (int sx = 0; sx < AA_SAMPLES; sx++) {
+              /* mark samples inside the bwidth band along the shape edge */
+              if (j >= r && j < (int)h - r) {
+                double x = i + (sx + 0.5) / AA_SAMPLES;
+                if (m ? x > r - bwidth : x < bwidth)
+                  n++;
+              } else {
+                double cy = (j < r) ? r : (h - r);
+                double dx = px + (sx + 0.5) / AA_SAMPLES - r;
+                double dy = j + (sy + 0.5) / AA_SAMPLES - cy;
+                double R2 = dx * dx + dy * dy;
+                if (R2 <= rr && R2 > lo2)
+                  n++;
+              }
+            }
+          bdata[(size_t)j * r + i] = (unsigned char)((n * 255 + ns / 2) / ns);
+        }
+
+      bmpm[m] = XCreatePixmap(drw->dpy, drw->root, r, h, 8);
+      if (!bmpm[m]) {
+        free(bdata);
+        return 0;
+      }
+      drw_rounded_makeimg(drw, &bmpm[m], &bmask[m], bdata, r, (int)h);
+      if (!bmask[m]) {
+        free(bdata);
+        return 0;
+      }
+    }
+    free(bdata);
+    cached_bw = bwidth;
   }
+
+  if (outline)
+    drw_rounded_refill(drw, bpic, &cached_bpixel, ColFg, r, h);
+  else
+    drw_rounded_refill(drw, color_pic, &cached_pixel, ColBg, r, h);
 
   m = (side == RoundedLeft) ? 0 : 1;
-  XRenderComposite(drw->dpy, PictOpOver, color_pic, amask[m], drw->picture, 0,
-                   0, 0, 0, x, y, r, h);
+  XRenderComposite(drw->dpy, PictOpOver, outline ? bpic : color_pic,
+                   outline ? bmask[m] : amask[m], drw->picture, 0, 0, 0, 0, x,
+                   y, r, h);
 
   return r;
+}
+
+int drw_rounded(Drw *drw, int x, int y, unsigned int h, int radius, int side) {
+  return drw_rounded_impl(drw, x, y, h, radius, side, 0, 0);
+}
+
+int drw_rounded_border(Drw *drw, int x, int y, unsigned int h, int radius,
+                       int side, int bwidth) {
+  if (bwidth <= 0)
+    return 0;
+  return drw_rounded_impl(drw, x, y, h, radius, side, 1, bwidth);
 }
 
 int drw_text(Drw *drw, int x, int y, unsigned int w, unsigned int h, unsigned int lpad, const char *text, int invert, int skip_pad) {
