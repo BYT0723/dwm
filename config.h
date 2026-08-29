@@ -58,7 +58,7 @@ static const          int focusonmove      = 1; /* switch view and focus follow 
 static const          int jump_on_activate = 1; /* 1 = _NET_ACTIVE_WINDOW (e.g. rofi -show window) jumps to the window's tag/monitor; 0 = only mark it urgent */
 
 #define ICONSIZE (bh - 2) /* or adaptively preserve 2 pixels each side */
-#define ICONSPACING 6 /* space between icon and title */
+#define ICONSPACING 4 /* space between icon and title */
 static const char *fonts[] = {
     "Symbols Nerd Font Mono:pixelsize=14:antialias=true;autohint=true",
     "CaskaydiaCove Nerd Font:pixelsize=14:antialias=true;autohint=true",
@@ -96,7 +96,7 @@ static char *colors[][3] = {
     // status
     [SchemeStatus]  = { col_white,    col_black,    col_white    },
     // systray
-    [SchemeSystray] = { col_white,    col_black,    col_black    },
+    [SchemeSystray] = { col_white,    col_black,    col_white    },
     // hover tooltip
     [SchemeTooltip] = { col_blue,     col_black,    col_cyan     },
     // empty

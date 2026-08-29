@@ -3918,12 +3918,15 @@ void updatesystray(int flag) {
     /* init systray */
     if (!(systray = (Systray *)calloc(1, sizeof(Systray))))
       die("fatal: could not malloc() %u bytes\n", sizeof(Systray));
-    systray->win = XCreateSimpleWindow(dpy, root, x - sp, m->by + vp, w, bh,
-                             0, 0, scheme[SchemeSystray][ColBg].pixel);
+    systray->win = XCreateSimpleWindow(dpy, root, x - sp, m->by + vp,
+                             w > 2 * tabborder ? w - 2 * tabborder : 1,
+                             bh > 2 * tabborder ? bh - 2 * tabborder : 1,
+                             tabborder, scheme[SchemeSystray][ColBorder].pixel,
+                             scheme[SchemeSystray][ColBg].pixel);
     wa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
     wa.event_mask        = ButtonPressMask | ExposureMask;
     wa.override_redirect = True;
-    wa.border_pixel = 0;
+    wa.border_pixel = scheme[SchemeSystray][ColBorder].pixel;
     XSelectInput(dpy, systray->win, SubstructureNotifyMask);
     XChangeProperty(dpy, systray->win, netatom[NetSystemTrayOrientation], XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&netatom[NetSystemTrayOrientationHorz], 1);
     XChangeWindowAttributes(dpy, systray->win, CWEventMask|CWOverrideRedirect|CWBackPixel|CWBorderPixel, &wa);
@@ -3959,11 +3962,13 @@ void updatesystray(int flag) {
   w = w ? w + systrayspacing : 1;
   x -= w;
   XSetWindowBackground(dpy, systray->win, scheme[SchemeSystray][ColBg].pixel);
-  XMoveResizeWindow(dpy, systray->win, x - xpad, m->by + ypad, w, bh);
+  XMoveResizeWindow(dpy, systray->win, x - xpad, m->by + ypad,
+                    w > 2 * tabborder ? w - 2 * tabborder : 1,
+                    bh > 2 * tabborder ? bh - 2 * tabborder : 1);
   wc.x = x - xpad;
   wc.y = m->by + ypad;
-  wc.width = w;
-  wc.height = bh;
+  wc.width = w > 2 * tabborder ? w - 2 * tabborder : 1;
+  wc.height = bh > 2 * tabborder ? bh - 2 * tabborder : 1;
   wc.stack_mode = Above;
   wc.sibling = m->barwin;
   XConfigureWindow(dpy, systray->win, CWX | CWY | CWWidth | CWHeight | CWSibling | CWStackMode, &wc);
