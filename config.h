@@ -9,7 +9,7 @@ static const          int topbar       = 1;   /* 0 means bottom bar */
 static const          int barfontpad   = 8;
 static const          int vertpad      = 2;  /* vertical padding of bar */
 static const          int sidepad      = 2;  /* horizontal padding of bar */
-static const          char host[]      = "";
+static const          char host[]      = "  ";
 
 /* tab style; 0:default 1:center 2:custom_width
  * 0 0 0 0 0 0 0 0
@@ -22,7 +22,7 @@ static const          char host[]      = "";
 #define TAB_CUSTOM_WIDTH 0x02
 
 static const unsigned int tabstyle    = TAB_CENTER | TAB_CUSTOM_WIDTH;
-static const unsigned int tabwidth    = 20;
+static const unsigned int tabwidth    = 24;
 static const char         tabtext[]   = "{title}"; /* tab text template; placeholders: {title}, {class} */
 static const unsigned int tabradius   = 8;
 static const unsigned int tabgap      = 4;
@@ -57,16 +57,14 @@ static const unsigned int attachtop        = 0; /* new window is attached to the
 static const          int focusonmove      = 1; /* switch view and focus follow the client moved by tag/tagmon */
 static const          int jump_on_activate = 1; /* 1 = _NET_ACTIVE_WINDOW (e.g. rofi -show window) jumps to the window's tag/monitor; 0 = only mark it urgent */
 
-#define ICONSIZE (bh - 2) /* or adaptively preserve 2 pixels each side */
+#define ICONSIZE (bh - 2 * tabborder - 4) /* or adaptively preserve 2 pixels each side */
 #define ICONSPACING 4 /* space between icon and title */
 static const char *fonts[] = {
-    "Symbols Nerd Font Mono:pixelsize=14:antialias=true;autohint=true",
     "CaskaydiaCove Nerd Font:pixelsize=14:antialias=true;autohint=true",
     "Noto Sans Mono CJK SC:pixelsize=14:antialias=true;autohint=true",
 };
 
 static const char *fonts_highlight[] = {
-    "Symbols Nerd Font Mono:pixelsize=14:antialias=true;autohint=true",
     "CaskaydiaCove Nerd Font:pixelsize=14:weight=bold:slant=italic:antialias=true;autohint=true",
     "Noto Sans Mono CJK SC:pixelsize=14:weight=bold:antialias=true;autohint=true",
 };
@@ -112,7 +110,7 @@ static char *colors[][3] = {
 static const unsigned int alphas[][3]      = {
     /*                    fg         bg                border     */
     // host
-    [SchemeHost]    = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
+    [SchemeHost]    = { OPAQUE,      TAB_SEL_BG_ALPHA, TRANSPARENT },
     // tag
     [SchemeTagNorm] = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     [SchemeTagSel]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
