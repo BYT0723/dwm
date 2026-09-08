@@ -995,20 +995,20 @@ Monitor *dirtomon(int dir) {
 static void drawtabborder(int x, int w, Clr *s) {
   Clr *prev = drw->scheme;
 
-  if (tabborder <= 0 || tabborder >= bh || w <= 0)
+  if (tabborderpx <= 0 || tabborderpx >= bh || w <= 0)
     return;
   if (s && s != prev)
     drw_setscheme(drw, s);
   if (tabr > 0 && w > 2 * tabr) {
-    drw_rounded_border(drw, x, 0, bh, tabr, RoundedLeft, tabborder);
-    drw_rounded_border(drw, x + w - tabr, 0, bh, tabr, RoundedRight, tabborder);
-    drw_rect_border(drw, x + tabr, 0, w - 2 * tabr, tabborder);
-    drw_rect_border(drw, x + tabr, bh - tabborder, w - 2 * tabr, tabborder);
+    drw_rounded_border(drw, x, 0, bh, tabr, RoundedLeft, tabborderpx);
+    drw_rounded_border(drw, x + w - tabr, 0, bh, tabr, RoundedRight, tabborderpx);
+    drw_rect_border(drw, x + tabr, 0, w - 2 * tabr, tabborderpx);
+    drw_rect_border(drw, x + tabr, bh - tabborderpx, w - 2 * tabr, tabborderpx);
   } else {
-    drw_rect_border(drw, x, 0, w, tabborder);
-    drw_rect_border(drw, x, bh - tabborder, w, tabborder);
-    drw_rect_border(drw, x, 0, tabborder, bh);
-    drw_rect_border(drw, x + w - tabborder, 0, tabborder, bh);
+    drw_rect_border(drw, x, 0, w, tabborderpx);
+    drw_rect_border(drw, x, bh - tabborderpx, w, tabborderpx);
+    drw_rect_border(drw, x, 0, tabborderpx, bh);
+    drw_rect_border(drw, x + w - tabborderpx, 0, tabborderpx, bh);
   }
   drw_setscheme(drw, prev);
 }
@@ -1343,7 +1343,8 @@ int drawtabs(Monitor *m, int x, int w, int n) {
     }
     if (tabr > 0)
       drw_rounded(drw, x + tabw - tabr, 0, bh, tabr, RoundedRight);
-    drawtabborder(x, tabw, NULL);
+    if (drw->scheme == scheme[SchemeSel])
+      drawtabborder(x, tabw, NULL);
 
     // floating marker
     if (c->isfloating)
@@ -1591,19 +1592,19 @@ static void hovershow(Client *c, int tx) {
   drw_setscheme(tooldrw, scheme[SchemeTooltip]);
   drw_rect(tooldrw, 0, 0, tw, th, 1, 1); /* solid background */
 
-  prevpx = hoverpad;
-  prevpy = hoverpad;
-  prevw = pw;
-  prevh = ph;
-  hoverpreview(c, prevpx, prevpy, prevw, prevh);
-
   iw = tw - hoverpad * 2;
   hoverellipsize(title, titlebuf, sizeof(titlebuf), iw);
-  y = hoverpad + ph + hovergap;
+  y = hoverpad;
   if (fonts_highlight_set)
     drw_setfontset(tooldrw, fonts_highlight_set);
   drw_text(tooldrw, hoverpad, y, iw, lh, 0, titlebuf, 0, 0);
   drw_setfontset(tooldrw, fonts_set);
+
+  prevpx = hoverpad;
+  prevpy = hoverpad + lh + hovergap;
+  prevw = pw;
+  prevh = ph;
+  hoverpreview(c, prevpx, prevpy, prevw, prevh);
 
   drw_map(tooldrw, toolwin, 0, 0, tw, th);
   XMapRaised(dpy, toolwin);
@@ -1644,9 +1645,9 @@ static void hoverpreview(Client *c, int x, int y, int w, int h) {
 
   /* inset the snapshot by previewborder so the highlight border drawn
      around the preview area sits on the background, not over the image */
-  int ix = x + (int)previewborder, iy = y + (int)previewborder,
-      iw2 = MAX(1, w - (int)previewborder * 2),
-      ih2 = MAX(1, h - (int)previewborder * 2), i;
+  int ix = x + (int)previewborderpx, iy = y + (int)previewborderpx,
+      iw2 = MAX(1, w - (int)previewborderpx * 2),
+      ih2 = MAX(1, h - (int)previewborderpx * 2), i;
   Pixmap pm = XCompositeNameWindowPixmap(dpy, c->win);
   XWindowAttributes wa;
   XRenderPictFormat *fmt;
@@ -1681,7 +1682,7 @@ static void hoverpreview(Client *c, int x, int y, int w, int h) {
   /* highlight border in colors[x][2]; drw_rect has no border channel
      (filled=0 draws with the fg color), so draw it directly */
   XSetForeground(dpy, tooldrw->gc, scheme[SchemeSel][ColBorder].pixel);
-  for (i = 0; i < (int)previewborder && w - i * 2 > 0 && h - i * 2 > 0; i++)
+  for (i = 0; i < (int)previewborderpx && w - i * 2 > 0 && h - i * 2 > 0; i++)
     XDrawRectangle(dpy, tooldrw->drawable, tooldrw->gc, x + i, y + i,
                    w - 1 - i * 2, h - 1 - i * 2);
 }
@@ -1738,15 +1739,15 @@ void showtagpreview(unsigned int i) {
   XMapRaised(dpy, selmon->tagwin);
   /* inset the snapshot by previewborder, like hoverpreview, so the
      highlight border below wraps it on all four sides */
-  iw2 = MAX(1, (int)tw - (int)previewborder * 2);
-  ih2 = MAX(1, (int)th - (int)previewborder * 2);
+  iw2 = MAX(1, (int)tw - (int)previewborderpx * 2);
+  ih2 = MAX(1, (int)th - (int)previewborderpx * 2);
   XCopyArea(dpy, selmon->tagmap[i], selmon->tagwin, drw->gc, 0, 0, iw2, ih2,
-            (int)hoverpad + (int)previewborder,
-            (int)hoverpad + (int)previewborder);
+            (int)hoverpad + (int)previewborderpx,
+            (int)hoverpad + (int)previewborderpx);
   /* XDrawRectangle's w/h span to x+w inclusive; use the snapshot area
      (tw x th) so the border exactly wraps the inset image */
   XSetForeground(dpy, drw->gc, scheme[SchemeSel][ColBorder].pixel);
-  for (n = 0; n < (int)previewborder && tw - n * 2 > 0 && th - n * 2 > 0; n++)
+  for (n = 0; n < (int)previewborderpx && tw - n * 2 > 0 && th - n * 2 > 0; n++)
     XDrawRectangle(dpy, selmon->tagwin, drw->gc, hoverpad + n, hoverpad + n,
                    tw - 1 - n * 2, th - 1 - n * 2);
   XSync(dpy, False);
@@ -3919,9 +3920,9 @@ void updatesystray(int flag) {
     if (!(systray = (Systray *)calloc(1, sizeof(Systray))))
       die("fatal: could not malloc() %u bytes\n", sizeof(Systray));
     systray->win = XCreateSimpleWindow(dpy, root, x - sp, m->by + vp,
-                             w > 2 * tabborder ? w - 2 * tabborder : 1,
-                             bh > 2 * tabborder ? bh - 2 * tabborder : 1,
-                             tabborder, scheme[SchemeSystray][ColBorder].pixel,
+                             w > 2 * tabborderpx ? w - 2 * tabborderpx : 1,
+                             bh > 2 * tabborderpx ? bh - 2 * tabborderpx : 1,
+                             tabborderpx, scheme[SchemeSystray][ColBorder].pixel,
                              scheme[SchemeSystray][ColBg].pixel);
     wa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
     wa.event_mask        = ButtonPressMask | ExposureMask;
@@ -3963,12 +3964,12 @@ void updatesystray(int flag) {
   x -= w;
   XSetWindowBackground(dpy, systray->win, scheme[SchemeSystray][ColBg].pixel);
   XMoveResizeWindow(dpy, systray->win, x - xpad, m->by + ypad,
-                    w > 2 * tabborder ? w - 2 * tabborder : 1,
-                    bh > 2 * tabborder ? bh - 2 * tabborder : 1);
+                    w > 2 * tabborderpx ? w - 2 * tabborderpx : 1,
+                    bh > 2 * tabborderpx ? bh - 2 * tabborderpx : 1);
   wc.x = x - xpad;
   wc.y = m->by + ypad;
-  wc.width = w > 2 * tabborder ? w - 2 * tabborder : 1;
-  wc.height = bh > 2 * tabborder ? bh - 2 * tabborder : 1;
+  wc.width = w > 2 * tabborderpx ? w - 2 * tabborderpx : 1;
+  wc.height = bh > 2 * tabborderpx ? bh - 2 * tabborderpx : 1;
   wc.stack_mode = Above;
   wc.sibling = m->barwin;
   XConfigureWindow(dpy, systray->win, CWX | CWY | CWWidth | CWHeight | CWSibling | CWStackMode, &wc);
@@ -3991,7 +3992,7 @@ void updatesystrayicongeom(Client *i, int w, int h) {
       i->w = (int)((float)i->w * (float)newh / (float)i->h);
       i->h = newh;
     }
-    i->y = (bh - 2 * tabborder - newh) / 2;
+    i->y = (bh - 2 * tabborderpx - newh) / 2;
   }
 }
 

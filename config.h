@@ -2,7 +2,7 @@
 #include <X11/XF86keysym.h>
 
 /* appearance */
-static const unsigned int borderpx     = 0;   /* border pixel of windows */
+static const unsigned int borderpx     = 2;   /* border pixel of windows */
 static const unsigned int snap         = 32;  /* snap pixel */
 static const          int showbar      = 1;   /* 0 means no bar */
 static const          int topbar       = 1;   /* 0 means bottom bar */
@@ -26,22 +26,22 @@ static const unsigned int tabwidth    = 24;
 static const char         tabtext[]   = "{title}"; /* tab text template; placeholders: {title}, {class} */
 static const unsigned int tabradius   = 8;
 static const unsigned int tabgap      = 4;
-static const unsigned int tabborder   = 1; /* tab outline width in px; 0 = no outline */
+static const unsigned int tabborderpx = 1; /* tab outline width in px; 0 = no outline */
 
 // tag and client preview
-static const          int hoverinfo      = 1;    /* 1 = hover a client tab to show a tooltip with client info; 0 = disabled */
-static const unsigned int hoverdelay     = 500; /* ms of resting on a tab before the tooltip appears */
-static const unsigned int previewh       = 240;  /* max live preview height; width scales by aspect */
-static const unsigned int previewrefresh = 300; /* ms between live preview refreshes */
-static const unsigned int hoverpad       = 12;   /* tooltip content padding from the border */
-static const unsigned int hovergap       = 8;  /* gap between the preview and the title */
-static const unsigned int previewborder  = 2;   /* px highlight border around the live preview, in colors[x][2] */
+static const          int hoverinfo       = 1;    /* 1 = hover a client tab to show a tooltip with client info; 0 = disabled */
+static const unsigned int hoverdelay      = 500; /* ms of resting on a tab before the tooltip appears */
+static const unsigned int previewh        = 240;  /* max live preview height; width scales by aspect */
+static const unsigned int previewrefresh  = 300; /* ms between live preview refreshes */
+static const unsigned int hoverpad        = 12;   /* tooltip content padding from the border */
+static const unsigned int hovergap        = 4;  /* gap between the preview and the title */
+static const unsigned int previewborderpx = 2;   /* px highlight border around the live preview, in colors[x][2] */
 
 // layout gap
 static const unsigned int gappih    = 6;
 static const unsigned int gappiv    = 6;
-static const unsigned int gappoh    = 12;
-static const unsigned int gappov    = 12;
+static const unsigned int gappoh    = 8;
+static const unsigned int gappov    = 8;
 static                int smartgaps = 0;   /* 1 means no outer gap when there is only one window */
 
 // systray
@@ -50,14 +50,14 @@ static const unsigned int systraypinning          = 0;  /* 0: sloppy systray fol
 static const unsigned int systrayspacing          = 4;  /* systray spacing */
 static const          int systraypinningfailfirst = 1;  /* 1: if pinning fails, display systray on the first monitor, False: display systray on the last monitor*/
 static const          int systraypad              = 4;
-static const          char *systrayorder[]        = { "fcitx", "...", "easyeffects", "nm-applet", "udiskie", NULL };
+static const          char *systrayorder[]        = { "fcitx", "...", "easyeffects", "blueman", "nm-applet", "pasystray", "udiskie", NULL };
 
 static const          int autoshowhid      = 1; /* 1 = focusstackhid shows hidden windows permanently; 0                                = preview, re-hide on switch away */
 static const unsigned int attachtop        = 0; /* new window is attached to the top of the stack */
 static const          int focusonmove      = 1; /* switch view and focus follow the client moved by tag/tagmon */
 static const          int jump_on_activate = 1; /* 1 = _NET_ACTIVE_WINDOW (e.g. rofi -show window) jumps to the window's tag/monitor; 0 = only mark it urgent */
 
-#define ICONSIZE (bh - 2 * tabborder - 4) /* or adaptively preserve 2 pixels each side */
+#define ICONSIZE (bh - 2 * tabborderpx - 4) /* or adaptively preserve 2 pixels each side */
 #define ICONSPACING 4 /* space between icon and title */
 static const char *fonts[] = {
     "CaskaydiaCove Nerd Font:pixelsize=14:antialias=true;autohint=true",
@@ -88,9 +88,9 @@ static char *colors[][3] = {
     // layout
     [SchemeLayout]  = { col_green,    col_black,    col_ab_black },
     // tasks
-    [SchemeNorm]    = { col_white,    col_black,    col_black    },
+    [SchemeNorm]    = { col_white,    col_black,    col_ab_black },
     [SchemeSel]     = { col_blue,     col_black,    col_cyan     },
-    [SchemeHid]     = { col_white,    col_ab_black, col_black    },
+    [SchemeHid]     = { col_white,    col_ab_black, col_ab_black },
     // status
     [SchemeStatus]  = { col_white,    col_black,    col_white    },
     // systray
