@@ -804,6 +804,8 @@ void clientmessage(XEvent *e) {
 
           view(&a);
         }
+        if (HIDDEN(c))
+          showwin(c); /* an activated hidden client must be displayed */
         focus(c);
         if (c)
           restack(selmon);
