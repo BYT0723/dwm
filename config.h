@@ -192,7 +192,7 @@ static const Rule rules[] = {
 /* layout(s) */
 static const float mfact          = 0.5; /* factor of master area size [0.05..0.95] */
 static const int   nmaster        = 1;    /* number of clients in master area */
-static const float mfact_presets[] = { 0.33333, 0.5, 0.66667 }; /* Mod+R: cycle master area width preset */
+static const float mfact_presets[] = { 0.2, 0.33333, 0.5, 0.66667, 0.8 }; /* Mod+R: cycle master area width preset */
 static const float cfact_presets[] = { 0.5, 1.0, 2.0 };         /* Mod+Shift+R: cycle focused window size preset */
 static const int   resizehints    = 1; /* 1 means respect size hints in tiled resizals */
 static const int   lockfullscreen = 1; /* 1 will force focus on the fullscreen window */
@@ -252,26 +252,28 @@ static Key keys[] = {
     // rofi
     {MODKEY,                       XK_d,                     spawn,          LAUNCHCMD("apps")},
     {MODKEY|ControlMask,           XK_d,                     spawn,          LAUNCHCMD("powermenu")},
-    {MODKEY,                       XK_a,                     spawn,          LAUNCHCMD("screenshot", "pure")},
-    {MODKEY|ShiftMask,             XK_a,                     spawn,          LAUNCHCMD("screenshot")},
     {MODKEY,                       XK_w,                     spawn,          LAUNCHCMD("windows")},
     {MODKEY|ShiftMask,             XK_w,                     spawn,          LAUNCHCMD("wallpaper")},
+    // screenshot
+    {MODKEY,                       XK_a,                     spawn,          LAUNCHCMD("screenshot", "pure")},
+    {MODKEY|ShiftMask,             XK_a,                     spawn,          LAUNCHCMD("screenshot")},
+    // common modules
     {MODKEY,                       XK_m,                     spawn,          LAUNCHCMD("modules")},
     {MODKEY|ShiftMask,             XK_m,                     spawn,          LAUNCHCMD("mpd")},
     // layout
     // {MODKEY,                       XK_t,                     setlayout,      {.v = &layouts[0]}},
     // {MODKEY,                       XK_f,                     setlayout,      {.v = &layouts[1]}},
     {MODKEY|ShiftMask,             XK_t,                     layoutmenu,     {0}},
+    // focus follows master: focused window holds sole master slot in tile
+    {MODKEY,                       XK_z,                     focusmaster,    {0}},
+    {MODKEY,                       XK_f,                     maximize,       {0}},
+    {MODKEY|ShiftMask,             XK_f,                     fullscreen,     {0}},
     // layout adjust
     {MODKEY|ControlMask,           XK_v,                     incnmaster,     {.i = +1}},
     {MODKEY|ControlMask,           XK_s,                     incnmaster,     {.i = -1}},
     // preset switching (niri-style, forward-only)
     {MODKEY,                       XK_r,                     cyclemfact,     {0}},
     {MODKEY|ShiftMask,             XK_r,                     cyclecfact,     {0}},
-    // focus follows master: focused window holds sole master slot in tile
-    {MODKEY,                       XK_z,                     togglefocusmaster, {0}},
-    {MODKEY,                       XK_f,                     togglemaximize, {0}},
-    {MODKEY|ControlMask,           XK_f,                     fullscreen,     {0}},
     // client manager
     {MODKEY,                       XK_b,                     togglebar,      {0}},
     {MODKEY,                       XK_j,                     focusstackvis,  {.i = +1}},
@@ -279,10 +281,10 @@ static Key keys[] = {
     {MODKEY|ShiftMask,             XK_j,                     focusstackhid,  {.i = +1}},
     {MODKEY|ShiftMask,             XK_k,                     focusstackhid,  {.i = -1}},
     {MODKEY,                       XK_s,                     show,           {0}},
+    {MODKEY,                       XK_h,                     hide,           {0}},
     {MODKEY|ShiftMask,             XK_s,                     showall,        {0}},
-    {MODKEY|ShiftMask,             XK_h,                     hide,           {0}},
     {MODKEY|ControlMask,           XK_space,                 togglefloating, {0}},
-    {MODKEY|ControlMask,           XK_Return,                zoom,           {0}},
+    {MODKEY,                       XK_Return,                zoom,           {0}},
     {MODKEY,                       XK_Tab,                   view,           {0}},
     {MODKEY,                       XK_0,                     view,           {.ui = ~0}},
     {MODKEY|ShiftMask,             XK_0,                     tag,            {.ui = ~0}},

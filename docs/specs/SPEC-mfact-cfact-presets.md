@@ -22,7 +22,7 @@
 | `Mod+Shift+R` | cfact 切换到下一个预设（数组内循环，含回绕） |
 
 cfact 作用于**聚焦窗口**。无聚焦窗口 / 无 tiling arrange 时不生效
-（沿用 `setmfact`/`setcfact` 的 guard）。
+（guard 内联在 `cyclecfact` 中）。
 
 ## 预设数值（config.h 可自定义数组）
 
@@ -42,15 +42,15 @@ cfact 作用于**聚焦窗口**。无聚焦窗口 / 无 tiling arrange 时不生
 
 ## State / 持久化
 
-- `mfact` 落盘到 `selmon->pertag->mfacts[curtag]`，与现有 `setmfact` 一致。
-- `cfact` 写聚焦客户端 `c->cfact`，与现有 `setcfact` 一致。
+- `mfact` 落盘到 `selmon->pertag->mfacts[curtag]`（`cyclemfact` 内联写入）。
+- `cfact` 写聚焦客户端 `c->cfact`（`cyclecfact` 内联写入）。
 
 ## 受影响范围 / Code Style
 
 - `config.h`：新增两个 `static const float` 预设数组（mfact 定义附近）+ 2 条 key。
-- `dwm.c`：新增两个 handler 原型（函数声明区，`setmfact` 前的 C 字母段附近）+
-  实现（放在 `setcfact`/`setmfact` 附近）。函数签名 `void X(const Arg *arg)`，
-  无需读取 arg；沿用本仓库 2 空格缩进、无括号单语句风格。
+- `dwm.c`：新增两个 handler `cyclemfact`/`cyclecfact`（原型在函数声明区，实现放
+  在 `nextpreset` 之后）。函数签名 `void X(const Arg *arg)`，无需读取 arg；沿用本仓库
+  2 空格缩进、无括号单语句风格。
 
 ## 命令
 

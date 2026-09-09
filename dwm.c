@@ -335,13 +335,11 @@ static void runautostart(void);
 static void scan(void);
 static int sendevent(Window w, Atom proto, int m, long d0, long d1, long d2, long d3, long d4);
 static void sendmon(Client *c, Monitor *m);
-static void setcfact(const Arg *arg);
 static void setclientstate(Client *c, long state);
 static void setcurrentmon(Monitor *m);
 static void setfocus(Client *c);
 static void setfullscreen(Client *c, int fullscreen);
 static void setlayout(const Arg *arg);
-static void setmfact(const Arg *arg);
 static void setstateprop(Window w, Atom a, unsigned long *vals, int nvals);
 static void setup(void);
 static void seturgent(Client *c, int urg);
@@ -363,8 +361,8 @@ static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
 static void togglebar(const Arg *arg);
 static void togglefloating(const Arg *arg);
-static void togglefocusmaster(const Arg *arg);
-static void togglemaximize(const Arg *arg);
+static void focusmaster(const Arg *arg);
+static void maximize(const Arg *arg);
 static void tabgeometry(Monitor *m, int *tstart, int *tend);
 static Client *taskshover(Monitor *m, int xclick, int tstart, int *tabx);
 static void hoverfire(void);
@@ -3123,36 +3121,6 @@ void cyclemfact(const Arg *arg) {
   arrange(selmon);
 }
 
-void setcfact(const Arg *arg) {
-  float f;
-  Client *c;
-
-  c = selmon->sel;
-
-  if (!arg || !c || !selmon->lt[selmon->sellt]->arrange)
-    return;
-  f = arg->f + c->cfact;
-  if (arg->f == 0.0)
-    f = 1.0;
-  else if (f < 0.25 || f > 4.0)
-    return;
-  c->cfact = f;
-  arrange(selmon);
-}
-
-/* arg > 1.0 will set mfact absolutely */
-void setmfact(const Arg *arg) {
-  float f;
-
-  if (!arg || !selmon->lt[selmon->sellt]->arrange)
-    return;
-  f = arg->f < 1.0 ? arg->f + selmon->mfact : arg->f - 1.0;
-  if (f < 0.05 || f > 0.95)
-    return;
-  selmon->mfact = selmon->pertag->mfacts[selmon->pertag->curtag] = f;
-  arrange(selmon);
-}
-
 /* persist a state property for the next hot-restart; nvals == 0 deletes it */
 void setstateprop(Window w, Atom a, unsigned long *vals, int nvals) {
   if (nvals > 0)
@@ -3542,9 +3510,11 @@ static const Layout *findlayout(void (*arrange)(Monitor *)) {
   return &layouts[0];
 }
 
-/* toggle a single-master mode. mode 1 = focusmaster (host centeredfloatingmaster),
-   mode 2 = maximize (host monocle). Leaving a mode restores the layout that was
-   active before the first mode was entered (fmlast, kept across mode switches). */
+/* Enter/exit or switch a single-master mode. mode 1 = focusmaster (host
+   centeredfloatingmaster), mode 2 = maximize (host monocle). Pressing the key
+   for the active mode exits it; pressing the other one switches modes. Leaving
+   a mode restores the layout that was active before the first mode was entered
+   (fmlast, kept across mode switches). */
 static void setfmmode(int mode, void (*arrange)(Monitor *)) {
   unsigned int t = selmon->pertag->curtag;
   int *f = &selmon->pertag->focusmaster[t];
@@ -3573,11 +3543,11 @@ static void setfmmode(int mode, void (*arrange)(Monitor *)) {
     arrange(selmon);
 }
 
-void togglefocusmaster(const Arg *arg) {
+void focusmaster(const Arg *arg) {
   setfmmode(1, centeredfloatingmaster); /* focusmaster: host = centeredfloatingmaster */
 }
 
-void togglemaximize(const Arg *arg) {
+void maximize(const Arg *arg) {
   setfmmode(2, monocle); /* maximize: host = monocle (all tiled stacked) */
 }
 

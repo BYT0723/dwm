@@ -47,7 +47,7 @@
 
 - `dwm.c` `monocle()`：**仅在作为 maximize 宿主（档位 2, `focusmaster==2`）时**带
   outer gap 叠放（每窗四周缩进 `gappoh/gappov`）。普通手动切 `[M]` 与
-  `Mod+Ctrl+f`(fullscreen，内部切 monocle) 处于档位 0 → **无 gap 铺满**。
+  `Mod+Shift+f`(fullscreen，内部切 monocle) 处于档位 0 → **无 gap 铺满**。
 - 已知边界（接受）：档位 2 激活期间按 fullscreen 仍带 gap（档位未清，避免为
   fullscreen 暂存/恢复单主状态的额外复杂度）。
 
@@ -63,7 +63,7 @@
 
 - `dwm.c`：`Pertag` 增加 `const Layout *fmlast[LENGTH(tags)+1]`；createmon 初始化为 NULL；
   新增 `findlayout()`/`setfmmode(mode, arrange)`；
-  `togglefocusmaster`→档位1(宿主 CFM)、`togglemaximize`→档位2(宿主 monocle)；`monocle()` 加 outer gap。
+  `focusmaster`→档位1(宿主 CFM)、`maximize`→档位2(宿主 monocle)；`monocle()` 加 outer gap。
 - `vanitygaps.c`：`centeredfloatingmaster()` 与 `tile()` 档位 1 几何提升（档位 2 屏外分支已移除）。
 - `config.h`：`Mod+z`/`Mod+f` 键位保持（已在工作区）。
 
@@ -93,7 +93,7 @@ Clean: make clean
    再次 `Mod+f` 恢复进入前布局。
 4. 档位 1 下手动切到 tile 布局：tile 内提升照常生效（tile 与 CFM 共享档位 1），无脏状态。
 5. per-tag：A tag 档位不影响 B tag；档位 2 (monocle) 不影响 monocle 原生切换。
-6. `Mod+Ctrl+f`(fullscreen) 可用：档位 0 下无 gap 铺满（见宿主布局改动）。
+6. `Mod+Shift+f`(fullscreen) 可用：档位 0 下无 gap 铺满（见宿主布局改动）。
 
 ## Open Questions
 
