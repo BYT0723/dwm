@@ -340,32 +340,37 @@ static void centeredmaster(Monitor *m) {
 }
 
 static void centeredfloatingmaster(Monitor *m) {
-  unsigned int i, n;
+  unsigned int i, n, nma;
   float mfacts, sfacts;
   float mivf = 1.0; // master inner vertical gap factor
   int oh, ov, ih, iv, mrest, srest;
   int mx = 0, my = 0, mh = 0, mw = 0;
   int sx = 0, sy = 0, sh = 0, sw = 0;
-  Client *c;
+  Client *c, *fm;
 
   getgaps(m, &oh, &ov, &ih, &iv, &n);
   if (n == 0)
     return;
 
+  /* focus-master mode (1): force a single master slot, held by the focused
+     window. Maximize (2) is handled by the monocle host layout instead. */
+  fm = (focusmode(m) == 1) ? focusclient(m) : NULL;
+  nma = fm ? 1 : m->nmaster;
+
   sx = mx = m->wx + ov;
   sy = my = m->wy + oh;
   sh = mh = m->wh - 2 * oh;
   mw = m->ww - 2 * ov - iv * (n - 1);
-  sw = m->ww - 2 * ov - iv * (n - m->nmaster - 1);
+  sw = m->ww - 2 * ov - iv * (n - nma - 1);
 
-  if (m->nmaster && n > m->nmaster) {
+  if (nma && n > nma) {
     mivf = 0.8;
-    /* go mfact box in the center if more than nmaster clients */
+    /* go mfact box in the center if more than nma clients */
     if (m->ww > m->wh) {
-      mw = m->ww * m->mfact - iv * mivf * (MIN(n, m->nmaster) - 1);
+      mw = m->ww * m->mfact - iv * mivf * (MIN(n, nma) - 1);
       mh = m->wh * 0.9;
     } else {
-      mw = m->ww * 0.9 - iv * mivf * (MIN(n, m->nmaster) - 1);
+      mw = m->ww * 0.9 - iv * mivf * (MIN(n, nma) - 1);
       mh = m->wh * m->mfact;
     }
     mx = m->wx + (m->ww - mw) / 2;
@@ -376,11 +381,28 @@ static void centeredfloatingmaster(Monitor *m) {
     sh = m->wh - 2 * oh;
   }
 
+  if (fm && focusmode(m) == 1) {
+    unsigned int j = 0;
+    int base = n > 1 ? sw / (n - 1) : 0;
+    int extra = n > 1 ? sw % (n - 1) : 0;
+    /* focused window fills the whole centered master box, the rest split
+       the stack area equally (order of m->clients is untouched) */
+    resize(fm, mx, my, mw - (2 * fm->bw), mh - (2 * fm->bw), 0);
+    for (c = nexttiled(m->clients); c; c = nexttiled(c->next))
+      if (c != fm) {
+        resize(c, sx, sy,
+               base + (j++ < (unsigned int)extra ? 1 : 0) - (2 * c->bw),
+               sh - (2 * c->bw), 0);
+        sx += WIDTH(c) + iv;
+      }
+    return;
+  }
+
   getfacts(m, mw, sw, &mfacts, &sfacts, &mrest, &srest);
 
   for (i = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
-    if (i < m->nmaster) {
-      /* nmaster clients are stacked horizontally, in the center of the screen
+    if (i < nma) {
+      /* nma clients are stacked horizontally, in the center of the screen
        */
       resize(c, mx, my,
              mw * (c->cfact / mfacts) + (i < mrest ? 1 : 0) - (2 * c->bw),
@@ -389,7 +411,7 @@ static void centeredfloatingmaster(Monitor *m) {
     } else {
       /* stack clients are stacked horizontally */
       resize(c, sx, sy,
-             sw * (c->cfact / sfacts) + ((i - m->nmaster) < srest ? 1 : 0) -
+             sw * (c->cfact / sfacts) + ((i - nma) < srest ? 1 : 0) -
                  (2 * c->bw),
              sh - (2 * c->bw), 0);
       sx += WIDTH(c) + iv;
@@ -739,44 +761,66 @@ static void nrowgrid(Monitor *m) {
  * Default tile layout + gaps
  */
 static void tile(Monitor *m) {
-  unsigned int i, n;
+  unsigned int i, n, nma;
   int oh, ov, ih, iv;
   int mx = 0, my = 0, mh = 0, mw = 0;
   int sx = 0, sy = 0, sh = 0, sw = 0;
   float mfacts, sfacts;
   int mrest, srest;
-  Client *c;
+  Client *c, *fm;
 
   getgaps(m, &oh, &ov, &ih, &iv, &n);
   if (n == 0)
     return;
 
+  /* focus-master mode (1): force a single master slot, held by the focused
+     window. Maximize (2) is handled by the monocle host layout instead. */
+  fm = (focusmode(m) == 1) ? focusclient(m) : NULL;
+  nma = fm ? 1 : m->nmaster;
+
   sx = mx = m->wx + ov;
   sy = my = m->wy + oh;
 
   if (m->wh > m->ww) {
-    mw = m->ww - 2 * ov - iv * (MIN(n, m->nmaster) - 1);
-    sw = m->ww - 2 * ov - iv * (n - m->nmaster - 1);
+    mw = m->ww - 2 * ov - iv * (MIN(n, nma) - 1);
+    sw = m->ww - 2 * ov - iv * (n - nma - 1);
     mh = m->wh - 2 * oh;
     sh = m->wh - 2 * oh;
 
-    if (m->nmaster && n > m->nmaster) {
+    if (nma && n > nma) {
       mh = (m->wh - 2 * oh - ih) * m->mfact;
       sh = m->wh - 2 * oh - ih - mh;
       sy = my + mh + ih;
     }
 
+    if (fm) {
+      unsigned int j = 0;
+      int base = n > 1 ? sw / (n - 1) : 0;
+      int extra = n > 1 ? sw % (n - 1) : 0;
+      /* single master fills the whole master row, the rest split the stack row
+       */
+      resize(fm, mx, my, mw - (2 * fm->bw), mh - (2 * fm->bw), 0);
+      for (c = nexttiled(m->clients); c; c = nexttiled(c->next))
+        if (c != fm) {
+          resize(c, sx, sy,
+                 base + (j++ < (unsigned int)extra ? 1 : 0) - (2 * c->bw),
+                 sh - (2 * c->bw), 0);
+          sx += WIDTH(c) + iv;
+        }
+      return;
+    }
+
     getfacts(m, mw, sw, &mfacts, &sfacts, &mrest, &srest);
 
     for (i = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
-      if (i < m->nmaster) {
+      if (i < nma) {
         resize(c, mx, my,
                mw * (c->cfact / mfacts) + (i < mrest ? 1 : 0) - (2 * c->bw),
                mh - (2 * c->bw), 0);
         mx += WIDTH(c) + iv;
       } else {
         resize(c, sx, sy,
-               sw * (c->cfact / sfacts) + ((i - m->nmaster) < srest ? 1 : 0) -
+               sw * (c->cfact / sfacts) + ((i - nma) < srest ? 1 : 0) -
                    (2 * c->bw),
                sh - (2 * c->bw), 0);
         sx += WIDTH(c) + iv;
@@ -784,26 +828,41 @@ static void tile(Monitor *m) {
     return;
   }
 
-  mh = m->wh - 2 * oh - ih * (MIN(n, m->nmaster) - 1);
-  sh = m->wh - 2 * oh - ih * (n - m->nmaster - 1);
+  mh = m->wh - 2 * oh - ih * (MIN(n, nma) - 1);
+  sh = m->wh - 2 * oh - ih * (n - nma - 1);
   sw = mw = m->ww - 2 * ov;
 
-  if (m->nmaster && n > m->nmaster) {
+  if (nma && n > nma) {
     sw = (mw - iv) * (1 - m->mfact);
     mw = mw - iv - sw;
     sx = mx + mw + iv;
   }
 
+  if (fm) {
+    unsigned int j = 0;
+    int base = n > 1 ? sh / (n - 1) : 0;
+    int extra = n > 1 ? sh % (n - 1) : 0;
+    /* single master fills the whole master column, the rest split the stack */
+    resize(fm, mx, my, mw - (2 * fm->bw), mh - (2 * fm->bw), 0);
+    for (c = nexttiled(m->clients); c; c = nexttiled(c->next))
+      if (c != fm) {
+        resize(c, sx, sy, sw - (2 * c->bw),
+               base + (j++ < (unsigned int)extra ? 1 : 0) - (2 * c->bw), 0);
+        sy += HEIGHT(c) + ih;
+      }
+    return;
+  }
+
   getfacts(m, mh, sh, &mfacts, &sfacts, &mrest, &srest);
 
   for (i = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
-    if (i < m->nmaster) {
+    if (i < nma) {
       resize(c, mx, my, mw - (2 * c->bw),
              mh * (c->cfact / mfacts) + (i < mrest ? 1 : 0) - (2 * c->bw), 0);
       my += HEIGHT(c) + ih;
     } else {
       resize(c, sx, sy, sw - (2 * c->bw),
-             sh * (c->cfact / sfacts) + ((i - m->nmaster) < srest ? 1 : 0) -
+             sh * (c->cfact / sfacts) + ((i - nma) < srest ? 1 : 0) -
                  (2 * c->bw),
              0);
       sy += HEIGHT(c) + ih;

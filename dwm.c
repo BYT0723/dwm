@@ -285,6 +285,8 @@ static void enternotify(XEvent *e);
 static void expose(XEvent *e);
 static void focus(Client *c);
 static void focusin(XEvent *e);
+static Client *focusclient(Monitor *m);
+static int focusmode(Monitor *m);
 static void focusmon(const Arg *arg);
 static void focusstack(int inc, int vis);
 static void focusstackhid(const Arg *arg);
@@ -361,6 +363,8 @@ static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
 static void togglebar(const Arg *arg);
 static void togglefloating(const Arg *arg);
+static void togglefocusmaster(const Arg *arg);
+static void togglemaximize(const Arg *arg);
 static void tabgeometry(Monitor *m, int *tstart, int *tend);
 static Client *taskshover(Monitor *m, int xclick, int tstart, int *tabx);
 static void hoverfire(void);
@@ -482,6 +486,8 @@ struct Pertag {
   unsigned int sellts[LENGTH(tags) + 1]; /* selected layouts */
   const Layout *ltidxs[LENGTH(tags) + 1][2];    /* matrix of tags and layouts indexes  */
   int showbars[LENGTH(tags) + 1];      /* display bar for the current tag */
+  int focusmaster[LENGTH(tags) + 1];   /* 1 = focusmaster (host centeredfloatingmaster, focused window centered), 2 = maximize (host monocle, all tiled stacked with gaps) */
+  const Layout *fmlast[LENGTH(tags) + 1];  /* layout active before the first single-master mode; restored on leaving */
 };
 
 /* compile-time check if all tags fit into an unsigned int bit array. */
@@ -932,6 +938,8 @@ Monitor *createmon(void) {
     m->pertag->sellts[i] = m->sellt;
 
     m->pertag->showbars[i] = m->showbar;
+    m->pertag->focusmaster[i] = 0;
+    m->pertag->fmlast[i] = NULL;
   }
 
   return m;
@@ -1927,6 +1935,8 @@ void focus(Client *c) {
     XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
   }
   selmon->sel = c;
+  if (c && focusclient(c->mon))
+    arrange(c->mon); /* keep the focused window in the single master slot */
   drawbars();
 }
 
@@ -2493,15 +2503,23 @@ void maprequest(XEvent *e) {
 
 void monocle(Monitor *m) {
   unsigned int n = 0;
+  int oh = 0, ov = 0, ih = 0, iv = 0;
   Client *c;
+  /* inset by the outer gaps only when acting as the maximize (mode 2) host
+     layout; plain [M] and fullscreen also run this layout but at mode 0 and
+     should stay edge-to-edge */
+  int gaps = (m->pertag->focusmaster[m->pertag->curtag] == 2);
 
   for (c = m->clients; c; c = c->next)
     if (ISVISIBLE(c))
       n++;
   if (n > 0) /* override layout symbol */
     snprintf(m->ltsymbol, sizeof m->ltsymbol, "[%d]", n);
+  if (gaps)
+    getgaps(m, &oh, &ov, &ih, &iv, &n);
   for (c = nexttiled(m->clients); c; c = nexttiled(c->next))
-    resize(c, m->wx , m->wy , m->ww - 2 * c->bw, m->wh - 2 * c->bw, 0);
+    resize(c, m->wx + ov, m->wy + oh, m->ww - 2 * ov - 2 * c->bw,
+           m->wh - 2 * oh - 2 * c->bw, 0);
 }
 
 void motionnotify(XEvent *e) {
@@ -3510,6 +3528,73 @@ void togglebar(const Arg *arg) {
     XConfigureWindow(dpy, systray->win, CWY, &wc);
   }
   arrange(selmon);
+}
+
+/* find the Layout entry whose arrange function matches, so single-master modes
+   can switch to / restore from their host layout without hardcoding an index */
+static const Layout *findlayout(void (*arrange)(Monitor *)) {
+  unsigned int i;
+  for (i = 0; i < LENGTH(layouts); i++)
+    if (layouts[i].arrange == arrange)
+      return &layouts[i];
+  return &layouts[0];
+}
+
+/* toggle a single-master mode. mode 1 = focusmaster (host centeredfloatingmaster),
+   mode 2 = maximize (host monocle). Leaving a mode restores the layout that was
+   active before the first mode was entered (fmlast, kept across mode switches). */
+static void setfmmode(int mode, void (*arrange)(Monitor *)) {
+  unsigned int t = selmon->pertag->curtag;
+  int *f = &selmon->pertag->focusmaster[t];
+  const Layout *host = findlayout(arrange);
+
+  if (*f == mode) {
+    /* leaving the mode: clear it, restore the pre-mode layout if recorded */
+    *f = 0;
+    if (selmon->pertag->fmlast[t]) {
+      setlayout(&((Arg){.v = (void *)selmon->pertag->fmlast[t]}));
+      selmon->pertag->fmlast[t] = NULL;
+    } else {
+      arrange(selmon);
+    }
+    return;
+  }
+
+  /* entering (or switching to) the mode: only the first entry from plain mode
+     records the layout to restore later; switching 1<->2 keeps the original */
+  if (!*f && selmon->lt[selmon->sellt] != host)
+    selmon->pertag->fmlast[t] = selmon->lt[selmon->sellt];
+  *f = mode;
+  if (selmon->lt[selmon->sellt] != host)
+    setlayout(&((Arg){.v = (void *)host}));
+  else
+    arrange(selmon);
+}
+
+void togglefocusmaster(const Arg *arg) {
+  setfmmode(1, centeredfloatingmaster); /* focusmaster: host = centeredfloatingmaster */
+}
+
+void togglemaximize(const Arg *arg) {
+  setfmmode(2, monocle); /* maximize: host = monocle (all tiled stacked) */
+}
+
+/* focused client when any single-master mode is active for m's current tag,
+   else NULL. Callers use it for both focusmaster (mode 1) and maximize (mode 2):
+   focus() rearranges on focus switch so the focused window stays the visible
+   master / topmost monocle window. */
+static Client *focusclient(Monitor *m) {
+  Client *c = m->sel;
+  if (!m->pertag->focusmaster[m->pertag->curtag] || !c || c->mon != m)
+    return NULL;
+  if (c->isfloating || !ISVISIBLE(c) || HIDDEN(c))
+    return NULL;
+  return c;
+}
+
+/* single-master mode for m's current tag: 0 off, 1 focusmaster, 2 maximize */
+static int focusmode(Monitor *m) {
+  return focusclient(m) ? m->pertag->focusmaster[m->pertag->curtag] : 0;
 }
 
 void togglefloating(const Arg *arg) {
