@@ -190,11 +190,13 @@ static const Rule rules[] = {
 };
 
 /* layout(s) */
-static const float mfact          = 0.55; /* factor of master area size [0.05..0.95] */
+static const float mfact          = 0.5; /* factor of master area size [0.05..0.95] */
 static const int   nmaster        = 1;    /* number of clients in master area */
+static const float mfact_presets[] = { 0.33333, 0.5, 0.66667 }; /* Mod+R: cycle master area width preset */
+static const float cfact_presets[] = { 0.5, 1.0, 2.0 };         /* Mod+Shift+R: cycle focused window size preset */
 static const int   resizehints    = 1; /* 1 means respect size hints in tiled resizals */
 static const int   lockfullscreen = 1; /* 1 will force focus on the fullscreen window */
-static const int   refreshrate    = 120; /* refresh rate (per second) for client move/resize */
+static const int   refreshrate    = 144; /* refresh rate (per second) for client move/resize */
 
 #define FORCE_VSPLIT 1 /* nrowgrid layout: force two clients to always split vertically */
 #include "vanitygaps.c"
@@ -239,7 +241,7 @@ static const char *layoutmenu_cmd   = "$HOME/.dwm/dwm-layoutmenu.sh";
 
 static Key keys[] = {
     /* modifier                    key                       function        argument */
-    {MODKEY,                       XK_Return,                spawn,          LAUNCHCMD("term")},
+    {MODKEY,                       XK_t,                     spawn,          LAUNCHCMD("term")},
     {MODKEY,                       XK_n,                     spawn,          LAUNCHCMD("term", "float")},
     {MODKEY,                       XK_e,                     spawn,          LAUNCHCMD("fm")},
     {0,                            XF86XK_AudioLowerVolume,  spawn,          SHCMD("$HOME/.dwm/tools/volume.sh down")},
@@ -248,18 +250,17 @@ static Key keys[] = {
     {0,                            XF86XK_MonBrightnessDown, spawn,          SHCMD("$HOME/.dwm/tools/brightness.sh down")},
     {0,                            XF86XK_MonBrightnessUp,   spawn,          SHCMD("$HOME/.dwm/tools/brightness.sh up")},
     // rofi
-    {MODKEY,                       XK_w,                     spawn,          LAUNCHCMD("windows")},
+    {MODKEY,                       XK_d,                     spawn,          LAUNCHCMD("apps")},
+    {MODKEY|ControlMask,           XK_d,                     spawn,          LAUNCHCMD("powermenu")},
     {MODKEY,                       XK_a,                     spawn,          LAUNCHCMD("screenshot", "pure")},
     {MODKEY|ShiftMask,             XK_a,                     spawn,          LAUNCHCMD("screenshot")},
-    {MODKEY|ShiftMask,             XK_r,                     spawn,          LAUNCHCMD("screencast")},
-    {MODKEY,                       XK_d,                     spawn,          LAUNCHCMD("apps")},
-    {MODKEY,                       XK_m,                     spawn,          LAUNCHCMD("modules")},
+    {MODKEY,                       XK_w,                     spawn,          LAUNCHCMD("windows")},
     {MODKEY|ShiftMask,             XK_w,                     spawn,          LAUNCHCMD("wallpaper")},
+    {MODKEY,                       XK_m,                     spawn,          LAUNCHCMD("modules")},
     {MODKEY|ShiftMask,             XK_m,                     spawn,          LAUNCHCMD("mpd")},
-    {MODKEY|ControlMask,           XK_m,                     spawn,          LAUNCHCMD("powermenu")},
     // layout
-    {MODKEY,                       XK_t,                     setlayout,      {.v = &layouts[0]}},
-    {MODKEY,                       XK_f,                     setlayout,      {.v = &layouts[1]}},
+    // {MODKEY,                       XK_t,                     setlayout,      {.v = &layouts[0]}},
+    // {MODKEY,                       XK_f,                     setlayout,      {.v = &layouts[1]}},
     {MODKEY|ShiftMask,             XK_t,                     layoutmenu,     {0}},
     // layout adjust
     {MODKEY,                       XK_v,                     incnmaster,     {.i = +1}},
@@ -269,6 +270,9 @@ static Key keys[] = {
     {MODKEY|ControlMask,           XK_h,                     setcfact,       {.f = +0.05}},
     {MODKEY|ControlMask,           XK_l,                     setcfact,       {.f = -0.05}},
     {MODKEY|ControlMask,           XK_o,                     setcfact,       {.f = 0.00}},
+    // preset switching (niri-style, forward-only)
+    {MODKEY,                       XK_r,                     cyclemfact,     {0}},
+    {MODKEY|ShiftMask,             XK_r,                     cyclecfact,     {0}},
     // client manager
     {MODKEY,                       XK_b,                     togglebar,      {0}},
     {MODKEY,                       XK_j,                     focusstackvis,  {.i = +1}},
@@ -278,7 +282,7 @@ static Key keys[] = {
     {MODKEY|ShiftMask,             XK_s,                     show,           {0}},
     {MODKEY|ControlMask,           XK_s,                     showall,        {0}},
     {MODKEY|ShiftMask,             XK_h,                     hide,           {0}},
-    {MODKEY|ShiftMask,             XK_f,                     fullscreen,     {0}},
+    {MODKEY,                       XK_f,                     fullscreen,     {0}},
     {MODKEY|ControlMask,           XK_space,                 togglefloating, {0}},
     {MODKEY|ControlMask,           XK_Return,                zoom,           {0}},
     {MODKEY,                       XK_Tab,                   view,           {0}},
@@ -289,7 +293,7 @@ static Key keys[] = {
     {MODKEY,                       XK_period,                focusmon,       {.i = +1}},
     {MODKEY|ControlMask,           XK_comma,                 tagmon,         {.i = -1}},
     {MODKEY|ControlMask,           XK_period,                tagmon,         {.i = +1}},
-    {MODKEY|ShiftMask,             XK_q,                     killclient,     {0}},
+    {MODKEY,                       XK_q,                     killclient,     {0}},
     {MODKEY|ControlMask,           XK_q,                     quit,           {1}}, // hot restart
     {MODKEY|ShiftMask|ControlMask, XK_q,                     quit,           {0}}, // kill dwm
     // gap manager

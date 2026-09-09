@@ -270,6 +270,8 @@ static void configure(Client *c);
 static void configurenotify(XEvent *e);
 static void configurerequest(XEvent *e);
 static Monitor *createmon(void);
+static void cyclecfact(const Arg *arg);
+static void cyclemfact(const Arg *arg);
 static void destroynotify(XEvent *e);
 static void detach(Client *c);
 static void detachstack(Client *c);
@@ -3070,6 +3072,35 @@ void setlayout(const Arg *arg) {
     arrange(selmon);
   else
     drawbar(selmon);
+}
+
+/* smallest preset strictly greater than cur, wrapping to the first */
+static float nextpreset(const float *presets, unsigned int n, float cur) {
+  unsigned int i;
+  for (i = 0; i < n; i++)
+    if (presets[i] > cur)
+      return presets[i];
+  return presets[0];
+}
+
+/* niri-style preset cycling: step forward through cfact_presets (wrap-around) */
+void cyclecfact(const Arg *arg) {
+  Client *c;
+
+  c = selmon->sel;
+  if (!c || !selmon->lt[selmon->sellt]->arrange)
+    return;
+  c->cfact = nextpreset(cfact_presets, LENGTH(cfact_presets), c->cfact);
+  arrange(selmon);
+}
+
+/* niri-style preset cycling: step forward through mfact_presets (wrap-around) */
+void cyclemfact(const Arg *arg) {
+  if (!selmon->lt[selmon->sellt]->arrange)
+    return;
+  selmon->mfact = selmon->pertag->mfacts[selmon->pertag->curtag] =
+      nextpreset(mfact_presets, LENGTH(mfact_presets), selmon->mfact);
+  arrange(selmon);
 }
 
 void setcfact(const Arg *arg) {
