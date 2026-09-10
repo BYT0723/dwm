@@ -125,6 +125,10 @@ enum {
   NetWMWindowTypeTooltip,
   NetClientList,
   NetWMWindowOpacity,
+  NetNumberOfDesktops,
+  NetCurrentDesktop,
+  NetDesktopNames,
+  NetWMDesktop,
   NetLast
 };
 /* EWMH atoms */
@@ -386,6 +390,11 @@ static void unmapnotify(XEvent *e);
 static void updatebarpos(Monitor *m);
 static void updatebars(void);
 static void updateclientlist(void);
+static int clientdesktop(Client *c);
+static void updatecurrentdesktop(void);
+static void updatedesktopnames(void);
+static void updatenumberofdesktops(void);
+static void updatewmdesktop(Client *c);
 static int updategeom(void);
 static void updateicon(Client *c);
 static void updatenumlockmask(void);
@@ -1981,6 +1990,7 @@ void setcurrentmon(Monitor *m) {
   }
   selmon = m;
   focus(NULL);
+  updatecurrentdesktop();
 }
 
 void focusmon(const Arg *arg) {
@@ -2463,8 +2473,8 @@ void manage(Window w, XWindowAttributes *wa) {
   configure(c); /* propagates border_width, if size doesn't change */
   attachtop ? attach(c) : attachbottom(c);
   attachstack(c);
-  XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32,
-                  PropModeAppend, (unsigned char *)&(c->win), 1);
+  updatewmdesktop(c);
+  updateclientlist();
   if (!HIDDEN(c))
     setclientstate(c, NormalState);
   if (c->mon == selmon)
@@ -2983,6 +2993,8 @@ void sendmon(Client *c, Monitor *m) {
   c->tags = m->tagset[m->seltags]; /* assign tags of target monitor */
   attach(c);
   attachstack(c);
+  updatewmdesktop(c);
+  updateclientlist();
   if (c->isfullscreen)
     resizeclient(c, m->mx, m->my, m->mw, m->mh);
   focus(NULL);
@@ -3210,6 +3222,12 @@ void setup(void) {
   netatom[NetWMWindowOpacity] =
       XInternAtom(dpy, "_NET_WM_WINDOW_OPACITY", False);
   netatom[NetClientList] = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
+  netatom[NetNumberOfDesktops] =
+      XInternAtom(dpy, "_NET_NUMBER_OF_DESKTOPS", False);
+  netatom[NetCurrentDesktop] =
+      XInternAtom(dpy, "_NET_CURRENT_DESKTOP", False);
+  netatom[NetDesktopNames] = XInternAtom(dpy, "_NET_DESKTOP_NAMES", False);
+  netatom[NetWMDesktop] = XInternAtom(dpy, "_NET_WM_DESKTOP", False);
   xatom[Manager] = XInternAtom(dpy, "MANAGER", False);
   xatom[Xembed] = XInternAtom(dpy, "_XEMBED", False);
   xatom[XembedInfo] = XInternAtom(dpy, "_XEMBED_INFO", False);
@@ -3240,6 +3258,9 @@ void setup(void) {
   XChangeProperty(dpy, root, netatom[NetSupported], XA_ATOM, 32,
                   PropModeReplace, (unsigned char *)netatom, NetLast);
   XDeleteProperty(dpy, root, netatom[NetClientList]);
+  updatenumberofdesktops();
+  updatedesktopnames();
+  updatecurrentdesktop();
   /* select events */
   wa.cursor = cursor[CurNormal]->cursor;
   wa.event_mask = SubstructureRedirectMask | SubstructureNotifyMask |
@@ -3458,6 +3479,8 @@ void tag(const Arg *arg) {
     Client *c = selmon->sel;
     unsigned int t = arg->ui & TAGMASK;
     c->tags = t;
+    updatewmdesktop(c);
+    updateclientlist();
     focus(NULL);
     arrange(selmon);
     if (focusonmove) {
@@ -3589,6 +3612,8 @@ void toggletag(const Arg *arg) {
   newtags = selmon->sel->tags ^ (arg->ui & TAGMASK);
   if (newtags) {
     selmon->sel->tags = newtags;
+    updatewmdesktop(selmon->sel);
+    updateclientlist();
     focus(NULL);
     arrange(selmon);
   }
@@ -3630,6 +3655,7 @@ void toggleview(const Arg *arg) {
 
     focus(NULL);
     arrange(selmon);
+    updatecurrentdesktop();
   }
 }
 
@@ -3767,15 +3793,127 @@ void updatebarpos(Monitor *m) {
     m->by = -bh - vp;
 }
 
+/* Primary tag index for EWMH desktop mapping (DESKTOP <-> tag).
+ * Multi-tag windows appear once, under their lowest set bit.
+ * Sticky (~0, e.g. bilichat-tui) naturally falls to 0 (first group).
+ * tags == 0 (untagged) also maps to 0. */
+static int
+clientdesktop(Client *c) {
+  unsigned int i;
+
+  if (!c || !c->tags)
+    return 0;
+  for (i = 0; i < LENGTH(tags); i++)
+    if (c->tags & 1 << i)
+      return (int)i;
+  return 0;
+}
+
+static void
+updatenumberofdesktops(void) {
+  unsigned long n = LENGTH(tags);
+
+  XChangeProperty(dpy, root, netatom[NetNumberOfDesktops], XA_CARDINAL, 32,
+                  PropModeReplace, (unsigned char *)&n, 1);
+}
+
+static void
+updatedesktopnames(void) {
+  Atom utf8 = XInternAtom(dpy, "UTF8_STRING", False);
+  /* icon+name per tag, NUL-separated per EWMH */
+  char buf[LENGTH(tags) * 64];
+  size_t off = 0;
+  unsigned int i;
+
+  for (i = 0; i < LENGTH(tags); i++) {
+    char text[64];
+    size_t len;
+
+    template_expand(tagtext, tag_placeholder, &i, text, sizeof(text));
+    len = strlen(text) + 1;
+    if (off + len > sizeof(buf))
+      break;
+    memcpy(buf + off, text, len);
+    off += len;
+  }
+  XChangeProperty(dpy, root, netatom[NetDesktopNames], utf8, 8,
+                  PropModeReplace, (unsigned char *)buf, off);
+}
+
+static void
+updatecurrentdesktop(void) {
+  unsigned long d = 0;
+  unsigned int i;
+
+  if (selmon)
+    for (i = 0; i < LENGTH(tags); i++)
+      if (selmon->tagset[selmon->seltags] & 1 << i) {
+        d = i;
+        break;
+      }
+  XChangeProperty(dpy, root, netatom[NetCurrentDesktop], XA_CARDINAL, 32,
+                  PropModeReplace, (unsigned char *)&d, 1);
+}
+
+static void
+updatewmdesktop(Client *c) {
+  unsigned long d;
+
+  if (!c)
+    return;
+  d = (unsigned long)clientdesktop(c);
+  XChangeProperty(dpy, c->win, netatom[NetWMDesktop], XA_CARDINAL, 32,
+                  PropModeReplace, (unsigned char *)&d, 1);
+}
+
 void updateclientlist() {
   Client *c;
   Monitor *m;
+  /* Global tag-first order: collect in (monitor, m->clients) order (= bar
+   * relative order), then stable-sort by primary tag only. Equal tags keep
+   * their (monitor, bar) order. m->clients itself is never reordered.
+   * Published with a single Replace so readers never see a partial list. */
+  Client **order = NULL;
+  Window *wins = NULL;
+  size_t n = 0, cap = 0;
+  size_t i, j;
 
-  XDeleteProperty(dpy, root, netatom[NetClientList]);
   for (m = mons; m; m = m->next)
-    for (c = m->clients; c; c = c->next)
-      XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32,
-                      PropModeAppend, (unsigned char *)&(c->win), 1);
+    for (c = m->clients; c; c = c->next) {
+      if (n == cap) {
+        size_t ncap = cap ? cap * 2 : 32;
+        Client **norder = ecalloc(ncap, sizeof(*norder));
+        if (order) {
+          memcpy(norder, order, n * sizeof(*order));
+          free(order);
+        }
+        order = norder;
+        cap = ncap;
+      }
+      order[n++] = c;
+    }
+  /* stable insertion sort by primary tag */
+  for (i = 1; i < n; i++) {
+    Client *tmp = order[i];
+    int td = clientdesktop(tmp);
+    j = i;
+    while (j > 0 && clientdesktop(order[j - 1]) > td) {
+      order[j] = order[j - 1];
+      j--;
+    }
+    order[j] = tmp;
+  }
+  if (!n) {
+    XDeleteProperty(dpy, root, netatom[NetClientList]);
+    return;
+  }
+  wins = ecalloc(n, sizeof(*wins));
+  for (i = 0; i < n; i++)
+    wins[i] = order[i]->win;
+  free(order);
+  XChangeProperty(dpy, root, netatom[NetClientList], XA_WINDOW, 32,
+                  PropModeReplace, (unsigned char *)wins, n);
+  free(wins);
 }
 
 int updategeom(void) {
@@ -4227,6 +4365,7 @@ void view(const Arg *arg) {
   selmon->tagset[selmon->seltags] = arg->ui & TAGMASK;
   focus(NULL);
   arrange(selmon);
+  updatecurrentdesktop();
 }
 
 Client *wintoclient(Window w) {
