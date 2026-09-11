@@ -620,6 +620,23 @@ void arrange(Monitor *m) {
 }
 
 void arrangemon(Monitor *m) {
+  Client *c;
+  /* only fullscreen() (monocle + bar hidden) is borderless; plain [M]
+     and the maximize host (focusmaster == 2, tiled with gaps) keep borders */
+  int borderless =
+      m->lt[m->sellt]->arrange == monocle &&
+      m->pertag->focusmaster[m->pertag->curtag] != 2 && !m->showbar;
+  for (c = m->clients; c; c = c->next) {
+    int target = borderpx;
+    if (c->isfullscreen)
+      continue;
+    if (borderless && !c->isfloating && ISVISIBLE(c) && !HIDDEN(c))
+      target = 0;
+    if (c->bw != target) {
+      c->bw = target;
+      XSetWindowBorderWidth(dpy, c->win, c->bw);
+    }
+  }
   strncpy(m->ltsymbol, m->lt[m->sellt]->symbol, sizeof m->ltsymbol);
   if (m->lt[m->sellt]->arrange)
     m->lt[m->sellt]->arrange(m);
