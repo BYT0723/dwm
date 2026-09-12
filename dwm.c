@@ -176,7 +176,7 @@ struct Client {
   int x, y, w, h;
   int oldx, oldy, oldw, oldh;
   int basew, baseh, incw, inch, maxw, maxh, minw, minh, hintsvalid;
-  int bw, oldbw;
+  int bw, oldbw, basebw; /* basebw = rule-specified border, restored by arrangemon */
   unsigned int tags;
   int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
   int hidden; /* 1 = IconicState, mirrors WM_STATE set by hidewin/showwin */
@@ -248,6 +248,7 @@ typedef struct {
   unsigned int tags;
   int isfloating;
   int monitor;
+  int bw; /* < 0 = default borderpx, >= 0 overrides c->bw/basebw */
 } Rule;
 
 typedef struct Systray Systray;
@@ -514,6 +515,7 @@ void applyrules(Client *c) {
   /* rule matching */
   c->isfloating = 0;
   c->tags = 0;
+  c->bw = c->basebw = borderpx;
   XGetClassHint(dpy, c->win, &ch);
   class = ch.res_class ? ch.res_class : broken;
   instance = ch.res_name ? ch.res_name : broken;
@@ -528,6 +530,8 @@ void applyrules(Client *c) {
         (!r->instance || strstr(instance, r->instance))) {
       c->isfloating = r->isfloating;
       c->tags |= r->tags;
+      if (r->bw >= 0)
+        c->bw = c->basebw = r->bw;
       for (m = mons; m && m->num != r->monitor; m = m->next);
       if (m)
         c->mon = m;
@@ -628,7 +632,7 @@ void arrangemon(Monitor *m) {
       m->lt[m->sellt]->arrange == monocle &&
       m->pertag->focusmaster[m->pertag->curtag] != 2 && !m->showbar;
   for (c = m->clients; c; c = c->next) {
-    int target = borderpx;
+    int target = c->basebw;
     if (c->isfullscreen)
       continue;
     if (borderless && !c->isfloating && ISVISIBLE(c) && !HIDDEN(c))
@@ -2430,6 +2434,9 @@ void manage(Window w, XWindowAttributes *wa) {
   if (XGetTransientForHint(dpy, w, &trans) && (t = wintoclient(trans))) {
     c->mon = t->mon;
     c->tags = t->tags;
+    applyrules(c);   /* match class/border rules (e.g. borderrule bw) */
+    c->mon = t->mon; /* ...but stay with the parent window */
+    c->tags = t->tags;
   } else {
     c->mon = selmon;
     {
@@ -2451,7 +2458,6 @@ void manage(Window w, XWindowAttributes *wa) {
 
   c->x = MAX(MIN(c->x ,c->mon->mx + c->mon->mw - WIDTH(c)), c->mon->mx);
   c->y = MAX(MIN(c->y, c->mon->my + c->mon->mh - HEIGHT(c)), c->mon->my);
-  c->bw = borderpx;
 
   wc.border_width = c->bw;
   XConfigureWindow(dpy, w, CWBorderWidth, &wc);

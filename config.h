@@ -141,52 +141,53 @@ static const Rule rules[] = {
      * WM_CLASS(STRING) = instance, class
      * WM_NAME(STRING) = title
      */
-    /* class                instance    title     tags mask     isfloating    monitor */
-    {"firefox",             NULL,       NULL,     1 << 1,       0,            -1},
-    {"chromium",            NULL,       NULL,     1 << 1,       0,            -1},
-    {"Tor Browser",         NULL,       NULL,     1 << 1,       0,            -1},
+    /* class                instance    title     tags mask     isfloating    monitor       border width */
+    {"firefox",             NULL,       NULL,     1 << 1,       0,            -1,          -1},
+    {"chromium",            NULL,       NULL,     1 << 1,       0,            -1,          -1},
+    {"Tor Browser",         NULL,       NULL,     1 << 1,       0,            -1,          -1},
 
-    {"TelegramDesktop",     NULL,       NULL,     1 << 2,       0,            -1},
-    {"wechat",              NULL,       NULL,     1 << 2,       0,            -1},
-    {"QQ",                  NULL,       NULL,     1 << 2,       0,            -1},
+    {"TelegramDesktop",     NULL,       NULL,     1 << 2,       0,            -1,          -1},
+    {"wechat",              NULL,       NULL,     1 << 2,       0,            -1,           0},
+    {"QQ",                  NULL,       NULL,     1 << 2,       0,            -1,          -1},
 
-    {"DBeaver",             NULL,       NULL,     1 << 3,       0,            -1},
-    {"resp",                NULL,       NULL,     1 << 3,       0,            -1},
-    {"sqlitebrowser",       NULL,       NULL,     1 << 3,       0,            -1},
+    {"DBeaver",             NULL,       NULL,     1 << 3,       0,            -1,          -1},
+    {"resp",                NULL,       NULL,     1 << 3,       0,            -1,          -1},
+    {"sqlitebrowser",       NULL,       NULL,     1 << 3,       0,            -1,          -1},
 
-    {"xunlei",              NULL,       NULL,     1 << 5,       1,            -1},
-    {"qBittorrent",         NULL,       NULL,     1 << 5,       0,            -1},
+    {"xunlei",              NULL,       NULL,     1 << 5,       1,            -1,          -1},
+    {"qBittorrent",         NULL,       NULL,     1 << 5,       0,            -1,          -1},
 
-    {"obs",                 NULL,       NULL,     1 << 6,       0,            -1},
+    {"obs",                 NULL,       NULL,     1 << 6,       0,            -1,          -1},
 
-    {"qqmusic",             NULL,       NULL,     1 << 7,       1,            -1},
-    {"netease-cloud-music", NULL,       NULL,     1 << 7,       1,            -1},
-    {"OSD Lyrics",          NULL,       NULL,     1 << 7,       1,            -1},
+    {"qqmusic",             NULL,       NULL,     1 << 7,       1,            -1,          -1},
+    {"netease-cloud-music", NULL,       NULL,     1 << 7,       1,            -1,          -1},
+    {"OSD Lyrics",          NULL,       NULL,     1 << 7,       1,            -1,          -1},
 
-    {"steam",               NULL,       NULL,     1 << 8,       0,            -1},
-    {"heroic",              NULL,       NULL,     1 << 8,       0,            -1},
+    {"steam",               NULL,       NULL,     1 << 8,       0,            -1,          -1},
+    {"heroic",              NULL,       NULL,     1 << 8,       0,            -1,          -1},
 
     // all tags
-    {"bilichat-tui",        NULL,       NULL,     (1<<10)-1,    1,            -1},
+    {"bilichat-tui",        NULL,       NULL,     (1<<10)-1,    1,            -1,          -1},
 
     // other only floating
-    {"float-term",          NULL,       NULL,     0,            1,            -1},
-    {"Godot_Engine",        NULL,       NULL,     0,            1,            -1},
-    {"vlc",                 NULL,       NULL,     0,            1,            -1},
-    {"mpv",                 NULL,       NULL,     0,            1,            -1},
-    {"feh",                 NULL,       NULL,     0,            1,            -1},
-    {"viewnior",            NULL,       NULL,     0,            1,            -1},
-    {"peek",                NULL,       NULL,     0,            1,            -1},
-    {"flameshot",           NULL,       NULL,     0,            1,            -1},
-    {"scrcpy",              NULL,       NULL,     0,            1,            -1},
-    {"Yad",                 NULL,       NULL,     0,            1,            -1},
-    {"zenity",              NULL,       NULL,     0,            1,            -1},
+    {"float-term",          NULL,       NULL,     0,            1,            -1,          -1},
+    {"Godot_Engine",        NULL,       NULL,     0,            1,            -1,          -1},
+    {"vlc",                 NULL,       NULL,     0,            1,            -1,          -1},
+    {"mpv",                 NULL,       NULL,     0,            1,            -1,          -1},
+    {"feh",                 NULL,       NULL,     0,            1,            -1,          -1},
+    {"viewnior",            NULL,       NULL,     0,            1,            -1,          -1},
+    {"peek",                NULL,       NULL,     0,            1,            -1,          -1},
+    {"flameshot",           NULL,       NULL,     0,            1,            -1,          -1},
+    {"scrcpy",              NULL,       NULL,     0,            1,            -1,          -1},
+    {"Yad",                 NULL,       NULL,     0,            1,            -1,          -1},
+    {"zenity",              NULL,       NULL,     0,            1,            -1,          -1},
     // wps
-    {"wpsoffice",           NULL,       NULL,     0,            1,            -1},
-    {"wpspdf",              NULL,       NULL,     0,            1,            -1},
-    {"wps",                 NULL,       NULL,     0,            1,            -1},
-    {"wpp",                 NULL,       NULL,     0,            1,            -1},
-    {"et",                  NULL,       NULL,     0,            1,            -1},
+    {"wpsoffice",           NULL,       NULL,     0,            1,            -1,          -1},
+    {"wpspdf",              NULL,       NULL,     0,            1,            -1,          -1},
+    {"wps",                 NULL,       NULL,     0,            1,            -1,          -1},
+    {"wpp",                 NULL,       NULL,     0,            1,            -1,          -1},
+    {"et",                  NULL,       NULL,     0,            1,            -1,          -1},
+    {"wemeetapp",           NULL,       NULL,     0,            0,            -1,           0},
 };
 
 /* layout(s) */
