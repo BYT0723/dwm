@@ -40,7 +40,7 @@ static const unsigned int previewborderpx = 2;   /* px highlight border around t
 // layout gap
 static const unsigned int gappih    = 6;
 static const unsigned int gappiv    = 6;
-static const unsigned int gappoh    = 8;
+static const unsigned int gappoh    = 10;
 static const unsigned int gappov    = 8;
 static                int smartgaps = 0;   /* 1 means no outer gap when there is only one window */
 
