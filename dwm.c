@@ -333,6 +333,7 @@ static void resizemouse(const Arg *arg);
 static void resizerequest(XEvent *e);
 static void restack(Monitor *m);
 static void restoreclientorder(void);
+static void restorefocus(void);
 static void restorestacking(void);
 static void run(void);
 static void runautostart(void);
@@ -990,16 +991,23 @@ void destroynotify(XEvent *e) {
 void detach(Client *c) {
   Client **tc;
 
+  if (!c || !c->mon)
+    return;
   for (tc = &c->mon->clients; *tc && *tc != c; tc = &(*tc)->next)
     ;
-  *tc = c->next;
+  if (*tc)
+    *tc = c->next;
 }
 
 void detachstack(Client *c) {
   Client **tc, *t;
 
+  if (!c || !c->mon)
+    return;
   for (tc = &c->mon->stack; *tc && *tc != c; tc = &(*tc)->snext)
     ;
+  if (!*tc)
+    return;
   *tc = c->snext;
 
   if (c == c->mon->sel) {
@@ -2642,6 +2650,8 @@ Client *nexttiled(Client *c) {
 }
 
 void pop(Client *c) {
+  if (!c || !c->mon)
+    return;
   detach(c);
   attach(c);
   focus(c);
@@ -3201,8 +3211,27 @@ void setup(void) {
       char *env = getenv(buf);
       if (env) {
         unsigned int ts = atoi(env);
-        if (ts & TAGMASK)
+        if (ts & TAGMASK) {
+          int i;
           m->tagset[m->seltags] = ts & TAGMASK;
+          /* keep pertag->curtag in sync with the restored tagset so
+             focusmode()/tile()/getgaps() see the same tag as ISVISIBLE() */
+          if (m->tagset[m->seltags] == TAGMASK)
+            m->pertag->curtag = 0;
+          else {
+            for (i = 0; !(m->tagset[m->seltags] & 1 << i); i++)
+              ;
+            m->pertag->curtag = i + 1;
+          }
+          m->pertag->prevtag = m->pertag->curtag;
+          m->nmaster = m->pertag->nmasters[m->pertag->curtag];
+          m->mfact = m->pertag->mfacts[m->pertag->curtag];
+          m->sellt = m->pertag->sellts[m->pertag->curtag];
+          m->lt[m->sellt] = m->pertag->ltidxs[m->pertag->curtag][m->sellt];
+          m->lt[m->sellt ^ 1] =
+              m->pertag->ltidxs[m->pertag->curtag][m->sellt ^ 1];
+          m->showbar = m->pertag->showbars[m->pertag->curtag];
+        }
         unsetenv(buf);
       }
     }
@@ -4484,11 +4513,10 @@ void xinitvisual() {
 void zoom(const Arg *arg) {
   Client *c = selmon->sel;
 
-  if (!selmon->lt[selmon->sellt]->arrange ||
-      (selmon->sel && selmon->sel->isfloating))
+  if (!c || !selmon->lt[selmon->sellt]->arrange || c->isfloating)
     return;
   if (c == nexttiled(selmon->clients))
-    if (!c || !(c = nexttiled(c->next)))
+    if (!(c = nexttiled(c->next)))
       return;
   pop(c);
 }
@@ -4620,6 +4648,23 @@ void restoreclientorder(void) {
   updateclientlist();
 }
 
+/* restorestacking() clears m->sel mid-rebuild via detachstack();
+   re-validate it so zoom()/pop() never see NULL/invisible sel. */
+void restorefocus(void) {
+  Monitor *m;
+  Client *c;
+
+  for (m = mons; m; m = m->next) {
+    if (m->sel && m->sel->mon == m && ISVISIBLE(m->sel) && !HIDDEN(m->sel))
+      continue;
+    for (c = m->stack; c && (!ISVISIBLE(c) || HIDDEN(c)); c = c->snext)
+      ;
+    m->sel = c;
+  }
+  focus(NULL);
+  arrange(NULL);
+}
+
 int main(int argc, char *argv[]) {
   if (argc == 2 && !strcmp("-v", argv[1]))
     die("dwm-" VERSION);
@@ -4640,6 +4685,7 @@ int main(int argc, char *argv[]) {
   scan();
   restorestacking();
   restoreclientorder();
+  restorefocus();
   runautostart();
   run();
   if (restart) {
