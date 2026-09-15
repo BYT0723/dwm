@@ -64,6 +64,7 @@
    MAX(0, MIN((y) + (h), (m)->wy + (m)->wh) - MAX((y), (m)->wy)))
 #define ISVISIBLE(C) ((C->tags & C->mon->tagset[C->mon->seltags]))
 #define HIDDEN(C) ((C)->hidden)
+#define ISHIDDENSTATE(S) ((S) == IconicState || (S) == WithdrawnState)
 #define LENGTH(X) (sizeof X / sizeof X[0])
 #define MOUSEMASK (BUTTONMASK | PointerMotionMask)
 #define WIDTH(X) ((X)->w + 2 * (X)->bw)
@@ -179,7 +180,7 @@ struct Client {
   int bw, oldbw, basebw; /* basebw = rule-specified border, restored by arrangemon */
   unsigned int tags;
   int isfixed, isfloating, isurgent, neverfocus, oldstate, isfullscreen;
-  int hidden; /* 1 = IconicState, mirrors WM_STATE set by hidewin/showwin */
+  int hidden; /* 1 = IconicState (hide) or WithdrawnState (tray hide), mirrors WM_STATE */
   unsigned int icw, ich, icon_alpha;
   Picture icon;
   Client *next;
@@ -2428,7 +2429,8 @@ void manage(Window w, XWindowAttributes *wa) {
   c->oldbw = wa->border_width;
   c->cfact = 1.0;
   c->icon_alpha = 0;
-  c->hidden = getstate(w) == IconicState;
+  /* tray clients hide with Withdrawn, dwm hide uses Iconic; both mean hidden */
+  c->hidden = ISHIDDENSTATE(getstate(w));
 
   updatetitle(c);
   if (XGetTransientForHint(dpy, w, &trans) && (t = wintoclient(trans))) {
@@ -2529,7 +2531,7 @@ void maprequest(XEvent *e) {
   static XWindowAttributes wa;
   XMapRequestEvent *ev = &e->xmaprequest;
 
-  Client *i;
+  Client *i, *c;
   if (showsystray && (i = wintosystrayicon(ev->window))) {
     sendevent(i->win, netatom[Xembed], StructureNotifyMask, CurrentTime,
               XEMBED_WINDOW_ACTIVATE, 0, systray->win, XEMBED_EMBEDDED_VERSION);
@@ -2538,8 +2540,19 @@ void maprequest(XEvent *e) {
 
   if (!XGetWindowAttributes(dpy, ev->window, &wa) || wa.override_redirect)
     return;
-  if (!wintoclient(ev->window))
-    manage(ev->window, &wa);
+  if ((c = wintoclient(ev->window))) {
+    /* remap request for a managed client (e.g. tray show after Withdrawn) */
+    if (!HIDDEN(c) && getstate(c->win) == NormalState)
+      return;
+    XMapWindow(dpy, ev->window);
+    c->hidden = 0;
+    setclientstate(c, NormalState);
+    updateicon(c);
+    arrange(c->mon);
+    drawbars();
+    return;
+  }
+  manage(ev->window, &wa);
 }
 
 void monocle(Monitor *m) {
@@ -2689,9 +2702,16 @@ void propertynotify(XEvent *e) {
     return; /* ignore */
   else if ((c = wintoclient(ev->window))) {
     if (ev->atom == wmatom[WMState]) {
-      /* WM_STATE can be rewritten by the client or external tools;
+      /* WM_STATE can be rewritten by the client or external tools
+         (e.g. tray clients hiding with Withdrawn);
          re-sync the cached hidden flag so HIDDEN() stays accurate */
-      c->hidden = getstate(c->win) == IconicState;
+      int hid = ISHIDDENSTATE(getstate(c->win));
+      if (hid != c->hidden) {
+        c->hidden = hid;
+        updateicon(c);
+        arrange(c->mon);
+        drawbars();
+      }
     }
     switch (ev->atom) {
     default:
@@ -2997,7 +3017,7 @@ void scan(void) {
       if (!XGetWindowAttributes(dpy, wins[i], &wa) || wa.override_redirect ||
           XGetTransientForHint(dpy, wins[i], &d1))
         continue;
-      if (wa.map_state == IsViewable || getstate(wins[i]) == IconicState) {
+      if (wa.map_state == IsViewable || ISHIDDENSTATE(getstate(wins[i]))) {
         if (!systrayredock(wins[i]))
           manage(wins[i], &wa);
       }
@@ -3006,7 +3026,7 @@ void scan(void) {
       if (!XGetWindowAttributes(dpy, wins[i], &wa))
         continue;
       if (XGetTransientForHint(dpy, wins[i], &d1) &&
-          (wa.map_state == IsViewable || getstate(wins[i]) == IconicState))
+          (wa.map_state == IsViewable || ISHIDDENSTATE(getstate(wins[i]))))
         manage(wins[i], &wa);
     }
     if (showsystray && systray)
@@ -3776,8 +3796,16 @@ void unmapnotify(XEvent *e) {
     if (c == hoverc)
       hoverhide();
     if (ev->send_event) {
-      c->hidden = 0;
+      /* client-initiated withdraw (XWithdrawWindow, used by minimize-to-tray):
+         treat like hide()'s Iconic, otherwise focusstackvis would select
+         an unmapped window that never displays */
       setclientstate(c, WithdrawnState);
+      c->hidden = 1;
+      updateicon(c);
+      if (c == selmon->sel)
+        focus(NULL);
+      arrange(c->mon);
+      drawbars();
     } else
       unmanage(c, 0);
   } else if ((c = wintosystrayicon(ev->window))) {
@@ -4321,12 +4349,21 @@ void showall(const Arg *arg) {
 }
 
 void showwin(Client *c) {
-  if (!c || !HIDDEN(c))
+  if (!c)
     return;
+
+  if (!HIDDEN(c)) {
+    /* fallback: flag says visible but window is actually unmapped
+       (e.g. WM_STATE rewritten after hide()); remap or it stays selected-but-invisible */
+    XWindowAttributes wa;
+    if (XGetWindowAttributes(dpy, c->win, &wa) && wa.map_state == IsViewable)
+      return;
+  }
 
   XMapWindow(dpy, c->win);
   c->hidden = 0;
   setclientstate(c, NormalState);
+  updateicon(c);
   arrange(c->mon);
 }
 
