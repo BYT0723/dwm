@@ -49,6 +49,7 @@
 #include <errno.h>
 #include <time.h>
 
+#include "barparse.h"
 #include "drw.h"
 #include "util.h"
 
@@ -209,6 +210,15 @@ typedef struct {
   const char *symbol;
   void (*arrange)(Monitor *);
 } Layout;
+
+/* bar layout: items are grouped into three zones (config.h) and each zone
+   is filled in array order. BarStatus carries the block ids to draw as
+   pills; other modules ignore ids. */
+typedef enum { BarTags, BarLayout, BarTabs, BarStatus } BarModule;
+typedef struct {
+  BarModule mod;
+  const int *ids;
+} BarItem;
 
 typedef struct Pertag Pertag;
 struct Monitor {
@@ -380,6 +390,11 @@ static void sigterm(int unused);
 static void spawn(const Arg *arg);
 static void status2dwalk(Monitor *m, char *stext, int stopx, int *x, int *cmdidx);
 static int status2d_width(Monitor *m, char *stext);
+static void statusparse(Monitor *m, const char *text);
+static int status_block_width(int i);
+static void statuspills_build(void);
+static const BarItem *baritem_find(const BarItem *items, size_t n, BarModule mod);
+static int status2d_runwidth(char *s);
 static void statusclick(Monitor *m, int xclick, int stw, int button);
 static void systraydock(Window w);
 static int systrayredock(Window w);
@@ -449,6 +464,20 @@ static const char broken[] = "broken";
 static const char dwmdir[] = "dwm";
 static const char localshare[] = ".local/share";
 static char stext[1024];
+#define MAX_STBLOCKS 32
+static char stbuf[1024];                  /* stext with control chars filtered out */
+static BarBlock stblocks[MAX_STBLOCKS];   /* visible blocks of stbuf, in draw order */
+static int nstblocks;
+static char pbuf[2048];                   /* pills built from stbuf, ^( .. ^) wrapped */
+/* one drawn status block: where it sits and how wide, so a click maps back
+   to the control-character id the writer tagged it with */
+typedef struct {
+  unsigned int id;
+  int x, w;
+} StatusCell;
+static StatusCell scells[MAX_STBLOCKS];
+static int nscells;
+static int stpills_w;                     /* total drawn width of the pills */
 static int statusw;
 static int statuscmdn;
 static char lastbutton[] = "-";
@@ -1421,39 +1450,35 @@ static int ishexcolor(const char *s) {
 }
 
 int drawstatusbar(Monitor *m, int bh, char *stext) {
-  int ret, i, j, w, x, stw, tabstart;
+  int ret, i, w, x, stw, tabstart;
   short iscode = 0;
   /* 1 = the next text run draws right after a '(' cap, so its left
      padding must be skipped to keep the rounded corner visible */
   int skip_pad = 0;
   char *text;
-  char textbuf[1024];
+  Clr *work = scheme[LENGTH(colors)];
 
-  text = textbuf;
-
-  i = -1, j = 0;
-  /* 0x7f is a cut marker: on portrait monitors (wh > ww) everything
-     before the last marker is dropped, keeping only the segment after
-     it; on landscape monitors the marker is just ignored */
-  while (stext[++i]) {
-    if ((unsigned char)stext[i] == 0x7f) {
-      if (m->wh > m->ww)
-        j = 0;
-    } else if ((unsigned char)stext[i] >= ' ')
-      text[j++] = stext[i];
-  }
-  text[j] = '\0';
+  /* one shared parse for drawing and click resolution: stbuf holds the
+     visible text (control characters dropped), stblocks the block ids, and
+     pbuf the configured pills with their cap markers injected */
+  statusparse(m, stext);
+  statuspills_build();
+  text = pbuf;
 
   /* compute width of the status text */
-  w = status2d_width(m, text);
-  text = textbuf;
+  w = stpills_w;
 
   ret = m->ww - w - 2 * sp;
   stw = systraytomon(m) == selmon ? getsystraywidth() : 0;
   x = ret - stw;
   tabstart = x;
 
-  drw_setscheme(drw, scheme[SchemeStatus]);
+  /* draw on the working scheme, reset to the configured status colours so
+     ^c/^b from an earlier pill or the previous frame cannot leak */
+  drw_setscheme(drw, work);
+  work[ColFg] = scheme[SchemeStatus][ColFg];
+  work[ColBg] = scheme[SchemeStatus][ColBg];
+  work[ColBorder] = scheme[SchemeStatus][ColBorder];
   drw_rect(drw, x, 0, w + stw, bh, 1, 1);
 
   /* process status text */
@@ -1510,13 +1535,13 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
           tabstart = x;
           drw_setscheme(drw, scheme[SchemeEmpty]);
           drw_rect(drw, x, 0, tabr, bh, 1, 0);
-          drw_setscheme(drw, scheme[SchemeStatus]);
+          drw_setscheme(drw, work);
           drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
           skip_pad = 1;
         } else if (text[i] == ')' && tabradius > 0) {
           drw_setscheme(drw, scheme[SchemeEmpty]);
           drw_rect(drw, x-tabr, 0, tabr + tabgap, bh, 1, 0);
-          drw_setscheme(drw, scheme[SchemeStatus]);
+          drw_setscheme(drw, work);
           drw_rounded(drw, x-tabr, 0, bh, tabr, RoundedRight);
           drawtabborder(tabstart, x - tabstart, scheme[SchemeStatus]);
           x += tabgap;
@@ -3703,7 +3728,11 @@ void setup(void) {
   cursor[CurMove] = drw_cur_create(drw, XC_fleur);
   /* init appearance */
   scheme = ecalloc(LENGTH(colors) + 1, sizeof(Clr *));
-  scheme[LENGTH(colors)] = drw_scm_create(drw, colors[0], alphas[0], 3);
+  /* the extra slot is the status working scheme: status drawing mutates
+     drw->scheme in place with its ^c/^b codes, so it runs on a copy and
+     keeps colors[SchemeStatus] pristine for ^d to restore from */
+  scheme[LENGTH(colors)] =
+      drw_scm_create(drw, colors[SchemeStatus], alphas[SchemeStatus], 3);
   for (i = 0; i < LENGTH(colors); i++)
     scheme[i] = drw_scm_create(drw, colors[i], alphas[i], 3);
   /* init system tray */
@@ -3837,39 +3866,83 @@ static int status2d_advance(char **s) {
   return adv;
 }
 
-/* total drawn width of a status2d text */
-static int status2d_width(Monitor *m, char *stext) {
-  int w = 0, cmdidx;
+/* parse stext into stbuf/stblocks. On portrait monitors bar_blocks keeps
+   only the segment after the last 0x7f marker, which is the same rule the
+   renderer used to apply inline; drawing and click resolution share it. */
+static void statusparse(Monitor *m, const char *text) {
+  nstblocks = bar_blocks(text, m && m->wh > m->ww, stbuf, sizeof stbuf,
+                         stblocks, MAX_STBLOCKS);
+}
 
-  status2dwalk(m, stext, INT_MAX, &w, &cmdidx);
+/* drawn width of block i: its text with status2d codes interpreted */
+static int status_block_width(int i) {
+  int w, save = stbuf[stblocks[i].end];
+
+  stbuf[stblocks[i].end] = '\0';
+  w = status2d_runwidth(stbuf + stblocks[i].off);
+  stbuf[stblocks[i].end] = save;
   return w;
 }
 
-/* walk the status2d segments of stext, adding each segment's width to
-   *x until *x reaches stopx (INT_MAX for the total width). Records the
-   last statuscmd index in *cmdidx. On portrait monitors drawstatusbar
-   only keeps the text after the last 0x7f separator, so the walk skips
-   everything before it to stay aligned with the drawn layout. */
-void status2dwalk(Monitor *m, char *stext, int stopx, int *x, int *cmdidx) {
-  char *text, *s, ch;
-  int isCode = 0;
+/* first item of a module in a zone list, NULL when the zone lacks it */
+static const BarItem *baritem_find(const BarItem *items, size_t n,
+                                   BarModule mod) {
+  size_t i;
 
-  text = s = stext;
-  if (m->wh > m->ww)
-    for (char *p = stext; *p; p++)
-      if ((unsigned char)*p == 0x7f)
-        text = s = p + 1;
-  *cmdidx = 0;
-  for (; *s && *x < stopx; s++) {
+  for (i = 0; i < n; i++)
+    if (items[i].mod == mod)
+      return &items[i];
+  return NULL;
+}
+
+/* Build the drawn status from the configured pills (see bar_pills): the
+   writer only emits content plus colours and separates blocks with control
+   characters, while grouping and rounded caps are injected here. Fills
+   scells with each drawn block's offset and width so a click maps back to
+   its id; the pill gap the old inline ^) used to produce is folded into the
+   cell that ends the pill, so click ranges tile the drawn width. */
+static void statuspills_build(void) {
+  const BarItem *item = baritem_find(bar_right, LENGTH(bar_right), BarStatus);
+  const int *ids = item ? item->ids : NULL;
+  BarPillCell cells[MAX_STBLOCKS];
+  int i, n;
+
+  pbuf[0] = '\0';
+  nscells = 0;
+  stpills_w = 0;
+  if (!ids)
+    return;
+
+  n = bar_pills(stbuf, stblocks, nstblocks, ids, pbuf, sizeof pbuf, cells,
+                MAX_STBLOCKS);
+  for (i = 0; i < n; i++) {
+    int bw = status_block_width(cells[i].block);
+    int gap = cells[i].gap ? (int)tabgap : 0;
+
+    if (nscells < MAX_STBLOCKS) {
+      scells[nscells].id = stblocks[cells[i].block].id;
+      scells[nscells].x = stpills_w;
+      scells[nscells].w = bw + gap;
+      nscells++;
+    }
+    stpills_w += bw + gap;
+  }
+}
+
+/* drawn width of one NUL-terminated status2d run (a single block): text
+   widths plus the 'f' and ')' advances, colours and rects advance nothing */
+static int status2d_runwidth(char *s) {
+  char *text = s, ch;
+  int isCode = 0, w = 0;
+
+  for (; *s; s++) {
     if ((unsigned char)(*s) == '^') {
       if (!isCode) {
         ch = *s;
         *s = '\0';
         if (strlen(text) > 0)
-          *x += TEXTW(text);
+          w += TEXTW(text);
         *s = ch;
-        if (*x >= stopx)
-          break;
         text = s + 1;
         isCode = 1;
         continue;
@@ -3880,28 +3953,38 @@ void status2dwalk(Monitor *m, char *stext, int stopx, int *x, int *cmdidx) {
     }
     if (isCode) {
       /* only the first char after '^' is the code identifier */
-      if (s == text && (*s == 'f' || *s == '(' || *s == ')')) {
-        *x += status2d_advance(&s);
-        if (*x >= stopx)
-          break;
-      }
+      if (s == text && (*s == 'f' || *s == '(' || *s == ')'))
+        w += status2d_advance(&s);
       continue;
     }
-    if ((unsigned char)(*s) < ' ' || (unsigned char)(*s) == 0x7f) {
-      ch = *s;
-      *s = '\0';
-      if (strlen(text) > 0)
-        *x += TEXTW(text);
-      *s = ch;
-      text = s + 1;
-      if (*x >= stopx)
-        break;
-      if ((unsigned char)ch < ' ')
-        *cmdidx = ch;
-    }
   }
-  if (!isCode && *x < stopx && strlen(text) > 0)
-    *x += TEXTW(text);
+  if (!isCode && strlen(text) > 0)
+    w += TEXTW(text);
+  return w;
+}
+
+/* total drawn width of the configured status pills for stext */
+static int status2d_width(Monitor *m, char *stext) {
+  statusparse(m, stext);
+  statuspills_build();
+  return stpills_w;
+}
+
+/* walk the drawn status blocks of stext, adding each block's width to *x
+   until *x reaches stopx (used by the click resolver). Records the id of
+   the block under stopx in *cmdidx, which is the INDEX handed to the click
+   command; block ids are the control characters the writer used. */
+void status2dwalk(Monitor *m, char *stext, int stopx, int *x, int *cmdidx) {
+  int i;
+
+  *x = 0;
+  *cmdidx = 0;
+  statusparse(m, stext);
+  statuspills_build();
+  for (i = 0; i < nscells && *x < stopx; i++) {
+    *cmdidx = scells[i].id;
+    *x = scells[i].x + scells[i].w;
+  }
 }
 
 /* hot-restart: re-dock former systray icons. When dwm restarts via

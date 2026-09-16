@@ -10,6 +10,19 @@ static const          int barfontpad   = 8;
 static const          int vertpad      = 2;  /* vertical padding of bar */
 static const          int sidepad      = 2;  /* horizontal padding of bar */
 
+/* bar modules: items are grouped into three zones and each zone is filled
+ * left to right in array order. BarStatus selects status blocks by the
+ * control character that prefixes them in the status writer's output; 0
+ * starts a new pill (its own rounded caps) and -1 ends the list. Ids the
+ * writer leaves out (empty panel, portrait cut) are simply skipped.
+ * Zones: left = tags + layout pill, center = client tabs, right = status.
+ * Until the zone layout lands, only the right zone's BarStatus is wired. */
+static const int st_pills[] = { 9, 0, 11, 0, 8, 7, 6, 0, 13, 12, 15, 0, 16, 14, 10, 3, 2, 0, 1, -1 };
+
+static const BarItem bar_left[]   = { {BarTags, NULL}, {BarLayout, NULL} };
+static const BarItem bar_center[] = { {BarTabs, NULL} };
+static const BarItem bar_right[]  = { {BarStatus, st_pills} };
+
 /* tab style; 0:default 1:center 2:custom_width
  * 0 0 0 0 0 0 0 0
  * bit1: center
@@ -89,6 +102,7 @@ static char col_blue[]     = "#268bd2";  /*  4: blue     */
 static char col_magenta[]  = "#d33682";  /*  5: magenta  */
 static char col_cyan[]     = "#2aa198";  /*  6: cyan     */
 static char col_white[]    = "#eee8d5";  /*  7: white    */
+static char col_panel[]    = "#1e222a";  /* status pill background, matching the status writer's pane colour */
 static char col_ab_black[] = "#000000";
 static char *colors[][3] = {
     /*                    fg            bg            border   */
@@ -102,7 +116,7 @@ static char *colors[][3] = {
     [SchemeSel]     = { col_blue,     col_black,    col_cyan     },
     [SchemeHid]     = { col_white,    col_ab_black, col_ab_black },
     // status
-    [SchemeStatus]  = { col_white,    col_black,    col_white    },
+    [SchemeStatus]  = { col_white,    col_panel,    col_white    },
     // systray
     [SchemeSystray] = { col_white,    col_black,    col_white    },
     // hover tooltip
