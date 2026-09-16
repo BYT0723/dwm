@@ -393,6 +393,7 @@ static int status2d_width(Monitor *m, char *stext);
 static void statusparse(Monitor *m, const char *text);
 static int status_block_width(int i);
 static void statuspills_build(void);
+static void drawpillcap(Clr *work, int capx, int pillw);
 static const BarItem *baritem_find(const BarItem *items, size_t n, BarModule mod);
 static int status2d_runwidth(char *s);
 static void statusclick(Monitor *m, int xclick, int stw, int button);
@@ -477,6 +478,14 @@ typedef struct {
 } StatusCell;
 static StatusCell scells[MAX_STBLOCKS];
 static int nscells;
+/* one drawn pill: its body offset and width, so the body can be painted with
+   the pill's own ^b colour before its text runs */
+typedef struct {
+  int x, w;
+} StatusPill;
+static StatusPill spills[MAX_STBLOCKS];
+static int nspills;
+static int spillidx; /* draw-time cursor into spills */
 static int stpills_w;                     /* total drawn width of the pills */
 static int statusw;
 static int statuscmdn;
@@ -1449,6 +1458,22 @@ static int ishexcolor(const char *s) {
   return 1;
 }
 
+/* Paint a pill's body and its left cap in the colours that are current once
+   the pill's own leading codes (the writer's ^b pane background) have been
+   applied, so cap, body and text match. The cap corner is cleared first so
+   the bar background shows through outside the arc. */
+static void drawpillcap(Clr *work, int capx, int pillw) {
+  if (capx < 0)
+    return;
+  drw_setscheme(drw, work);
+  if (pillw > 0)
+    drw_rect(drw, capx, 0, (unsigned int)pillw, bh, 1, 1);
+  drw_setscheme(drw, scheme[SchemeEmpty]);
+  drw_rect(drw, capx, 0, tabr, bh, 1, 0);
+  drw_setscheme(drw, work);
+  drw_rounded(drw, capx, 0, bh, tabr, RoundedLeft);
+}
+
 int drawstatusbar(Monitor *m, int bh, char *stext) {
   int ret, i, w, x, stw, tabstart;
   short iscode = 0;
@@ -1457,6 +1482,10 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
   int skip_pad = 0;
   char *text;
   Clr *work = scheme[LENGTH(colors)];
+  Clr pillbase[3]; /* pill colours as of its first drawn run, for ^d */
+  int capx = -1;   /* pending left cap of the open pill, -1 when none */
+  int pillw = 0;   /* its body width, from the layout pass */
+  int pillprologue = 0; /* 1 while the pill's leading codes are applied */
 
   /* one shared parse for drawing and click resolution: stbuf holds the
      visible text (control characters dropped), stblocks the block ids, and
@@ -1479,6 +1508,7 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
   work[ColFg] = scheme[SchemeStatus][ColFg];
   work[ColBg] = scheme[SchemeStatus][ColBg];
   work[ColBorder] = scheme[SchemeStatus][ColBorder];
+  memcpy(pillbase, work, sizeof pillbase);
   drw_rect(drw, x, 0, w + stw, bh, 1, 1);
 
   /* process status text */
@@ -1489,6 +1519,11 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
 
       text[i] = '\0';
       if (strlen(text) > 0) {
+        if (capx >= 0) { /* first run of a pill: body and cap, then the text */
+          drawpillcap(work, capx, pillw);
+          pillprologue = 0;
+          capx = -1;
+        }
         w = TEXTW(text);
         drw_text(drw, x, 0, w, bh, lpad, text, 0, skip_pad);
         skip_pad = 0;
@@ -1500,18 +1535,23 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
       while (text[++i] && text[i] != '^') {
         if (text[i] == 'c' || text[i] == 'b') {
           char buf[8];
-          int n = 0;
+          int n = 0, isbg = (text[i] == 'b');
           while (n < 7 && (text + i + 1)[n] && (text + i + 1)[n] != '^')
             n++;
           memcpy(buf, (char *)text + i + 1, n);
           buf[n] = '\0';
-          if (ishexcolor(buf))
-            drw_clr_create(drw, &drw->scheme[text[i] == 'c' ? ColFg : ColBg],
-                           buf, alphas[SchemeStatus][text[i] == 'c' ? 0 : 1]);
+          if (ishexcolor(buf)) {
+            drw_clr_create(drw, &drw->scheme[isbg ? ColBg : ColFg], buf,
+                           alphas[SchemeStatus][isbg ? 1 : 0]);
+            /* the pill's leading ^b is its pane background: remember it as
+               the colour ^d resets to */
+            if (isbg && pillprologue)
+              pillbase[ColBg] = drw->scheme[ColBg];
+          }
           i += n;
         } else if (text[i] == 'd') {
-          drw->scheme[ColFg] = scheme[SchemeStatus][ColFg];
-          drw->scheme[ColBg] = scheme[SchemeStatus][ColBg];
+          drw->scheme[ColFg] = pillbase[ColFg];
+          drw->scheme[ColBg] = pillbase[ColBg];
         } else if (text[i] == 'r') {
           int rx, ry, rw, rh;
 
@@ -1530,15 +1570,26 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
         } else if (text[i] == 'f')
           x += atoi(text + ++i);
         else if (text[i] == '(' && tabradius > 0) {
-          /* start a rounded-left cap; the following text run keeps its
-             padding off so the cap stays visible behind the glyphs */
+          /* remember the cap and draw it with the pill's first run instead:
+             the pill's own ^b must apply first so cap, body and text agree,
+             and the body width is known from the layout pass */
           tabstart = x;
-          drw_setscheme(drw, scheme[SchemeEmpty]);
-          drw_rect(drw, x, 0, tabr, bh, 1, 0);
-          drw_setscheme(drw, work);
-          drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
+          capx = x;
+          pillw = (spillidx < nspills) ? spills[spillidx].w : 0;
+          spillidx++;
+          /* reset the pill base to the configured colours; the pill's own
+             leading ^b then refines its background */
+          pillbase[ColFg] = scheme[SchemeStatus][ColFg];
+          pillbase[ColBg] = scheme[SchemeStatus][ColBg];
+          pillbase[ColBorder] = scheme[SchemeStatus][ColBorder];
+          pillprologue = 1;
           skip_pad = 1;
         } else if (text[i] == ')' && tabradius > 0) {
+          if (capx >= 0) { /* a pill with no drawn text at all */
+            drawpillcap(work, capx, pillw);
+            pillprologue = 0;
+            capx = -1;
+          }
           drw_setscheme(drw, scheme[SchemeEmpty]);
           drw_rect(drw, x-tabr, 0, tabr + tabgap, bh, 1, 0);
           drw_setscheme(drw, work);
@@ -1558,6 +1609,11 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
   }
 
   if (!iscode) {
+    if (capx >= 0) { /* trailing run of a pill/tab with no '^' codes after it */
+      drawpillcap(work, capx, pillw);
+      pillprologue = 0;
+      capx = -1;
+    }
     w = TEXTW(text);
     drw_text(drw, x, 0, w, bh, lpad, text, 0, 0);
   }
@@ -3909,16 +3965,28 @@ static void statuspills_build(void) {
 
   pbuf[0] = '\0';
   nscells = 0;
+  nspills = 0;
+  spillidx = 0;
   stpills_w = 0;
   if (!ids)
     return;
 
   n = bar_pills(stbuf, stblocks, nstblocks, ids, pbuf, sizeof pbuf, cells,
                 MAX_STBLOCKS);
+  spillidx = 0;
+  nspills = 0;
   for (i = 0; i < n; i++) {
     int bw = status_block_width(cells[i].block);
     int gap = cells[i].gap ? (int)tabgap : 0;
 
+    /* a cell that follows a pill's last one opens the next pill */
+    if (nspills < MAX_STBLOCKS && (i == 0 || cells[i - 1].gap)) {
+      spills[nspills].x = stpills_w;
+      spills[nspills].w = 0;
+      nspills++;
+    }
+    if (nspills > 0)
+      spills[nspills - 1].w += bw;
     if (nscells < MAX_STBLOCKS) {
       scells[nscells].id = stblocks[cells[i].block].id;
       scells[nscells].x = stpills_w;

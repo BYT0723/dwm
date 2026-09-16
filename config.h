@@ -102,7 +102,7 @@ static char col_blue[]     = "#268bd2";  /*  4: blue     */
 static char col_magenta[]  = "#d33682";  /*  5: magenta  */
 static char col_cyan[]     = "#2aa198";  /*  6: cyan     */
 static char col_white[]    = "#eee8d5";  /*  7: white    */
-static char col_panel[]    = "#1e222a";  /* status pill background, matching the status writer's pane colour */
+static char col_panel[]    = "#15161e";  /* status pill background, matching the status writer's pane colour */
 static char col_ab_black[] = "#000000";
 static char *colors[][3] = {
     /*                    fg            bg            border   */
