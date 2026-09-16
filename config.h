@@ -29,8 +29,9 @@ static const BarItem bar_right[]  = { {BarStatus, st_pills} };
 /* portrait monitors (wh > ww) use these zones instead; orientation is a config
  * choice now, so a different set of status ids belongs here too (the writer no
  * longer emits a cut marker) */
-static const int st_pills_portrait[] = { 13, 12, 15, 0, 16, 14, 10, 3, 2, 0, 1, -1 };
-static const BarItem bar_left_portrait[]   = { {BarLayout, NULL}, {BarTags, NULL} };
+static const int st_pills_portrait[] = { 13, 12, 15, 0, 16, 14, 10, 2, 0, 1, -1 };
+static const int lt_pills_portrait[] = { 8, 7, -1 };
+static const BarItem bar_left_portrait[]   = { {BarLayout, NULL}, {BarTags, NULL}, {BarStatus, lt_pills_portrait}};
 static const BarItem bar_center_portrait[] = { {BarTabs, NULL} };
 static const BarItem bar_right_portrait[]  = { {BarStatus, st_pills_portrait} };
 
@@ -44,7 +45,7 @@ static const unsigned int tabborderpx = 1; /* tab outline width in px; 0 = no ou
  * TabModeIconTitle: one pill per client, icon + title (tabtext), tabwidth wide
  * TabModeIcons:     every icon in a single shared pill, tabtext is ignored */
 typedef enum { TabModeIconTitle, TabModeIcons } TabMode;
-static const TabMode tabmode = TabModeIcons;
+static const TabMode tabmode = TabModeIconTitle;
 
 /* how TabModeIconTitle sizes its pills:
  * TabFit   keep tabwidth while the row fits, level it to the zone otherwise
@@ -56,7 +57,7 @@ static const TabSize tabsize = TabFit;
 /* TabModeIcons selection mark: a filled circle in SchemeSel's foreground,
  * centred under the selected client's icon. This is the radius in px; 0 turns
  * it off. 5..10 reads well and the tab icons shrink to leave room for it. */
-static const unsigned int tabseldot = 5;
+static const unsigned int tabseldot = 2;
 
 static const char tabiconpath[] = "$HOME/.dwm/tab-fallback.png"; /* for clients without _NET_WM_ICON; missing file = no icon */
 
@@ -122,7 +123,6 @@ static char col_blue[]     = "#268bd2";  /*  4: blue     */
 static char col_magenta[]  = "#d33682";  /*  5: magenta  */
 static char col_cyan[]     = "#2aa198";  /*  6: cyan     */
 static char col_white[]    = "#eee8d5";  /*  7: white    */
-static char col_panel[]    = "#15161e";  /* status pill background, matching the status writer's pane colour */
 static char col_ab_black[] = "#000000";
 static char *colors[][3] = {
     /*                    fg            bg            border   */
@@ -133,10 +133,10 @@ static char *colors[][3] = {
     [SchemeLayout]  = { col_green,    col_black,    col_ab_black },
     // tasks
     [SchemeNorm]    = { col_white,    col_black,    col_ab_black },
-    [SchemeSel]     = { col_blue,     col_black,    col_cyan     },
+    [SchemeSel]     = { col_black,    col_cyan,     col_cyan     },
     [SchemeHid]     = { col_white,    col_ab_black, col_ab_black },
     // status
-    [SchemeStatus]  = { col_white,    col_panel,    col_white    },
+    [SchemeStatus]  = { col_white,    col_black,    col_white    },
     // systray
     [SchemeSystray] = { col_white,    col_black,    col_white    },
     // hover tooltip
@@ -157,7 +157,7 @@ static const unsigned int alphas[][3]      = {
     [SchemeTagNorm] = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     [SchemeTagSel]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     // layout
-    [SchemeLayout]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
+    [SchemeLayout]  = { OPAQUE,      OPAQUE,           TRANSPARENT },
     // tab
     [SchemeNorm]    = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     [SchemeSel]     = { OPAQUE,      TAB_SEL_BG_ALPHA, TAB_SEL_BG_ALPHA },
