@@ -445,10 +445,16 @@ static int drw_rounded_impl(Drw *drw, int x, int y, unsigned int h, int radius,
     if (color_pic != None) {
       XRenderFreePicture(drw->dpy, color_pic);
       XFreePixmap(drw->dpy, cpm);
+      color_pic = None;
+      cpm = None;
     }
     if (bpic != None) {
+      /* the outline belongs to the old r/h too; drop it and let the outline
+         pass rebuild it (cached_bw is invalidated below) */
       XRenderFreePicture(drw->dpy, bpic);
       XFreePixmap(drw->dpy, bpm);
+      bpic = None;
+      bpm = None;
     }
     if (fdata[0]) {
       free(fdata[0]);
@@ -482,14 +488,22 @@ static int drw_rounded_impl(Drw *drw, int x, int y, unsigned int h, int radius,
     cached_bpixel = ~0UL;
 
     for (m = 0; m < 2; m++) {
-      if (amask[m] != None)
+      if (amask[m] != None) {
         XRenderFreePicture(drw->dpy, amask[m]);
-      if (ampm[m] != None)
+        amask[m] = None;
+      }
+      if (ampm[m] != None) {
         XFreePixmap(drw->dpy, ampm[m]);
-      if (bmask[m] != None)
+        ampm[m] = None;
+      }
+      if (bmask[m] != None) {
         XRenderFreePicture(drw->dpy, bmask[m]);
-      if (bmpm[m] != None)
+        bmask[m] = None;
+      }
+      if (bmpm[m] != None) {
         XFreePixmap(drw->dpy, bmpm[m]);
+        bmpm[m] = None;
+      }
 
       for (int j = 0; j < (int)h; j++)
         for (int i = 0; i < r; i++) {

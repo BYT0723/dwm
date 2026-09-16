@@ -41,4 +41,11 @@ int bar_pills(const char *src, const BarBlock *blocks, int nblocks,
               const int *ids, char *dst, int dstlen, BarPillCell *cells,
               int maxcells);
 
+/* Lay out n equal-width cells inside avail, one gap after each. When the
+   cells fit at their nominal width the width is kept and the row is not
+   stretched; otherwise they are levelled to fill avail exactly, the first
+   avail % n cells taking the extra pixel. Writes at most maxw widths (out may
+   be NULL) and returns the row's total width, gaps included. */
+int bar_cells(int want, int n, int avail, int gap, int *out, int maxw);
+
 #endif

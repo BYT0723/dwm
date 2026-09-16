@@ -126,3 +126,26 @@ bar_pills(const char *src, const BarBlock *blocks, int nblocks, const int *ids,
   }
   return ncells;
 }
+
+int
+bar_cells(int want, int n, int avail, int gap, int *out, int maxw) {
+  int base, i, rem, room;
+
+  if (n <= 0)
+    return 0;
+  room = avail - gap * n;
+  if (room < 0)
+    room = 0;
+
+  if (want > 0 && want * n < room) {
+    for (i = 0; i < n && i < maxw; i++)
+      out[i] = want;
+    return want * n + gap * n;
+  }
+
+  base = room / n;
+  rem = room % n;
+  for (i = 0; i < n && i < maxw; i++)
+    out[i] = base + (i < rem ? 1 : 0);
+  return room + gap * n;
+}

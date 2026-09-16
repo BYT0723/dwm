@@ -12,34 +12,32 @@ static const          int sidepad      = 2;  /* horizontal padding of bar */
 
 /* bar modules: items are grouped into three zones and each zone is filled
  * in array order. left starts at the bar's left edge, right ends at its
- * right edge (the systray is reserved there) and center gets what is left
- * over. BarTabs is elastic and takes the rest of its zone, so keep it last.
+ * right edge (the systray is reserved there) and center is sized to its own
+ * content and centred on the bar's middle, so it is absolutely centred.
+ * BarTabs stretches when its fixed width does not fit, so keep it last.
  * BarStatus selects status blocks by the control character that prefixes
  * them in the status writer's output; 0 starts a new pill (its own rounded
  * caps) and -1 ends the list. Ids the writer leaves out (empty panel,
  * portrait cut) are simply skipped. */
-static const int st_pills[] = { 9, 0, 11, 0, 8, 7, 6, 0, 13, 12, 15, 0, 16, 14, 10, 3, 2, 0, 1, -1 };
+static const int st_pills[] = { 13, 12, 15, 0, 9, 0, 11, 0, 16, 14, 10, 3, 2, 0, 1, -1 };
+static const int lt_pills[] = { 8, 7, 6, -1 };
 
-static const BarItem bar_left[]   = { {BarTags, NULL}, {BarLayout, NULL} };
+static const BarItem bar_left[]   = { {BarTags, NULL}, {BarLayout, NULL}, {BarStatus, lt_pills}};
 static const BarItem bar_center[] = { {BarTabs, NULL} };
 static const BarItem bar_right[]  = { {BarStatus, st_pills} };
 
-/* tab style; 0:default 1:center 2:custom_width
- * 0 0 0 0 0 0 0 0
- * bit1: center
- * bit2: custom_width
- * radius is controlled by barinnerradius
- */
-#define TAB_NONE         0x00
-#define TAB_CENTER       0x01
-#define TAB_CUSTOM_WIDTH 0x02
-
-static const unsigned int tabstyle    = TAB_CENTER | TAB_CUSTOM_WIDTH;
-static const unsigned int tabwidth    = 24;
-static const char         tabtext[]   = "{title}"; /* tab text template; placeholders: {title}, {class} */
-static const unsigned int tabradius   = 6;
+static const unsigned int tabwidth    = 6;
+static const char         tabtext[]   = ""; /* tab text template; placeholders: {title}, {class} */
+static const unsigned int tabradius   = 8;
 static const unsigned int tabgap      = 4;
 static const unsigned int tabborderpx = 1; /* tab outline width in px; 0 = no outline */
+
+/* tab rendering mode:
+ * TabModeIconTitle: one pill per client, icon + tabtext, tabwidth wide
+ * TabModeIcons:     every icon in a single shared pill, tabtext is ignored */
+typedef enum { TabModeIconTitle, TabModeIcons } TabMode;
+static const TabMode tabmode      = TabModeIcons;
+static const char   tabiconpath[] = "$HOME/.dwm/tab-fallback.png"; /* for clients without _NET_WM_ICON; missing file = no icon */
 
 /* tagging */
 /* tags[] only defines the number of tags (TAGMASK depends on LENGTH(tags)); its text is not rendered. */
@@ -47,19 +45,19 @@ static const char tagtext[] = "{icon} {name}"; /* tag text template; placeholder
 static const char *tags[] = {"", "", "󰭹", "", "", "", "", "", ""};
 static const char *tag_names[] = {"dev", "web", "chat", "util", "misc", "dl", "vid", "mus", "game"};
 // tag and client preview
-static const          int hoverinfo       = 1;    /* 1 = hover a client tab to show a tooltip with client info; 0 = disabled */
+static const          int hoverinfo       = 1;   /* 1 = hover a client tab to show a tooltip with client info; 0 = disabled */
 static const unsigned int hoverdelay      = 500; /* ms of resting on a tab before the tooltip appears */
-static const unsigned int previewh        = 240;  /* max live preview height; width scales by aspect */
+static const unsigned int previewh        = 240; /* max live preview height; width scales by aspect */
 static const unsigned int previewrefresh  = 300; /* ms between live preview refreshes */
-static const unsigned int hoverpad        = 12;   /* tooltip content padding from the border */
-static const unsigned int hovergap        = 4;  /* gap between the preview and the title */
+static const unsigned int hoverpad        = 6;  /* tooltip content padding from the border */
+static const unsigned int hovergap        = 4;   /* gap between the preview and the title */
 static const unsigned int previewborderpx = 2;   /* px highlight border around the live preview, in colors[x][2] */
 
 // layout gap
 static const unsigned int gappih    = 6;
 static const unsigned int gappiv    = 6;
-static const unsigned int gappoh    = 10;
-static const unsigned int gappov    = 8;
+static const unsigned int gappoh    = 6;
+static const unsigned int gappov    = 6;
 static                int smartgaps = 0;   /* 1 means no outer gap when there is only one window */
 
 // systray

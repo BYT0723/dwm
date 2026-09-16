@@ -49,6 +49,8 @@
 #include <errno.h>
 #include <time.h>
 
+#include <Imlib2.h>
+
 #include "barparse.h"
 #include "drw.h"
 #include "util.h"
@@ -230,6 +232,13 @@ typedef struct {
 } BarSlot;
 #define BAR_SLOTS 32
 
+/* one drawn tab: where it sits, how wide, and which client it belongs to */
+typedef struct {
+  int x, w;
+  Client *c;
+} TabCell;
+#define TAB_CELLS 64
+
 typedef struct Pertag Pertag;
 struct Monitor {
   char ltsymbol[16];
@@ -315,7 +324,12 @@ static void drawbar(Monitor *m);
 static void drawbars(void);
 static void drawtabborder(int x, int w, Clr *s);
 static int drawstatuspills(Monitor *m, int x, const int *ids);
-static int drawtabs(Monitor *m, int x, int w, int n);
+static int tablayout(Monitor *m, int avail, TabCell *cells, int max, int *ncells);
+static void tabicon_size(Client *c, unsigned int *w, unsigned int *h);
+static int tabicon(Client *c, int scm, Picture *pic, unsigned int *w, unsigned int *h);
+static void drawdisc(int x, int y, int d);
+static uint32_t prealpha(uint32_t p, uint32_t custom_alpha);
+static void tabdraw(Monitor *m, int x, const TabCell *cells, int ncells);
 static int titleh(Client *c);
 static void updatenodecor(Client *c);
 static void createframe(Client *c);
@@ -403,7 +417,6 @@ static int status_block_width(int i);
 static void statuspills_build(const int *ids);
 static int barzonewidth(Monitor *m, const BarItem *items, size_t nitems, int occ,
                         int n, int avail);
-static int tabswidth(int n, int avail);
 static void addslot(Monitor *m, int x, int w, unsigned int click, Arg arg);
 static const BarSlot *barslotat(Monitor *m, int x);
 static int tagindex(unsigned int mask);
@@ -1251,20 +1264,6 @@ static int drawtagpill(Monitor *m, const BarItem *items, size_t nitems,
   return x;
 }
 
-/* width the tab row occupies inside avail, mirroring drawtabs: the fixed
-   tabwidth when it fits, otherwise the tabs stretch to fill avail */
-static int tabswidth(int n, int avail) {
-  int gap_total, tabw;
-
-  if (n <= 0)
-    return 0;
-  gap_total = (int)tabgap * n;
-  tabw = tabwidth * drw_fontset_getwidth(drw, " ") + lrpad;
-  if (tabw <= 0 || tabw * n >= MAX(0, avail - gap_total))
-    return MAX(0, avail);
-  return tabw * n + gap_total;
-}
-
 /* width a zone takes, counting the gaps between its pills; avail is the
    room elastic tabs may stretch into (0 outside the center zone) */
 static int barzonewidth(Monitor *m, const BarItem *items, size_t nitems,
@@ -1285,7 +1284,7 @@ static int barzonewidth(Monitor *m, const BarItem *items, size_t nitems,
       w += TEXTW(m->ltsymbol);
       break;
     case BarTabs:
-      w += tabswidth(n, avail);
+      w += tablayout(m, avail, NULL, 0, NULL);
       break;
     case BarStatus:
       if (m == selmon)
@@ -1315,13 +1314,17 @@ static int drawzone(Monitor *m, const BarItem *items, size_t nitems, int x,
     case BarLayout:
       x = drawtagpill(m, items, nitems, k, x, occ, urg);
       break;
-    case BarTabs:
-      /* the zone was sized to the tab row, so this fills it exactly */
-      if (w > 0 && n > 0) {
-        (void)drawtabs(m, x, w, n);
-        x += w;
-      }
+    case BarTabs: {
+      /* the zone was sized to this row, so laying it out again gives the
+         same geometry the measurement used */
+      TabCell cells[TAB_CELLS];
+      int nc = 0, roww = tablayout(m, w, cells, TAB_CELLS, &nc);
+
+      if (nc > 0)
+        tabdraw(m, x, cells, nc);
+      x += roww;
       break;
+    }
     case BarStatus:
       x = drawstatuspills(m, x, items[k].ids);
       break;
@@ -1849,79 +1852,360 @@ static int tagindex(unsigned int mask) {
   return -1;
 }
 
-/* draw client tabs, starting at x within the remaining bar width w;
-   returns the width of a single tab */
-int drawtabs(Monitor *m, int x, int w, int n) {
-  int gap_total, avail, remainder, tabw, scm;
-  int boxw = drw->fonts->h / 6 + 2;
+/* lay the tab row out inside avail. When cells is non-NULL the per-cell
+   geometry is recorded too, so the zone measurement (cells == NULL) and the
+   painter always agree: both run this one function. Returns the row width.
+   TabModeIconTitle keeps the configured nominal width and levels the row to
+   avail when it does not fit; TabModeIcons sizes each cell to its icon and,
+   when the icons do not fit, closes the gaps before dropping trailing ones. */
+static int tablayout(Monitor *m, int avail, TabCell *cells, int max,
+                     int *ncells) {
+  int widths[TAB_CELLS];
+  int i, n = 0, want, total, x, g;
   Client *c;
 
-  gap_total = (int)tabgap * n;
-  avail = MAX(0, (int)w - gap_total);
-  remainder = avail % n;
-  tabw = tabwidth * drw_fontset_getwidth(drw, " ") + lrpad;
-  if (tabw * n >= avail || !(tabstyle & TAB_CUSTOM_WIDTH))
-    tabw = avail / n + 1;
+  if (ncells)
+    *ncells = 0;
 
-  if (tabstyle&TAB_CENTER)
-    x += MAX(((int)w - (tabw * n + gap_total))/2, 0);
+  if (tabmode == TabModeIcons) {
+    for (g = (int)tabgap;; g--) {
+      x = (int)tabr;
+      i = 0;
+      for (c = m->clients; c && i < TAB_CELLS; c = c->next) {
+        unsigned int iw, ih;
 
-  for (c = m->clients; c; c = c->next) {
-    int highlight, tw, cx;
-    char text[256];
+        if (!ISVISIBLE(c))
+          continue;
+        tabicon_size(c, &iw, &ih);
+        if (!iw)
+          iw = 1; /* keep the client clickable even without any icon */
+        if (cells && i < max) {
+          cells[i].x = x;
+          cells[i].w = (int)iw;
+          cells[i].c = c;
+        }
+        x += (int)iw + g;
+        i++;
+      }
+      total = i ? x - g + (int)tabr : 0;
+      if (total <= avail || g <= 0)
+        break;
+    }
+    while (i > 0 && total > avail) { /* drop trailing cells that do not fit */
+      i--;
+      total = cells ? cells[i].x + cells[i].w + (int)tabr : 0;
+    }
+    if (ncells)
+      *ncells = i;
+    return total;
+  }
 
+  for (c = m->clients; c; c = c->next)
+    if (ISVISIBLE(c))
+      n++;
+  if (n > TAB_CELLS)
+    n = TAB_CELLS;
+  if (n <= 0)
+    return 0;
+
+  /* the nominal width is a character count so it tracks the font */
+  want = tabwidth * drw_fontset_getwidth(drw, " ") + lrpad;
+  total = bar_cells(want, n, avail, (int)tabgap, widths, TAB_CELLS);
+
+  if (!cells)
+    return total;
+
+  x = 0;
+  i = 0;
+  for (c = m->clients; c && i < n; c = c->next) {
     if (!ISVISIBLE(c))
       continue;
-    if (m->sel == c)
-      scm = SchemeSel;
-    else if (HIDDEN(c))
-      scm = SchemeHid;
-    else
-      scm = SchemeNorm;
-    drw_setscheme(drw, scheme[scm]);
-    highlight = scm == SchemeSel && fonts_highlight_set;
-    if (highlight)
-      drw_setfontset(drw, fonts_highlight_set);
+    cells[i].x = x;
+    cells[i].w = widths[i];
+    cells[i].c = c;
+    x += widths[i] + (int)tabgap;
+    i++;
+  }
+  if (ncells)
+    *ncells = i;
+  return total;
+}
 
-    /* distribute the avail % n excess pixels: the first `remainder`
-       tabs keep the +1 from the ceiling division, the rest shrink
-       back to avail / n */
-    if (remainder == 0)
-      tabw--;
-    remainder--;
+/* ---- tab icon ----------------------------------------------------------
+ * A client without _NET_WM_ICON has no picture to show. The PNG named by
+ * tabiconpath is loaded once as a coverage mask and tinted with the scheme's
+ * foreground, then modulated by that scheme's alpha exactly like a real icon
+ * (both end up going through prealpha()). Cached per scheme; a missing file
+ * simply means "no icon", never an error. */
 
-    template_expand(tabtext, tab_placeholder, c, text, sizeof(text));
-    tw = TEXTW(text) - lrpad;
+/* tabiconpath with "$HOME/" or "~/" expanded */
+static const char *tabiconfile(void) {
+  static char path[512];
+  const char *home = getenv("HOME");
+  const char *rel = tabiconpath;
 
-    /* content area: the rounded-cap branch insets it by the cap radius;
-       icon+text are centered inside it, minpad is the left stop */
+  if (!home)
+    home = "";
+  if (!strncmp(rel, "$HOME/", 6))
+    rel += 6;
+  else if (rel[0] == '~' && rel[1] == '/')
+    rel += 2;
+  else
+    return rel;
+  snprintf(path, sizeof path, "%s/%s", home, rel);
+  return path;
+}
+
+/* coverage mask loaded from tabiconpath, once; NULL when unavailable */
+static unsigned char *tabfal_mask;
+static int tabfal_mw, tabfal_mh;
+
+static int tabfal_load(void) {
+  static int tried;
+  Imlib_Image im, scaled;
+  DATA32 *src;
+  int i, iw, ih, n;
+
+  if (tried)
+    return tabfal_mask != NULL;
+  tried = 1;
+  im = imlib_load_image(tabiconfile());
+  if (!im)
+    return 0;
+  imlib_context_set_image(im);
+  iw = imlib_image_get_width();
+  ih = imlib_image_get_height();
+  if (iw <= 0 || ih <= 0) {
+    imlib_free_image();
+    return 0;
+  }
+  /* longest side to ICONSIZE, like geticonprop does for real icons */
+  if (iw <= ih) {
+    tabfal_mh = ICONSIZE;
+    tabfal_mw = MAX(1, iw * ICONSIZE / ih);
+  } else {
+    tabfal_mw = ICONSIZE;
+    tabfal_mh = MAX(1, ih * ICONSIZE / iw);
+  }
+  scaled = imlib_create_cropped_scaled_image(0, 0, iw, ih, tabfal_mw, tabfal_mh);
+  imlib_free_image();
+  if (!scaled)
+    return 0;
+  imlib_context_set_image(scaled);
+  src = imlib_image_get_data_for_reading_only();
+  if (!src) {
+    imlib_free_image();
+    return 0;
+  }
+  tabfal_mask = ecalloc((size_t)tabfal_mw * tabfal_mh, 1);
+  for (n = tabfal_mw * tabfal_mh, i = 0; i < n; i++)
+    tabfal_mask[i] = (unsigned char)(src[i] >> 24u);
+  imlib_free_image();
+  return 1;
+}
+
+/* fallback size, loading the mask on first use */
+static int tabfal_size(unsigned int *w, unsigned int *h) {
+  if (!tabfal_load())
+    return 0;
+  if (w)
+    *w = tabfal_mw;
+  if (h)
+    *h = tabfal_mh;
+  return 1;
+}
+
+/* the fallback picture for a scheme, built on first use */
+static Picture tabfal_pic(int scm, unsigned int *w, unsigned int *h) {
+  static Picture pic[3];
+  static int state[3];
+  unsigned int fg;
+  DATA32 *buf;
+  int i, n;
+
+  if (scm != SchemeNorm && scm != SchemeSel && scm != SchemeHid)
+    return None;
+  if (state[scm] != 0) {
+    if (state[scm] < 0)
+      return None;
+    /* cached: the size has to come back too, or the caller draws nothing */
+    if (w)
+      *w = tabfal_mw;
+    if (h)
+      *h = tabfal_mh;
+    return pic[scm];
+  }
+  state[scm] = -1;
+  if (!tabfal_load())
+    return None;
+
+  fg = scheme[scm][ColFg].pixel;
+  n = tabfal_mw * tabfal_mh;
+  buf = ecalloc((size_t)n, sizeof(DATA32));
+  for (i = 0; i < n; i++) {
+    /* the mask's coverage becomes the pixel alpha, the scheme's foreground
+       its colour, and prealpha() modulates both like a real icon */
+    uint32_t p = ((uint32_t)tabfal_mask[i] << 24u) | (fg & 0x00FFFFFFu);
+
+    buf[i] = prealpha(p, fg >> 24u);
+  }
+  pic[scm] = drw_picture_create_resized(drw, (char *)buf, tabfal_mw, tabfal_mh,
+                                        tabfal_mw, tabfal_mh);
+  free(buf);
+  if (!pic[scm])
+    return None;
+  state[scm] = 1;
+  if (w)
+    *w = tabfal_mw;
+  if (h)
+    *h = tabfal_mh;
+  return pic[scm];
+}
+
+/* the icon to show for c's tab: the client's own, or the fallback */
+static int tabicon(Client *c, int scm, Picture *pic, unsigned int *w,
+                   unsigned int *h) {
+  if (c->icon) {
+    *pic = c->icon;
+    *w = c->icw;
+    *h = c->ich;
+    return 1;
+  }
+  if ((*pic = tabfal_pic(scm, w, h)) != None)
+    return 1;
+  return 0;
+}
+
+/* size of the icon c's tab will show, without creating anything */
+static void tabicon_size(Client *c, unsigned int *w, unsigned int *h) {
+  if (c->icon) {
+    *w = c->icw;
+    *h = c->ich;
+    return;
+  }
+  if (!tabfal_size(w, h))
+    *w = *h = 0;
+}
+
+/* a filled disc of diameter d at (x, y) in the scheme's background colour:
+   two pill caps of radius d/2 back to back */
+static void drawdisc(int x, int y, int d) {
+  int r = d / 2;
+
+  if (r <= 0)
+    return;
+  drw_rounded(drw, x, y, (unsigned int)(2 * r), r, RoundedLeft);
+  drw_rounded(drw, x + r, y, (unsigned int)(2 * r), r, RoundedRight);
+}
+
+/* paint one tab pill of width w at x for client c, and record its slot */
+static void tabpaint(Monitor *m, int x, int w, Client *c) {
+  int scm, highlight, tw, cx;
+  int boxw = drw->fonts->h / 6 + 2;
+  char text[256];
+
+  if (m->sel == c)
+    scm = SchemeSel;
+  else if (HIDDEN(c))
+    scm = SchemeHid;
+  else
+    scm = SchemeNorm;
+  drw_setscheme(drw, scheme[scm]);
+  highlight = scm == SchemeSel && fonts_highlight_set;
+  if (highlight)
+    drw_setfontset(drw, fonts_highlight_set);
+
+  template_expand(tabtext, tab_placeholder, c, text, sizeof(text));
+  tw = TEXTW(text) - lrpad;
+
+  /* content area: the rounded-cap branch insets it by the cap radius;
+     icon+text are centred inside it, minpad is the left stop */
+  {
     int cxx = x + tabr;
-    int contentw = MAX(tabw - tabr * 2, 0);
+    int contentw = MAX(w - tabr * 2, 0);
     int minpad = tabr > 0 ? 0 : (int)lpad;
+
     if (tabr > 0)
       drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
-    if (c->icon && contentw - minpad >= (int)(c->icw + ICONSPACING)) {
-      cx = MAX(minpad, (contentw - tw - (int)(c->icw + ICONSPACING)) / 2);
-      drw_text(drw, cxx, 0, contentw, bh, cx + c->icw + ICONSPACING, text, 0, 0);
-      drw_pic(drw, cxx + cx, (bh - c->ich) / 2, c->icw, c->ich, c->icon);
+    Picture ic = None;
+    unsigned int iw = 0, ih = 0;
+
+    if (tabicon(c, scm, &ic, &iw, &ih) &&
+        contentw - minpad >= (int)(iw + ICONSPACING)) {
+      cx = MAX(minpad, (contentw - tw - (int)(iw + ICONSPACING)) / 2);
+      drw_text(drw, cxx, 0, contentw, bh, cx + iw + ICONSPACING, text, 0, 0);
+      drw_pic(drw, cxx + cx, (bh - (int)ih) / 2, iw, ih, ic);
     } else {
       cx = MAX(minpad, (contentw - tw) / 2);
       drw_text(drw, cxx, 0, contentw, bh, cx, text, 0, 0);
     }
     if (tabr > 0)
-      drw_rounded(drw, x + tabw - tabr, 0, bh, tabr, RoundedRight);
-    if (drw->scheme == scheme[SchemeSel])
-      drawtabborder(x, tabw, NULL);
-
-    // floating marker
-    if (c->isfloating)
-      drw_rect(drw, x + tabw - tabr - boxw, (bh-boxw)/2, boxw, boxw, c->isfixed, 0);
-    if (highlight)
-      drw_setfontset(drw, fonts_set);
-    addslot(m, x, tabw, ClkWinTitle, (Arg){.v = c});
-    x += tabw + (int)tabgap;
+      drw_rounded(drw, x + w - tabr, 0, bh, tabr, RoundedRight);
   }
-  return tabw;
+  if (drw->scheme == scheme[SchemeSel])
+    drawtabborder(x, w, NULL);
+
+  // floating marker
+  if (c->isfloating)
+    drw_rect(drw, x + w - tabr - boxw, (bh - boxw) / 2, boxw, boxw, c->isfixed, 0);
+  if (highlight)
+    drw_setfontset(drw, fonts_set);
+
+  addslot(m, x, w, ClkWinTitle, (Arg){.v = c});
+}
+
+/* paint a row laid out by tablayout() at x0 */
+static void tabdraw(Monitor *m, int x0, const TabCell *cells, int ncells) {
+  int i;
+
+  if (ncells <= 0)
+    return;
+
+  if (tabmode != TabModeIcons) { /* one pill per client */
+    for (i = 0; i < ncells; i++)
+      tabpaint(m, x0 + cells[i].x, cells[i].w, cells[i].c);
+    return;
+  }
+
+  /* one pill shared by every icon: body, then the icons, with the selected
+     one sitting on a SchemeSel disc (no tab outline in this mode) */
+  {
+    int pillw = cells[ncells - 1].x + cells[ncells - 1].w + (int)tabr;
+
+    drw_setscheme(drw, scheme[SchemeNorm]);
+    drw_rect(drw, x0, 0, (unsigned int)pillw, bh, 1, 1);
+    if (tabr > 0) {
+      drw_setscheme(drw, scheme[SchemeEmpty]);
+      drw_rect(drw, x0, 0, tabr, bh, 1, 0);
+      drw_rect(drw, x0 + pillw - tabr, 0, tabr, bh, 1, 0);
+      drw_setscheme(drw, scheme[SchemeNorm]);
+      drw_rounded(drw, x0, 0, bh, tabr, RoundedLeft);
+      drw_rounded(drw, x0 + pillw - tabr, 0, bh, tabr, RoundedRight);
+    }
+  }
+
+  for (i = 0; i < ncells; i++) {
+    Client *c = cells[i].c;
+    Picture ic = None;
+    unsigned int iw = 0, ih = 0;
+    int scm = (m->sel == c) ? SchemeSel : (HIDDEN(c) ? SchemeHid : SchemeNorm);
+    int cx = x0 + cells[i].x;
+
+    tabicon_size(c, &iw, &ih);
+    if (scm == SchemeSel) {
+      /* the selected icon sits on a SchemeSel disc, no outline */
+      int d = (iw || ih) ? MAX((int)iw, (int)ih) + 4 : ICONSIZE;
+
+      if (d > bh)
+        d = bh;
+      drw_setscheme(drw, scheme[SchemeSel]);
+      drawdisc(cx + (cells[i].w - d) / 2, (bh - d) / 2, d);
+    }
+    if (tabicon(c, scm, &ic, &iw, &ih))
+      drw_pic(drw, cx, (bh - (int)ih) / 2, iw, ih, ic);
+    /* the gap after a cell belongs to it, so clicks tile the pill */
+    addslot(m, cx, cells[i].w + (int)tabgap, ClkWinTitle, (Arg){.v = c});
+  }
 }
 
 /* re-arm or dismiss the hover state from the pointer position: a tag with a
@@ -2651,6 +2935,7 @@ Picture geticonprop(Window win, unsigned int *picw, unsigned int *pich, unsigned
   unsigned long n, extra, *p = NULL;
   Atom real;
 
+  *picw = *pich = 0;
   if (XGetWindowProperty(dpy, win, netatom[NetWMIcon], 0L, LONG_MAX, False, AnyPropertyType,
                &real, &format, &n, &extra, (unsigned char **)&p) != Success)
     return None;
