@@ -24,10 +24,15 @@ static const          char host[]      = "  ";
 static const unsigned int tabstyle    = TAB_CENTER | TAB_CUSTOM_WIDTH;
 static const unsigned int tabwidth    = 24;
 static const char         tabtext[]   = "{title}"; /* tab text template; placeholders: {title}, {class} */
-static const unsigned int tabradius   = 8;
+static const unsigned int tabradius   = 6;
 static const unsigned int tabgap      = 4;
 static const unsigned int tabborderpx = 1; /* tab outline width in px; 0 = no outline */
 
+/* tagging */
+/* tags[] only defines the number of tags (TAGMASK depends on LENGTH(tags)); its text is not rendered. */
+static const char tagtext[] = "{icon} {name}"; /* tag text template; placeholders: {name}, {icon}, {index} */
+static const char *tags[] = {"", "", "󰭹", "", "", "", "", "", ""};
+static const char *tag_names[] = {"dev", "web", "chat", "util", "misc", "dl", "vid", "mus", "game"};
 // tag and client preview
 static const          int hoverinfo       = 1;    /* 1 = hover a client tab to show a tooltip with client info; 0 = disabled */
 static const unsigned int hoverdelay      = 500; /* ms of resting on a tab before the tooltip appears */
@@ -133,12 +138,6 @@ static const unsigned int alphas[][3]      = {
     // empty
     [SchemeEmpty]   = { TRANSPARENT, TRANSPARENT,      TRANSPARENT },
 };
-
-/* tagging */
-/* tags[] only defines the number of tags (TAGMASK depends on LENGTH(tags)); its text is not rendered. */
-static const char tagtext[] = "{icon} {name}"; /* tag text template; placeholders: {name}, {icon}, {index} */
-static const char *tags[] = {"", "", "󰭹", "", "", "", "", "", ""};
-static const char *tag_names[] = {"dev", "web", "chat", "util", "misc", "dl", "vid", "mus", "game"};
 
 static const Rule rules[] = {
     /* xprop(1):
