@@ -213,12 +213,22 @@ typedef struct {
 
 /* bar layout: items are grouped into three zones (config.h) and each zone
    is filled in array order. BarStatus carries the block ids to draw as
-   pills; other modules ignore ids. */
-typedef enum { BarTags, BarLayout, BarTabs, BarStatus } BarModule;
+   pills; other modules ignore ids. A BarLayout right after BarTags shares
+   the tags pill, which is why the two are one pill by default. */
+typedef enum { BarNone, BarTags, BarLayout, BarTabs, BarStatus } BarModule;
 typedef struct {
   BarModule mod;
   const int *ids;
 } BarItem;
+
+/* one drawn bar element, recorded as the bar is painted so clicks and hover
+   resolve against exactly what is on screen instead of re-deriving it */
+typedef struct {
+  int x, w;
+  unsigned int click;
+  Arg arg;
+} BarSlot;
+#define BAR_SLOTS 32
 
 typedef struct Pertag Pertag;
 struct Monitor {
@@ -227,9 +237,8 @@ struct Monitor {
   int nmaster;
   int num;
   int by;             /* bar geometry */
-  int btw;            /* width of tasks portion of bar */
-  int bt;             /* number of tasks */
-  int tw;             /* width of task */
+  BarSlot slots[BAR_SLOTS]; /* drawn bar elements, for clicks and hover */
+  int nslots;
   int mx, my, mw, mh; /* screen size */
   int wx, wy, ww, wh; /* window area  */
   int gappih;         /* horizontal gap between windows */
@@ -305,7 +314,7 @@ static Monitor *dirtomon(int dir);
 static void drawbar(Monitor *m);
 static void drawbars(void);
 static void drawtabborder(int x, int w, Clr *s);
-static int drawstatusbar(Monitor *m, int bh, char *text);
+static int drawstatuspills(Monitor *m, int x, const int *ids);
 static int drawtabs(Monitor *m, int x, int w, int n);
 static int titleh(Client *c);
 static void updatenodecor(Client *c);
@@ -388,15 +397,18 @@ static void sigchld(int unused);
 static void sighup(int unused);
 static void sigterm(int unused);
 static void spawn(const Arg *arg);
-static void status2dwalk(Monitor *m, char *stext, int stopx, int *x, int *cmdidx);
-static int status2d_width(Monitor *m, char *stext);
+static int statuswidth(Monitor *m, const int *ids);
 static void statusparse(Monitor *m, const char *text);
 static int status_block_width(int i);
-static void statuspills_build(void);
+static void statuspills_build(const int *ids);
+static int barzonewidth(Monitor *m, const BarItem *items, size_t nitems, int occ,
+                        int n, int avail);
+static int tabswidth(int n, int avail);
+static void addslot(Monitor *m, int x, int w, unsigned int click, Arg arg);
+static const BarSlot *barslotat(Monitor *m, int x);
+static int tagindex(unsigned int mask);
 static void drawpillcap(Clr *work, int capx, int pillw);
-static const BarItem *baritem_find(const BarItem *items, size_t n, BarModule mod);
 static int status2d_runwidth(char *s);
-static void statusclick(Monitor *m, int xclick, int stw, int button);
 static void systraydock(Window w);
 static int systrayredock(Window w);
 static Monitor *systraytomon(Monitor *m);
@@ -407,8 +419,6 @@ static void togglefloating(const Arg *arg);
 static void togglefloatingclient(Client *c);
 static void focusmaster(const Arg *arg);
 static void maximize(const Arg *arg);
-static void tabgeometry(Monitor *m, int *tstart, int *tend);
-static Client *taskshover(Monitor *m, int xclick, int tstart, int *tabx);
 static void hoverfire(void);
 static void hoverhide(void);
 static void hovershow(Client *c, int tx);
@@ -416,7 +426,6 @@ static void previewtag(const Arg *arg);
 static void showtagpreview(unsigned int i);
 static void takesnapshot(Client *c);
 static void takepreview(void);
-static int tagatx(Monitor *m, int x, int *xend);
 static int tagtextw(unsigned int i);
 typedef const char *(*template_resolve)(const char *f, size_t *plen, void *ctx);
 static void template_expand(const char *fmt, template_resolve resolve, void *ctx, char *buf, size_t len);
@@ -487,12 +496,12 @@ static StatusPill spills[MAX_STBLOCKS];
 static int nspills;
 static int spillidx; /* draw-time cursor into spills */
 static int stpills_w;                     /* total drawn width of the pills */
-static int statusw;
+static int hoverw;                        /* width of the hovered tab slot */
 static int statuscmdn;
 static char lastbutton[] = "-";
 static int screen;
 static int sw, sh;      /* X display screen geometry width, height */
-static int bh, blw = 0; /* bar geometry */
+static int bh; /* bar geometry */
 static int th = 0;        /* titlebar height (font height + 2 * titlebarpad when enabled, 0 when disabled) */
 static int lrpad;       /* sum of left and right padding for text */
 static int lpad;        /* left padding for text, equal lrpad/2  */
@@ -733,8 +742,9 @@ void attachstack(Client *c) {
 }
 
 void buttonpress(XEvent *e) {
-  unsigned int stw, click;
-  int i, x, tstart, tend, tx;
+  unsigned int click;
+  int i;
+  const BarSlot *s;
   Arg arg = {0};
   Client *c;
   Monitor *m;
@@ -748,25 +758,15 @@ void buttonpress(XEvent *e) {
     focus(NULL);
   }
 
-  stw = systraytomon(selmon) == selmon ? getsystraywidth() : 0;
-
   if (ev->window == selmon->barwin) {
     hoverhide();
-    tabgeometry(m, &tstart, &tend);
-    i = tagatx(m, ev->x, &x);
-    if (i >= 0) {
-      click = ClkTagBar;
-      arg.ui = 1 << i;
-    } else if (ev->x < x + blw)
-      click = ClkLtSymbol;
-    /* 2px right padding */
-    else if (ev->x > selmon->ww - statusw - stw) {
-      statusclick(selmon, ev->x, stw, ev->button);
-      click = ClkStatusText;
-    } else if (ev->x > tstart && ev->x < tend) {
-      if (m->clients) {
-        click = ClkWinTitle;
-        arg.v = taskshover(selmon, ev->x, tstart, &tx);
+    if ((s = barslotat(selmon, ev->x))) {
+      click = s->click;
+      arg = s->arg;
+      if (click == ClkStatusText) {
+        /* hand the block's control character to the click command */
+        *lastbutton = '0' + ev->button;
+        statuscmdn = (int)s->arg.ui;
       }
     }
   } else if ((c = wintoclient(ev->window))) {
@@ -1170,9 +1170,171 @@ static void drawtabborder(int x, int w, Clr *s) {
   drw_setscheme(drw, prev);
 }
 
+/* append a drawn bar element; this table is what clicks and hover consult */
+static void addslot(Monitor *m, int x, int w, unsigned int click, Arg arg) {
+  if (!w || m->nslots >= BAR_SLOTS)
+    return;
+  m->slots[m->nslots].x = x;
+  m->slots[m->nslots].w = w;
+  m->slots[m->nslots].click = click;
+  m->slots[m->nslots].arg = arg;
+  m->nslots++;
+}
+
+/* drawn element under x, NULL on empty bar space */
+static const BarSlot *barslotat(Monitor *m, int x) {
+  int i;
+
+  for (i = 0; i < m->nslots; i++)
+    if (x >= m->slots[i].x && x < m->slots[i].x + m->slots[i].w)
+      return &m->slots[i];
+  return NULL;
+}
+
+/* width of the tags pill; the layout symbol joins it when it follows */
+static int tagpillwidth(Monitor *m, const BarItem *items, size_t nitems,
+                        size_t k, int occ) {
+  int i, w = 0;
+
+  for (i = 0; i < LENGTH(tags); i++)
+    if (occ & 1 << i || m->tagset[m->seltags] & 1 << i)
+      w += tagtextw(i);
+  if (k + 1 < nitems && items[k + 1].mod == BarLayout)
+    w += TEXTW(m->ltsymbol);
+  return w;
+}
+
+/* draw the tags pill at x: the visible tags, then the layout symbol when it
+   follows, sharing one set of rounded caps and one outline */
+static int drawtagpill(Monitor *m, const BarItem *items, size_t nitems,
+                       size_t k, int x, int occ, int urg) {
+  int gx = x, i, w;
+  int withlayout = (k + 1 < nitems && items[k + 1].mod == BarLayout);
+
+  for (i = 0; i < LENGTH(tags); i++) {
+    char text[64];
+    int first, lp, skip, tx;
+
+    /* Do not draw vacant tags */
+    if (!(occ & 1 << i || m->tagset[m->seltags] & 1 << i))
+      continue;
+    template_expand(tagtext, tag_placeholder, &i, text, sizeof(text));
+    w = TEXTW(text);
+    drw_setscheme(drw, scheme[m->tagset[m->seltags] & 1 << i ? SchemeTagSel : SchemeTagNorm]);
+    first = (x == gx);
+    lp = (first && tabr > 0) ? tabr : lpad;
+    skip = (first && tabr > 0);
+    if (skip)
+      drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
+    tx = x;
+    x = drw_text(drw, x, 0, w, bh, lp, text, urg & 1 << i, skip);
+    addslot(m, tx, w, ClkTagBar, (Arg){.ui = 1 << i});
+  }
+
+  if (withlayout) {
+    int first = (x == gx);
+    int lp = (first && tabr > 0) ? tabr : lpad;
+    int skip = (first && tabr > 0);
+
+    w = TEXTW(m->ltsymbol);
+    drw_setscheme(drw, scheme[SchemeLayout]);
+    if (skip)
+      drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
+    addslot(m, x, w, ClkLtSymbol, (Arg){0});
+    x = drw_text(drw, x, 0, w - tabr, bh, lp, m->ltsymbol, 0, skip);
+  }
+
+  if (x > gx) {
+    x += drw_rounded(drw, x, 0, bh, tabr, RoundedRight);
+    drawtabborder(gx, x - gx, scheme[SchemeStatus]);
+  }
+  return x;
+}
+
+/* width the tab row occupies inside avail, mirroring drawtabs: the fixed
+   tabwidth when it fits, otherwise the tabs stretch to fill avail */
+static int tabswidth(int n, int avail) {
+  int gap_total, tabw;
+
+  if (n <= 0)
+    return 0;
+  gap_total = (int)tabgap * n;
+  tabw = tabwidth * drw_fontset_getwidth(drw, " ") + lrpad;
+  if (tabw <= 0 || tabw * n >= MAX(0, avail - gap_total))
+    return MAX(0, avail);
+  return tabw * n + gap_total;
+}
+
+/* width a zone takes, counting the gaps between its pills; avail is the
+   room elastic tabs may stretch into (0 outside the center zone) */
+static int barzonewidth(Monitor *m, const BarItem *items, size_t nitems,
+                        int occ, int n, int avail) {
+  size_t k;
+  int w = 0;
+
+  for (k = 0; k < nitems; k++) {
+    if (k)
+      w += (int)tabgap;
+    switch (items[k].mod) {
+    case BarTags:
+      w += tagpillwidth(m, items, nitems, k, occ);
+      if (k + 1 < nitems && items[k + 1].mod == BarLayout)
+        k++; /* drawn inside the tags pill */
+      break;
+    case BarLayout:
+      w += TEXTW(m->ltsymbol);
+      break;
+    case BarTabs:
+      w += tabswidth(n, avail);
+      break;
+    case BarStatus:
+      if (m == selmon)
+        w += statuswidth(m, items[k].ids);
+      break;
+    default:
+      break;
+    }
+  }
+  return w;
+}
+
+/* draw one zone left to right and record its slots; tabs take width w */
+static int drawzone(Monitor *m, const BarItem *items, size_t nitems, int x,
+                    int w, int occ, int urg, int n) {
+  size_t k;
+
+  for (k = 0; k < nitems; k++) {
+    if (k)
+      x += (int)tabgap;
+    switch (items[k].mod) {
+    case BarTags:
+      x = drawtagpill(m, items, nitems, k, x, occ, urg);
+      if (k + 1 < nitems && items[k + 1].mod == BarLayout)
+        k++;
+      break;
+    case BarLayout:
+      x = drawtagpill(m, items, nitems, k, x, occ, urg);
+      break;
+    case BarTabs:
+      /* the zone was sized to the tab row, so this fills it exactly */
+      if (w > 0 && n > 0) {
+        (void)drawtabs(m, x, w, n);
+        x += w;
+      }
+      break;
+    case BarStatus:
+      x = drawstatuspills(m, x, items[k].ids);
+      break;
+    default: /* BarNone: an intentionally empty slot */
+      break;
+    }
+  }
+  return x;
+}
+
 void drawbar(Monitor *m) {
-  int x = 0, w, tw = 0, stw = 0, n = 0, gx = 0;
-  unsigned int i, occ = 0, urg = 0;
+  int leftw, centerw, centerx, rightw, barw, stw = 0, n = 0;
+  unsigned int occ = 0, urg = 0;
   Client *c;
 
   if (!m->showbar)
@@ -1183,12 +1345,7 @@ void drawbar(Monitor *m) {
   }
 
   drw_setscheme(drw, scheme[SchemeEmpty]);
-  drw_rect(drw, x, 0, m->ww, bh, 1, 1);
-
-  /* draw status first so it can be overdrawn by tags later */
-  if (m == selmon) { /* status is only drawn on selected monitor */
-    tw = statusw = m->ww - drawstatusbar(m, bh, stext);
-  }
+  drw_rect(drw, 0, 0, m->ww, bh, 1, 1);
   resizebarwin(m);
 
   for (c = m->clients; c; c = c->next) {
@@ -1199,43 +1356,31 @@ void drawbar(Monitor *m) {
       urg |= c->tags;
   }
 
-  gx = x;
-  for (i = 0; i < LENGTH(tags); i++) {
-    char text[64];
-    int is_first, lp, skip;
-    /* Do not draw vacant tags */
-    if (!(occ & 1 << i || m->tagset[m->seltags] & 1 << i))
-      continue;
-    template_expand(tagtext, tag_placeholder, &i, text, sizeof(text));
-    w = TEXTW(text);
-    drw_setscheme(drw, scheme[m->tagset[m->seltags] & 1 << i ? SchemeTagSel : SchemeTagNorm]);
-    is_first = (x == gx);
-    lp = (is_first && tabr > 0) ? tabr : lpad;
-    skip = (is_first && tabr > 0);
-    if (skip)
-      drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
-    x = drw_text(drw, x, 0, w, bh, lp, text, urg & 1 << i, skip);
-  }
-  w = blw = TEXTW(m->ltsymbol);
-  drw_setscheme(drw, scheme[SchemeLayout]);
-  {
-    int is_first = (x == gx);
-    int lp = (is_first && tabr > 0) ? tabr : lpad;
-    int skip = (is_first && tabr > 0);
-    if (skip)
-      drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
-    x = drw_text(drw, x, 0, w - tabr, bh, lp, m->ltsymbol, 0, skip);
-  }
-  x += drw_rounded(drw, x, 0, bh, tabr, RoundedRight);
-  drawtabborder(gx, x - gx, scheme[SchemeStatus]);
+  /* three zones inside the bar window: left from the start, right from the
+     end (systray reserved), center in the middle. The center zone is sized
+     to its own content and then centred on the bar's middle, so it is
+     absolutely centred instead of sitting in whatever the left and right
+     zones happen to leave over. */
+  barw = m->ww - 2 * sp - stw;
+  leftw = barzonewidth(m, bar_left, LENGTH(bar_left), occ, n, 0);
+  rightw = barzonewidth(m, bar_right, LENGTH(bar_right), occ, n, 0);
+  if (leftw > barw)
+    leftw = barw;
+  if (rightw > barw - leftw)
+    rightw = barw - leftw;
+  centerw = barzonewidth(m, bar_center, LENGTH(bar_center), occ, n,
+                         barw - leftw - rightw);
+  if (centerw > barw - leftw - rightw)
+    centerw = barw - leftw - rightw;
+  if (centerw < 0)
+    centerw = 0;
+  centerx = (barw - centerw) / 2;
 
-  x += tabgap;
+  m->nslots = 0;
+  drawzone(m, bar_left, LENGTH(bar_left), 0, 0, occ, urg, n);
+  drawzone(m, bar_center, LENGTH(bar_center), centerx, centerw, occ, urg, n);
+  drawzone(m, bar_right, LENGTH(bar_right), barw - rightw, 0, occ, urg, n);
 
-  if ((w = m->ww - tw - stw - x) > bh && n > 0)
-    m->tw = drawtabs(m, x, w, n);
-
-  m->bt = n;
-  m->btw = w;
   drw_map(drw, m->barwin, 0, 0, m->ww - stw, bh);
 }
 
@@ -1474,8 +1619,11 @@ static void drawpillcap(Clr *work, int capx, int pillw) {
   drw_rounded(drw, capx, 0, bh, tabr, RoundedLeft);
 }
 
-int drawstatusbar(Monitor *m, int bh, char *stext) {
-  int ret, i, w, x, stw, tabstart;
+/* draw the configured status pills at x and record a slot per drawn block so
+   a click resolves to that block's INDEX; returns the x after the pills.
+   Only the selected monitor carries status. */
+static int drawstatuspills(Monitor *m, int x, const int *ids) {
+  int i, w, origin, tabstart;
   short iscode = 0;
   /* 1 = the next text run draws right after a '(' cap, so its left
      padding must be skipped to keep the rounded corner visible */
@@ -1487,19 +1635,19 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
   int pillw = 0;   /* its body width, from the layout pass */
   int pillprologue = 0; /* 1 while the pill's leading codes are applied */
 
+  if (m != selmon)
+    return x;
+
   /* one shared parse for drawing and click resolution: stbuf holds the
      visible text (control characters dropped), stblocks the block ids, and
      pbuf the configured pills with their cap markers injected */
   statusparse(m, stext);
-  statuspills_build();
+  statuspills_build(ids);
   text = pbuf;
 
   /* compute width of the status text */
   w = stpills_w;
-
-  ret = m->ww - w - 2 * sp;
-  stw = systraytomon(m) == selmon ? getsystraywidth() : 0;
-  x = ret - stw;
+  origin = x;
   tabstart = x;
 
   /* draw on the working scheme, reset to the configured status colours so
@@ -1509,7 +1657,6 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
   work[ColBg] = scheme[SchemeStatus][ColBg];
   work[ColBorder] = scheme[SchemeStatus][ColBorder];
   memcpy(pillbase, work, sizeof pillbase);
-  drw_rect(drw, x, 0, w + stw, bh, 1, 1);
 
   /* process status text */
   i = -1;
@@ -1620,7 +1767,13 @@ int drawstatusbar(Monitor *m, int bh, char *stext) {
 
   drw_setscheme(drw, scheme[SchemeNorm]);
 
-  return ret;
+  /* record the drawn blocks; a click resolves to the block's id, which is
+     the INDEX the writer's click command expects */
+  for (i = 0; i < nscells; i++)
+    addslot(m, origin + scells[i].x, scells[i].w, ClkStatusText,
+            (Arg){.ui = scells[i].id});
+
+  return origin + w;
 }
 
 /* expand a template string ({name}, {icon}, ...) into buf */
@@ -1679,11 +1832,21 @@ static const char *tag_placeholder(const char *f, size_t *plen, void *ctx) {
   return NULL;
 }
 
-/* rendered width of tag i, shared by drawbar/buttonpress/tagatx */
+/* rendered width of tag i, shared by drawtagpill and barzonewidth */
 static int tagtextw(unsigned int i) {
   char text[64];
   template_expand(tagtext, tag_placeholder, &i, text, sizeof(text));
   return TEXTW(text);
+}
+
+/* index of the single tag in a 1 << i mask, -1 when it is not one tag */
+static int tagindex(unsigned int mask) {
+  int i;
+
+  for (i = 0; i < (int)LENGTH(tags); i++)
+    if (mask & 1u << i)
+      return i;
+  return -1;
 }
 
 /* draw client tabs, starting at x within the remaining bar width w;
@@ -1755,70 +1918,21 @@ int drawtabs(Monitor *m, int x, int w, int n) {
       drw_rect(drw, x + tabw - tabr - boxw, (bh-boxw)/2, boxw, boxw, c->isfixed, 0);
     if (highlight)
       drw_setfontset(drw, fonts_set);
+    addslot(m, x, tabw, ClkWinTitle, (Arg){.v = c});
     x += tabw + (int)tabgap;
   }
   return tabw;
 }
 
-/* tab row geometry on m: start and end x of the tab strip */
-static void tabgeometry(Monitor *m, int *tstart, int *tend) {
-  int stw = systraytomon(m) == m ? getsystraywidth() : 0;
-  int tab_total = m->tw * m->bt + (int)tabgap * m->bt;
-  int start = m->ww - stw - statusw - m->btw + (int)tabgap;
-
-  if (tabstyle & TAB_CENTER)
-    start += (m->btw - tab_total) / 2;
-  *tstart = start;
-  *tend = start + tab_total;
-}
-
-/* resolve the tab under the pointer; returns the client and its tab's
-   left edge, mirroring the click geometry */
-static Client *taskshover(Monitor *m, int xclick, int tstart, int *tabx) {
-  Client *c;
-  int x;
-
-  for (x = tstart, c = m->clients; c; c = c->next) {
-    if (!ISVISIBLE(c))
-      continue;
-    *tabx = x;
-    x += m->tw + (int)tabgap;
-    if (xclick <= x)
-      return c;
-  }
-  return NULL;
-}
-
-/* tag index under x, mirroring the drawbar/buttonpress geometry that
-   skips vacant tags; returns -1 when x sits past
-   the last drawn tag. *xend receives the right edge of the last drawn
-   tag (the start of the layout symbol). */
-static int tagatx(Monitor *m, int x, int *xend) {
-  Client *c;
-  unsigned int occ = 0, i;
-  int xpos = 0;
-
-  for (c = m->clients; c; c = c->next)
-    occ |= c->tags;
-  i = 0;
-  do {
-    if (!(occ & 1 << i || m->tagset[m->seltags] & 1 << i))
-      continue;
-    xpos += tagtextw(i);
-  } while (x >= xpos && ++i < LENGTH(tags));
-  if (xend)
-    *xend = xpos;
-  return i < LENGTH(tags) ? i : -1;
-}
-
-/* re-arm or dismiss the hover state from the pointer position over the
-   tag or tab strip; called from enter- and motion-notify */
+/* re-arm or dismiss the hover state from the pointer position: a tag with a
+   preview, or a client tab; called from enter- and motion-notify */
 static void hoverupdate(Monitor *m, int x) {
-  int tstart, tend, tx, ti;
+  const BarSlot *s = barslotat(m, x);
   Client *tc;
+  int ti;
 
-  if ((ti = tagatx(m, x, NULL)) >= 0 && m->tagmap[ti] &&
-      !(m->tagset[m->seltags] & 1 << ti)) {
+  if (s && s->click == ClkTagBar && (ti = tagindex(s->arg.ui)) >= 0 &&
+      m->tagmap[ti] && !(m->tagset[m->seltags] & 1 << ti)) {
     if (m->previewshow != ti + 1) {
       hoverhide();
       hoverarm = 1;
@@ -1827,14 +1941,13 @@ static void hoverupdate(Monitor *m, int x) {
     }
     return;
   }
-  tabgeometry(m, &tstart, &tend);
-  if (m->bt && x > tstart && x < tend &&
-      (tc = taskshover(m, x, tstart, &tx))) {
+  if (s && s->click == ClkWinTitle && (tc = (Client *)s->arg.v)) {
     if (tc != hoverc) {
       hoverhide();
       hoverarm = 1;
       hoverc = tc;
-      hoverx = tx;
+      hoverx = s->x;
+      hoverw = s->w;
       hoverstart = hovernow();
     }
   } else {
@@ -1968,9 +2081,9 @@ static void hovershow(Client *c, int tx) {
   tw = pw + hoverpad * 2;
   th = hoverpad * 2 + ph + hovergap + lh;
 
-  gx = m->wx + sp + tx + m->tw / 2 - (int)tw / 2;
+  gx = m->wx + sp + tx + hoverw / 2 - (int)tw / 2;
   if (gx < m->mx) /* left overflow: anchor to the tab's right edge instead */
-    gx = MIN(m->wx + sp + tx + m->tw, m->mx + m->mw - (int)tw);
+    gx = MIN(m->wx + sp + tx + hoverw, m->mx + m->mw - (int)tw);
   gx = MAX(m->mx, MIN(gx, m->mx + m->mw - (int)tw));
   gy = m->topbar ? m->by + vp + bh + 2 : m->by + vp - (int)th - 2;
   gy = MAX(0, MIN(gy, sh - (int)th));
@@ -3895,17 +4008,6 @@ void spawn(const Arg *arg) {
   }
 }
 
-/* resolve a click on the status text: records lastbutton and statuscmdn */
-void statusclick(Monitor *m, int xclick, int stw, int button) {
-  int startx, x = 0, cmdidx;
-
-  *lastbutton = '0' + button;
-  statuscmdn = 0;
-  startx = m->ww - statusw - stw;
-  status2dwalk(m, stext, xclick - startx, &x, &cmdidx);
-  statuscmdn = cmdidx;
-}
-
 /* advance past the status2d code at *s and return its horizontal
    advance ('f' digits, ')' tabgap); other codes advance 0 */
 static int status2d_advance(char **s) {
@@ -3940,26 +4042,13 @@ static int status_block_width(int i) {
   return w;
 }
 
-/* first item of a module in a zone list, NULL when the zone lacks it */
-static const BarItem *baritem_find(const BarItem *items, size_t n,
-                                   BarModule mod) {
-  size_t i;
-
-  for (i = 0; i < n; i++)
-    if (items[i].mod == mod)
-      return &items[i];
-  return NULL;
-}
-
 /* Build the drawn status from the configured pills (see bar_pills): the
    writer only emits content plus colours and separates blocks with control
    characters, while grouping and rounded caps are injected here. Fills
    scells with each drawn block's offset and width so a click maps back to
    its id; the pill gap the old inline ^) used to produce is folded into the
    cell that ends the pill, so click ranges tile the drawn width. */
-static void statuspills_build(void) {
-  const BarItem *item = baritem_find(bar_right, LENGTH(bar_right), BarStatus);
-  const int *ids = item ? item->ids : NULL;
+static void statuspills_build(const int *ids) {
   BarPillCell cells[MAX_STBLOCKS];
   int i, n;
 
@@ -4031,28 +4120,11 @@ static int status2d_runwidth(char *s) {
   return w;
 }
 
-/* total drawn width of the configured status pills for stext */
-static int status2d_width(Monitor *m, char *stext) {
+/* total drawn width of the pills selected by ids */
+static int statuswidth(Monitor *m, const int *ids) {
   statusparse(m, stext);
-  statuspills_build();
+  statuspills_build(ids);
   return stpills_w;
-}
-
-/* walk the drawn status blocks of stext, adding each block's width to *x
-   until *x reaches stopx (used by the click resolver). Records the id of
-   the block under stopx in *cmdidx, which is the INDEX handed to the click
-   command; block ids are the control characters the writer used. */
-void status2dwalk(Monitor *m, char *stext, int stopx, int *x, int *cmdidx) {
-  int i;
-
-  *x = 0;
-  *cmdidx = 0;
-  statusparse(m, stext);
-  statuspills_build();
-  for (i = 0; i < nscells && *x < stopx; i++) {
-    *cmdidx = scells[i].id;
-    *x = scells[i].x + scells[i].w;
-  }
 }
 
 /* hot-restart: re-dock former systray icons. When dwm restarts via
@@ -4719,7 +4791,6 @@ void updatesizehints(Client *c) {
 void updatestatus(void) {
   if (!gettextprop(root, XA_WM_NAME, stext, sizeof(stext)))
     strcpy(stext, "dwm-" VERSION);
-  statusw = status2d_width(selmon, stext) + 2 * sp;
   drawbar(selmon);
 }
 

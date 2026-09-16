@@ -11,12 +11,13 @@ static const          int vertpad      = 2;  /* vertical padding of bar */
 static const          int sidepad      = 2;  /* horizontal padding of bar */
 
 /* bar modules: items are grouped into three zones and each zone is filled
- * left to right in array order. BarStatus selects status blocks by the
- * control character that prefixes them in the status writer's output; 0
- * starts a new pill (its own rounded caps) and -1 ends the list. Ids the
- * writer leaves out (empty panel, portrait cut) are simply skipped.
- * Zones: left = tags + layout pill, center = client tabs, right = status.
- * Until the zone layout lands, only the right zone's BarStatus is wired. */
+ * in array order. left starts at the bar's left edge, right ends at its
+ * right edge (the systray is reserved there) and center gets what is left
+ * over. BarTabs is elastic and takes the rest of its zone, so keep it last.
+ * BarStatus selects status blocks by the control character that prefixes
+ * them in the status writer's output; 0 starts a new pill (its own rounded
+ * caps) and -1 ends the list. Ids the writer leaves out (empty panel,
+ * portrait cut) are simply skipped. */
 static const int st_pills[] = { 9, 0, 11, 0, 8, 7, 6, 0, 13, 12, 15, 0, 16, 14, 10, 3, 2, 0, 1, -1 };
 
 static const BarItem bar_left[]   = { {BarTags, NULL}, {BarLayout, NULL} };
