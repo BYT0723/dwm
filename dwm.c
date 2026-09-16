@@ -1337,12 +1337,13 @@ titlebtnsat(Client *c, int x)
 }
 
 /* draw the title + buttons onto c->frame's top strip.
-   Title layout follows titlebaralign (0 = left, 1 = true center of the
-   full strip width, 2 = right against the button area). */
+   The icon (if shown) stays at the left; title layout follows
+   titlebaralign (0 = left, 1 = true center of the full strip width,
+   2 = right against the button area). */
 void
 drawtitle(Client *c)
 {
-  int scm, i, btnw, titlew, bx, lp, cx, txtw, hasicon, iconw;
+  int scm, i, btnw, titlew, bx, lp, tx, txtw, hasicon, iconw;
   char text[256];
 
   if (!c || c->frame == None || titleh(c) <= 0)
@@ -1358,18 +1359,16 @@ drawtitle(Client *c)
   txtw = TEXTW(text) - lrpad;
   hasicon = showtitleicon && c->icon && titlew >= (int)(c->icw + ICONSPACING + lrpad);
   iconw = hasicon ? (int)(c->icw + ICONSPACING) : 0;
-  if (titlebaralign == 2) /* right: text block ends at the button area */
-    cx = MAX((int)lpad, titlew - txtw - iconw);
+  /* the icon stays at the left; alignment positions the text only */
+  if (titlebaralign == 2) /* right: text ends at the button area */
+    tx = MAX((int)lpad + iconw, titlew - txtw);
   else if (titlebaralign == 1) /* center: true center of the full titlebar width */
-    cx = MAX((int)lpad, (c->w - txtw - iconw) / 2);
+    tx = MAX((int)lpad + iconw, (c->w - txtw) / 2);
   else /* left (0 and anything unexpected) */
-    cx = lpad;
-  if (hasicon) {
-    drw_text(drw, 0, 0, titlew, th, cx + c->icw + ICONSPACING, text, 0, 0);
-    drw_pic(drw, cx, (th - c->ich) / 2, c->icw, c->ich, c->icon);
-  } else {
-    drw_text(drw, 0, 0, titlew, th, cx, text, 0, 0);
-  }
+    tx = lpad + iconw;
+  drw_text(drw, 0, 0, titlew, th, tx, text, 0, 0);
+  if (hasicon)
+    drw_pic(drw, lpad, (th - c->ich) / 2, c->icw, c->ich, c->icon);
   for (i = 0; i < (int)NTITLEBTNS && btnw; i++) {
     bx = titlew + i * th;
     lp = MAX((th - (int)drw_fontset_getwidth(drw, titlebtns[i])) / 2, 0);

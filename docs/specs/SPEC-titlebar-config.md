@@ -2,9 +2,9 @@
 
 ## Objective
 给 per-client frame titlebar 增加四个 `config.h` 配置项，把标题栏的可配置性对齐到 tab (`tabtext`) 已有的水平：
-1. `showtitleicon` —— 是否在 titlebar 绘制 client icon（默认 1，显示）；
+1. `showtitleicon` —— 是否在 titlebar 左侧绘制 client icon（默认 1，显示；icon 位置固定居左，不跟随对齐）；
 2. `titlebartext[]` —— titlebar 文本模板，复用 `tabtext` 的 `{title}`/`{class}` 占位符（默认 `"{title}"`）；
-3. `titlebaralign` —— titlebar 文本对齐：0=贴左/1=居中/2=贴右（默认 1）；其中居中是相对**整个标题栏宽度**的真居中（无视按钮区），右对齐以按钮区左侧为右边界；
+3. `titlebaralign` —— **只管文字**对齐：0=贴左/1=居中/2=贴右（默认 1）；其中居中是相对**整个标题栏宽度**的真居中（无视按钮区），右对齐以按钮区左侧为右边界；
 4. `titlebarpad` —— 每边内边距，titlebar 高度不再跟 `bh`，改为 `font_height + 2 * titlebarpad`（默认 6）。
 
 成功标准：四个开关各自独立生效；`make` 零警告；Xvfb 回归无变化（CSD/预览/快照不受影响）。
@@ -53,9 +53,9 @@ static const unsigned int titlebarpad = 6;    /* per-side padding; height = font
 - Never: 动 `tasks/plan.md`、`tasks/todo.md`（CSD 未结）；提交 secrets；为验证杀用户正常 dwm/X。
 
 ## Success Criteria
-- [ ] `showtitleicon=0` 时 titlebar 无 icon（即使 client 有 icon）；`=1` 时绘制 icon（含 `ICONSPACING` 布局）。
+- [ ] `showtitleicon=0` 时 titlebar 无 icon（即使 client 有 icon）；`=1` 时 icon 固定居左绘制（含 `ICONSPACING` 间距），且不随 `titlebaralign` 移动。
 - [ ] `titlebartext="{class} - {title}"` 渲染出如 `XTerm - foo`；未知占位符按 `template_expand` 现状原样保留。
-- [ ] `titlebaralign=0/1/2` 文本分别贴左/真居中（整宽）/贴右（以按钮区左侧为右边界）。
+- [ ] `titlebaralign=0/1/2` 文字分别贴左/真居中（整宽）/贴右（以按钮区左侧为右边界）；三档下 icon 红块位置不变。
 - [ ] 默认 `titlebarpad=6` 时 titlebar 高度 `== drw->fonts->h + 12`（不再等于 `bh`）；frame/client 几何与按钮区自动跟随；改大 pad 后标题栏变高且内容不错位。
 - [ ] `make clean && make` 零警告；Xvfb 回归（CSD/预览/快照/clean exit）全绿。
 
