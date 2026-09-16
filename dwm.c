@@ -331,6 +331,7 @@ static int drawstatuspills(Monitor *m, int x, const int *ids);
 static int tablayout(Monitor *m, int avail, TabCell *cells, int max, int *ncells);
 static int drawbarpill(Monitor *m, const BarItem *items, size_t nitems, size_t k,
                        int x, int occ, int urg);
+static void tabicon_size(Client *c, int *w, int *h);
 static int tabicon_get(Client *c, int scm, Picture *pic, unsigned int *w,
                        unsigned int *h);
 static void tabseldot_paint(int scm, int cx, int cy, int r);
@@ -509,10 +510,10 @@ typedef struct {
 } StatusCell;
 static StatusCell scells[MAX_STBLOCKS];
 static int nscells;
-/* one drawn pill: its body offset and width, so the body can be painted with
-   the pill's own ^b colour before its text runs */
+/* one drawn pill's body width, so it can be painted with the pill's own ^b
+   colour before its text runs */
 typedef struct {
-  int x, w;
+  int w;
 } StatusPill;
 static StatusPill spills[MAX_STBLOCKS];
 static int nspills;
@@ -1672,7 +1673,7 @@ static void drawpillcap(Clr *work, int capx, int pillw) {
    a click resolves to that block's INDEX; returns the x after the pills.
    Only the selected monitor carries status. */
 static int drawstatuspills(Monitor *m, int x, const int *ids) {
-  int i, w, origin, tabstart;
+  int i, w, roww, origin, tabstart;
   short iscode = 0;
   /* 1 = the next text run draws right after a '(' cap, so its left
      padding must be skipped to keep the rounded corner visible */
@@ -1694,8 +1695,8 @@ static int drawstatuspills(Monitor *m, int x, const int *ids) {
   statuspills_build(ids);
   text = pbuf;
 
-  /* compute width of the status text */
-  w = stpills_w;
+  /* width of the pills; kept apart from `w`, which the interpreter reuses */
+  roww = stpills_w;
   origin = x;
   tabstart = x;
 
@@ -1804,17 +1805,19 @@ static int drawstatuspills(Monitor *m, int x, const int *ids) {
     }
   }
 
-  /* an empty trailing run must not be drawn: drw_text() would fill TEXTW("")
-     (= lrpad) pixels in the scheme's background, leaving a stray block-coloured
-     rectangle after the last pill */
-  if (!iscode && *text) {
-    if (capx >= 0) { /* trailing run of a pill with no '^' codes after it */
+  if (!iscode) {
+    if (capx >= 0) { /* a pill with no drawn text at all */
       drawpillcap(work, capx, pillw);
       pillprologue = 0;
       capx = -1;
     }
-    w = TEXTW(text);
-    drw_text(drw, x, 0, w, bh, lpad, text, 0, 0);
+    /* an empty trailing run must not be drawn: drw_text() would fill
+       TEXTW("") = lrpad pixels in the scheme's background, leaving a stray
+       block-coloured rectangle after the last pill */
+    if (*text) {
+      w = TEXTW(text);
+      drw_text(drw, x, 0, w, bh, lpad, text, 0, 0);
+    }
   }
 
   drw_setscheme(drw, scheme[SchemeNorm]);
@@ -1825,7 +1828,7 @@ static int drawstatuspills(Monitor *m, int x, const int *ids) {
     addslot(m, origin + scells[i].x, scells[i].w, ClkStatusText,
             (Arg){.ui = scells[i].id});
 
-  return origin + w;
+  return origin + roww;
 }
 
 /* expand a template string ({name}, {icon}, ...) into buf */
@@ -1884,7 +1887,7 @@ static const char *tag_placeholder(const char *f, size_t *plen, void *ctx) {
   return NULL;
 }
 
-/* rendered width of tag i, shared by drawtagpill and barzonewidth */
+/* rendered width of tag i, shared by drawtags and tagswidth */
 static int tagtextw(unsigned int i) {
   char text[64];
   template_expand(tagtext, tag_placeholder, &i, text, sizeof(text));
@@ -1924,15 +1927,11 @@ static int tablayout(Monitor *m, int avail, TabCell *cells, int max,
       x = (int)tabr;
       i = 0;
       for (c = m->clients; c && i < TAB_CELLS; c = c->next) {
-        unsigned int iw, ih;
+        int iw, ih;
 
         if (!ISVISIBLE(c))
           continue;
-        {
-          Picture dummy;
-
-          tabicon_get(c, SchemeNorm, &dummy, &iw, &ih);
-        }
+        tabicon_size(c, &iw, &ih);
         if (!iw)
           iw = 1; /* keep the client clickable even without any icon */
         x += (int)iw;
@@ -2086,8 +2085,23 @@ static unsigned int tabfal_cov(double fx, double fy) {
   return (unsigned int)(top + (bot - top) * dy + 0.5);
 }
 
+/* size the fallback takes at the given target size: longest side to `size`,
+   like geticonprop does for real icons */
+static int tabfal_size(int size, int *w, int *h) {
+  if (!tabfal_load())
+    return 0;
+  if (tabfal_sw <= tabfal_sh) {
+    *h = size;
+    *w = MAX(1, tabfal_sw * size / tabfal_sh);
+  } else {
+    *w = size;
+    *h = MAX(1, tabfal_sh * size / tabfal_sw);
+  }
+  return 1;
+}
+
 /* fallback picture for a scheme at the given target size, built on first use */
-static Picture tabfal_pic(int scm, int size, unsigned int *w, unsigned int *h) {
+static Picture tabfal_pic(int scm, int size, int *w, int *h) {
   static Picture pic[3];
   static int pic_size[3], state[3];
   unsigned int fg;
@@ -2096,16 +2110,8 @@ static Picture tabfal_pic(int scm, int size, unsigned int *w, unsigned int *h) {
 
   if (scm != SchemeNorm && scm != SchemeSel && scm != SchemeHid)
     return None;
-  if (!tabfal_load())
+  if (!tabfal_size(size, &dw, &dh))
     return None;
-  /* longest side to size, like geticonprop does for real icons */
-  if (tabfal_sw <= tabfal_sh) {
-    dh = size;
-    dw = MAX(1, tabfal_sw * size / tabfal_sh);
-  } else {
-    dw = size;
-    dh = MAX(1, tabfal_sh * size / tabfal_sw);
-  }
   if (state[scm] == 1 && pic_size[scm] == size) {
     if (w)
       *w = dw;
@@ -2144,25 +2150,42 @@ static Picture tabfal_pic(int scm, int size, unsigned int *w, unsigned int *h) {
   return pic[scm];
 }
 
+/* size of the icon c's tab will show, without building anything */
+static void tabicon_size(Client *c, int *w, int *h) {
+  if (c->tabicon) {
+    *w = (int)c->tabicw;
+    *h = (int)c->tabich;
+    return;
+  }
+  if (c->icon) {
+    *w = (int)c->icw;
+    *h = (int)c->ich;
+    return;
+  }
+  if (!tabfal_size(tabiconsize(), w, h))
+    *w = *h = 0;
+}
+
 /* the icon c's tab shows, at the tab's own size: the client's picture or the
    fallback. Fills the picture and its size; 0 when there is nothing to show */
 static int tabicon_get(Client *c, int scm, Picture *pic, unsigned int *w,
                        unsigned int *h) {
+  int iw, ih;
+
   if (c->tabicon) {
     *pic = c->tabicon;
-    *w = c->tabicw;
-    *h = c->tabich;
-    return 1;
-  }
-  if (c->icon) {
+    iw = (int)c->tabicw;
+    ih = (int)c->tabich;
+  } else if (c->icon) {
     *pic = c->icon;
-    *w = c->icw;
-    *h = c->ich;
-    return 1;
+    iw = (int)c->icw;
+    ih = (int)c->ich;
+  } else if ((*pic = tabfal_pic(scm, tabiconsize(), &iw, &ih)) == None) {
+    return 0;
   }
-  if ((*pic = tabfal_pic(scm, tabiconsize(), w, h)) != None)
-    return 1;
-  return 0;
+  *w = (unsigned int)iw;
+  *h = (unsigned int)ih;
+  return 1;
 }
 
 /* a filled disc of diameter d at (x, y) in the scheme's background colour:
@@ -2184,10 +2207,9 @@ static void tabseldot_paint(int scm, int cx, int cy, int r) {
 
   if (r <= 0)
     return;
+  /* drw_rounded() paints in ColBg, so that is all the scratch scheme needs */
   drw_setscheme(drw, work);
-  work[ColFg] = scheme[scm][ColFg];
   work[ColBg] = scheme[scm][ColFg];
-  work[ColBorder] = scheme[scm][ColBorder];
   drawdisc(cx - r, cy - r, 2 * r);
   drw_setscheme(drw, scheme[scm]);
 }
@@ -4459,7 +4481,6 @@ static void statuspills_build(const int *ids) {
 
     /* a cell that follows a pill's last one opens the next pill */
     if (nspills < MAX_STBLOCKS && (i == 0 || cells[i - 1].gap)) {
-      spills[nspills].x = stpills_w;
       spills[nspills].w = 0;
       nspills++;
     }
