@@ -119,6 +119,8 @@ enum {
   NetSystemTrayOrientationHorz,
   NetSystemTrayVisual,
   NetWMFullscreen,
+  NetWMMaximizedVert,
+  NetWMMaximizedHorz,
   NetActiveWindow,
   NetWMWindowType,
   NetWMWindowTypeDock,
@@ -138,6 +140,7 @@ enum {
   WMProtocols,
   WMDelete,
   WMState,
+  WMChangeState,
   WMTakeFocus,
   WMLast
 }; /* default atoms */
@@ -324,6 +327,7 @@ static int gettextprop(Window w, Atom atom, char *text, unsigned int size);
 static void grabbuttons(Client *c, int focused);
 static void grabkeys(void);
 static void hide(const Arg *arg);
+static void hideclient(Client *c);
 static void hidewin(Client *c);
 static void incnmaster(const Arg *arg);
 static void keypress(XEvent *e);
@@ -383,6 +387,7 @@ static void tag(const Arg *arg);
 static void tagmon(const Arg *arg);
 static void togglebar(const Arg *arg);
 static void togglefloating(const Arg *arg);
+static void togglefloatingclient(Client *c);
 static void focusmaster(const Arg *arg);
 static void maximize(const Arg *arg);
 static void tabgeometry(Monitor *m, int *tstart, int *tend);
@@ -742,9 +747,9 @@ void buttonpress(XEvent *e) {
          clicks elsewhere fall through to the ClkTitleBar bindings (drag) */
       if (ev->button == Button1 && (btn = titlebtnsat(c, ev->x)) >= 0) {
         if (btn == 0)
-          hide(NULL);
+          hideclient(c);
         else if (btn == 1)
-          togglefloating(NULL);
+          togglefloatingclient(c);
         else
           killclient(NULL);
         return;
@@ -864,6 +869,16 @@ void clientmessage(XEvent *e) {
       setfullscreen(c, (cme->data.l[0] == 1 /* _NET_WM_STATE_ADD    */
                         || (cme->data.l[0] == 2 /* _NET_WM_STATE_TOGGLE */ &&
                             !c->isfullscreen)));
+    else if (cme->data.l[1] == netatom[NetWMMaximizedVert] ||
+             cme->data.l[2] == netatom[NetWMMaximizedVert] ||
+             cme->data.l[1] == netatom[NetWMMaximizedHorz] ||
+             cme->data.l[2] == netatom[NetWMMaximizedHorz])
+      /* CSD "maximize" uses the same transition as the titlebar button:
+         ADD/REMOVE/TOGGLE all mean "press maximize once". */
+      togglefloatingclient(c);
+  } else if (cme->message_type == wmatom[WMChangeState]) {
+    if (cme->data.l[0] == IconicState)
+      hideclient(c);
   } else if (cme->message_type == netatom[NetActiveWindow]) {
     if (jump_on_activate) {
       if (c != selmon->sel) {
@@ -2540,10 +2555,19 @@ void grabkeys(void) {
   }
 }
 
+void hideclient(Client *c) {
+  if (!c || HIDDEN(c))
+    return;
+
+  hidewin(c);
+  if (c == c->mon->sel)
+    focus(NULL);
+  arrange(c->mon);
+}
+
 void hide(const Arg *arg) {
-  hidewin(selmon->sel);
-  focus(NULL);
-  arrange(selmon);
+  (void)arg;
+  hideclient(selmon->sel);
 }
 
 void hidewin(Client *c) {
@@ -2903,7 +2927,7 @@ void movemouse(const Arg *arg) {
         ny = selmon->wy + selmon->wh - HEIGHT(c);
       if (!c->isfloating && selmon->lt[selmon->sellt]->arrange &&
           (abs(nx - c->x) > snap || abs(ny - c->y) > snap))
-        togglefloating(NULL);
+        togglefloatingclient(c);
       if (!selmon->lt[selmon->sellt]->arrange || c->isfloating)
         resize(c, nx, ny, c->w, c->h, 1);
       break;
@@ -3111,7 +3135,7 @@ void resizemouse(const Arg *arg) {
           c->mon->wy + nh <= selmon->wy + selmon->wh) {
         if (!c->isfloating && selmon->lt[selmon->sellt]->arrange &&
             (abs(nw - c->w) > snap || abs(nh - c->h) > snap))
-          togglefloating(NULL);
+          togglefloatingclient(c);
       }
       if (!selmon->lt[selmon->sellt]->arrange || c->isfloating)
         resize(c, c->x, c->y, nw, nh, 1);
@@ -3538,6 +3562,7 @@ void setup(void) {
   wmatom[WMProtocols] = XInternAtom(dpy, "WM_PROTOCOLS", False);
   wmatom[WMDelete] = XInternAtom(dpy, "WM_DELETE_WINDOW", False);
   wmatom[WMState] = XInternAtom(dpy, "WM_STATE", False);
+  wmatom[WMChangeState] = XInternAtom(dpy, "WM_CHANGE_STATE", False);
   wmatom[WMTakeFocus] = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
   netatom[NetActiveWindow] = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
   netatom[NetSupported] = XInternAtom(dpy, "_NET_SUPPORTED", False);
@@ -3555,6 +3580,10 @@ void setup(void) {
   netatom[NetWMCheck] = XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", False);
   netatom[NetWMFullscreen] =
       XInternAtom(dpy, "_NET_WM_STATE_FULLSCREEN", False);
+  netatom[NetWMMaximizedVert] =
+      XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_VERT", False);
+  netatom[NetWMMaximizedHorz] =
+      XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
   netatom[NetWMWindowType] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
   netatom[NetWMWindowTypeDock] =
       XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
@@ -3939,13 +3968,9 @@ static int focusmode(Monitor *m) {
   return focusclient(m) ? m->pertag->focusmaster[m->pertag->curtag] : 0;
 }
 
-void togglefloating(const Arg *arg) {
-  Client *c;
-  if (!selmon->sel)
+void togglefloatingclient(Client *c) {
+  if (!c || c->isfullscreen) /* no support for fullscreen windows */
     return;
-  if (selmon->sel->isfullscreen) /* no support for fullscreen windows */
-    return;
-  c = selmon->sel;
   if (c->isfloating && !c->isfixed) {
     /* floating -> tiled: remember the floating geometry ... */
     c->sfx = c->x;
@@ -3962,7 +3987,12 @@ void togglefloating(const Arg *arg) {
       resize(c, c->x, c->y, c->w, c->h, 0);
   }
 
-  arrange(selmon);
+  arrange(c->mon);
+}
+
+void togglefloating(const Arg *arg) {
+  (void)arg;
+  togglefloatingclient(selmon->sel);
 }
 
 void toggletag(const Arg *arg) {
