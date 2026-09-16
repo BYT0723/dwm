@@ -61,7 +61,7 @@ static const          char *systrayorder[]        = { "fcitx", "...", "easyeffec
 static const          int showtitlebar    = 1;   /* 0 means no titlebar, 1 shows a per-client titlebar (height = font height + 2 * titlebarpad) */
 static const unsigned int titlebarpad     = 6;   /* per-side padding; titlebar height = font height + 2 * titlebarpad */
 static const          int showtitleicon   = 1;   /* 1 = draw the client icon in the titlebar, 0 = text only */
-static const          int titlebaralign   = 1;    /* 0 = left, 1 = center, 2 = right */
+static const          int titlebaralign   = 1;    /* 0 = left, 1 = center (true center of full width), 2 = right */
 static const          char titlebartext[] = "{title}"; /* titlebar text template; placeholders: {title}, {class} (same as tabtext) */
 static const          char *titlebtns[]   = { "", "", "" }; /* titlebar buttons, left to right: minimize, maximize, close. The order is fixed (0 = hide, 1 = togglefloating, 2 = killclient); only the labels are configurable. */
 

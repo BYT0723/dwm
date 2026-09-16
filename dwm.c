@@ -1337,7 +1337,8 @@ titlebtnsat(Client *c, int x)
 }
 
 /* draw the title + buttons onto c->frame's top strip.
-   The title (icon + text) is centered in the area left of the buttons. */
+   Title layout follows titlebaralign (0 = left, 1 = true center of the
+   full strip width, 2 = right against the button area). */
 void
 drawtitle(Client *c)
 {
