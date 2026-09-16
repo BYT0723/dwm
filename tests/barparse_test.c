@@ -97,14 +97,14 @@ pills(void) {
 
 /* tab row cell layout: n equal-width cells inside avail, gap after each */
 static void
-cells_case(const char *name, int want, int n, int avail, int gap,
-           int wanttotal, const int *wantw, int maxw) {
+cells_case(const char *name, BarCellsMode mode, int want, int n, int avail,
+           int gap, int wanttotal, const int *wantw, int maxw) {
   int got[8];
   int total, i;
 
   for (i = 0; i < 8; i++)
     got[i] = -1;
-  total = bar_cells(want, n, avail, gap, got, maxw);
+  total = bar_cells(want, n, avail, gap, mode, got, maxw);
 
   CHECK(total == wanttotal, "%s: total %d, want %d", name, total, wanttotal);
   for (i = 0; i < n && i < maxw && i < 8; i++)
@@ -119,35 +119,51 @@ static void
 cells(void) {
   { /* no cells */
     const int w[] = {0};
-    cells_case("cells-none", 64, 0, 200, 4, 0, w, 8);
+    cells_case("cells-none", BarCellsFit, 64, 0, 200, 4, 0, w, 8);
   }
   { /* nominal width fits: keep it, the row is not stretched */
     const int w[] = {64, 64};
-    cells_case("cells-fit", 64, 2, 200, 4, 136, w, 8);
+    cells_case("cells-fit", BarCellsFit, 64, 2, 200, 4, 136, w, 8);
   }
   { /* exactly fits: same widths either branch takes */
     const int w[] = {64, 64};
-    cells_case("cells-exact", 64, 2, 136, 4, 136, w, 8);
+    cells_case("cells-exact", BarCellsFit, 64, 2, 136, 4, 136, w, 8);
   }
   { /* does not fit: levelled to fill avail, remainder to the first cells */
     const int w[] = {30, 29, 29};
-    cells_case("cells-stretch", 64, 3, 100, 4, 100, w, 8);
+    cells_case("cells-stretch", BarCellsFit, 64, 3, 100, 4, 100, w, 8);
   }
   { /* less room than the gaps alone */
     const int w[] = {0, 0};
-    cells_case("cells-nogap", 64, 2, 5, 4, 8, w, 8);
+    cells_case("cells-nogap", BarCellsFit, 64, 2, 5, 4, 8, w, 8);
   }
   { /* non-positive nominal width falls back to stretching */
     const int w[] = {46, 46};
-    cells_case("cells-zero", 0, 2, 100, 4, 100, w, 8);
+    cells_case("cells-zero", BarCellsFit, 0, 2, 100, 4, 100, w, 8);
   }
   { /* one cell */
     const int w[] = {10};
-    cells_case("cells-one", 10, 1, 100, 4, 14, w, 8);
+    cells_case("cells-one", BarCellsFit, 10, 1, 100, 4, 14, w, 8);
   }
   { /* maxw clamps the writes, not the total */
     const int w[] = {64, 64};
-    cells_case("cells-maxw", 64, 3, 400, 4, 204, w, 2);
+    cells_case("cells-maxw", BarCellsFit, 64, 3, 400, 4, 204, w, 2);
+  }
+  { /* fill: levelled even though the nominal width fits */
+    const int w[] = {96, 96};
+    cells_case("cells-fill", BarCellsFill, 64, 2, 200, 4, 200, w, 8);
+  }
+  { /* fill ties the total to avail exactly */
+    const int w[] = {30, 29, 29};
+    cells_case("cells-fill-rem", BarCellsFill, 64, 3, 100, 4, 100, w, 8);
+  }
+  { /* fixed: kept even when it overflows avail */
+    const int w[] = {64, 64, 64};
+    cells_case("cells-fixed", BarCellsFixed, 64, 3, 100, 4, 204, w, 8);
+  }
+  { /* fixed with no nominal width falls back to levelling */
+    const int w[] = {30, 29, 29};
+    cells_case("cells-fixed-zero", BarCellsFixed, 0, 3, 100, 4, 100, w, 8);
   }
 }
 

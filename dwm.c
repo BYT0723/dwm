@@ -188,6 +188,10 @@ struct Client {
   int hidden; /* 1 = IconicState (hide) or WithdrawnState (tray hide), mirrors WM_STATE */
   unsigned int icw, ich, icon_alpha;
   Picture icon;
+  /* the same icon at the tab's own size, when the bar reserves room under it
+     for the selection dot; None when the two sizes agree */
+  unsigned int tabicw, tabich;
+  Picture tabicon;
   Pixmap hspm;   /* hidden snapshot pixmap, None when absent */
   Picture hspic; /* hidden snapshot picture, None when absent */
   unsigned int hspw, hsph; /* hidden snapshot size, fits the hidden box */
@@ -325,13 +329,15 @@ static void drawbars(void);
 static void drawtabborder(int x, int w, Clr *s);
 static int drawstatuspills(Monitor *m, int x, const int *ids);
 static int tablayout(Monitor *m, int avail, TabCell *cells, int max, int *ncells);
-static void tabicon_size(Client *c, unsigned int *w, unsigned int *h);
-static int tabicon(Client *c, int scm, Picture *pic, unsigned int *w, unsigned int *h);
+static int tabicon_get(Client *c, int scm, Picture *pic, unsigned int *w,
+                       unsigned int *h);
+static void tabseldot_paint(int scm, int cx, int cy, int r);
 static void drawdisc(int x, int y, int d);
 static uint32_t prealpha(uint32_t p, uint32_t custom_alpha);
 static void tabdraw(Monitor *m, int x, const TabCell *cells, int ncells);
 static int titleh(Client *c);
 static void updatenodecor(Client *c);
+static int tabiconsize(void);
 static void createframe(Client *c);
 static void placeclient(Client *c);
 static void drawtitle(Client *c);
@@ -352,7 +358,8 @@ static void freehspic(Client *c);
 static void freeicon(Client *c);
 static void fullscreen(const Arg *arg);
 static Atom getatomprop(Client *c, Atom prop);
-static Picture geticonprop(Window w, unsigned int *icw, unsigned int *ich, unsigned int alpha);
+static Picture geticonprop(Window w, unsigned int *icw, unsigned int *ich,
+                           unsigned int alpha, int target);
 static int getrootptr(int *x, int *y);
 static long getstate(Window w);
 static long getstateprop(Window w, const char *name, long *out, long maxvals);
@@ -1862,12 +1869,15 @@ static int tablayout(Monitor *m, int avail, TabCell *cells, int max,
                      int *ncells) {
   int widths[TAB_CELLS];
   int i, n = 0, want, total, x, g;
+  BarCellsMode mode;
   Client *c;
 
   if (ncells)
     *ncells = 0;
 
   if (tabmode == TabModeIcons) {
+    int end[TAB_CELLS];
+
     for (g = (int)tabgap;; g--) {
       x = (int)tabr;
       i = 0;
@@ -1876,25 +1886,30 @@ static int tablayout(Monitor *m, int avail, TabCell *cells, int max,
 
         if (!ISVISIBLE(c))
           continue;
-        tabicon_size(c, &iw, &ih);
+        {
+          Picture dummy;
+
+          tabicon_get(c, SchemeNorm, &dummy, &iw, &ih);
+        }
         if (!iw)
           iw = 1; /* keep the client clickable even without any icon */
+        x += (int)iw;
+        end[i] = x; /* right edge of this cell, pill-relative */
         if (cells && i < max) {
-          cells[i].x = x;
+          cells[i].x = x - (int)iw;
           cells[i].w = (int)iw;
           cells[i].c = c;
         }
-        x += (int)iw + g;
+        x += g;
         i++;
       }
-      total = i ? x - g + (int)tabr : 0;
+      total = i ? end[i - 1] + (int)tabr : 0;
       if (total <= avail || g <= 0)
         break;
     }
-    while (i > 0 && total > avail) { /* drop trailing cells that do not fit */
+    while (i > 0 && end[i - 1] + (int)tabr > avail) /* drop trailing cells */
       i--;
-      total = cells ? cells[i].x + cells[i].w + (int)tabr : 0;
-    }
+    total = i ? end[i - 1] + (int)tabr : 0;
     if (ncells)
       *ncells = i;
     return total;
@@ -1910,33 +1925,51 @@ static int tablayout(Monitor *m, int avail, TabCell *cells, int max,
 
   /* the nominal width is a character count so it tracks the font */
   want = tabwidth * drw_fontset_getwidth(drw, " ") + lrpad;
-  total = bar_cells(want, n, avail, (int)tabgap, widths, TAB_CELLS);
-
-  if (!cells)
-    return total;
+  mode = tabsize == TabFill    ? BarCellsFill
+         : tabsize == TabFixed ? BarCellsFixed
+                               : BarCellsFit;
+  total = bar_cells(want, n, avail, (int)tabgap, mode, widths, TAB_CELLS);
 
   x = 0;
   i = 0;
   for (c = m->clients; c && i < n; c = c->next) {
     if (!ISVISIBLE(c))
       continue;
-    cells[i].x = x;
-    cells[i].w = widths[i];
-    cells[i].c = c;
+    if (x + widths[i] > avail) /* TabFixed overflow: drop what does not fit */
+      break;
+    if (cells && i < max) {
+      cells[i].x = x;
+      cells[i].w = widths[i];
+      cells[i].c = c;
+    }
     x += widths[i] + (int)tabgap;
     i++;
   }
+  if (i < n)
+    total = x; /* truncated: the row is only what fits */
   if (ncells)
     *ncells = i;
   return total;
 }
 
 /* ---- tab icon ----------------------------------------------------------
- * A client without _NET_WM_ICON has no picture to show. The PNG named by
+ * Clients without _NET_WM_ICON have no picture to show. The PNG named by
  * tabiconpath is loaded once as a coverage mask and tinted with the scheme's
  * foreground, then modulated by that scheme's alpha exactly like a real icon
- * (both end up going through prealpha()). Cached per scheme; a missing file
- * simply means "no icon", never an error. */
+ * (both end up going through prealpha()). A missing file simply means
+ * "no icon", never an error.
+ *
+ * TabModeIcons shrinks the tab icon to leave room under it for the selection
+ * dot, so a client carries a second picture at that size (c->tabicon). */
+
+/* icon size the tab row uses; TabModeIcons reserves the dot's room */
+static int tabiconsize(void) {
+  int dot = (int)tabseldot * 2;
+
+  if (tabmode != TabModeIcons || dot <= 0)
+    return ICONSIZE;
+  return MAX(8, ICONSIZE - dot - 2);
+}
 
 /* tabiconpath with "$HOME/" or "~/" expanded */
 static const char *tabiconfile(void) {
@@ -1956,13 +1989,13 @@ static const char *tabiconfile(void) {
   return path;
 }
 
-/* coverage mask loaded from tabiconpath, once; NULL when unavailable */
+/* coverage mask at the file's own resolution, loaded once; NULL if unusable */
 static unsigned char *tabfal_mask;
-static int tabfal_mw, tabfal_mh;
+static int tabfal_sw, tabfal_sh;
 
 static int tabfal_load(void) {
   static int tried;
-  Imlib_Image im, scaled;
+  Imlib_Image im;
   DATA32 *src;
   int i, iw, ih, n;
 
@@ -1975,116 +2008,119 @@ static int tabfal_load(void) {
   imlib_context_set_image(im);
   iw = imlib_image_get_width();
   ih = imlib_image_get_height();
-  if (iw <= 0 || ih <= 0) {
-    imlib_free_image();
-    return 0;
-  }
-  /* longest side to ICONSIZE, like geticonprop does for real icons */
-  if (iw <= ih) {
-    tabfal_mh = ICONSIZE;
-    tabfal_mw = MAX(1, iw * ICONSIZE / ih);
-  } else {
-    tabfal_mw = ICONSIZE;
-    tabfal_mh = MAX(1, ih * ICONSIZE / iw);
-  }
-  scaled = imlib_create_cropped_scaled_image(0, 0, iw, ih, tabfal_mw, tabfal_mh);
-  imlib_free_image();
-  if (!scaled)
-    return 0;
-  imlib_context_set_image(scaled);
-  src = imlib_image_get_data_for_reading_only();
+  src = (iw > 0 && ih > 0) ? imlib_image_get_data_for_reading_only() : NULL;
   if (!src) {
     imlib_free_image();
     return 0;
   }
-  tabfal_mask = ecalloc((size_t)tabfal_mw * tabfal_mh, 1);
-  for (n = tabfal_mw * tabfal_mh, i = 0; i < n; i++)
+  tabfal_sw = iw;
+  tabfal_sh = ih;
+  tabfal_mask = ecalloc((size_t)iw * ih, 1);
+  for (n = iw * ih, i = 0; i < n; i++)
     tabfal_mask[i] = (unsigned char)(src[i] >> 24u);
   imlib_free_image();
   return 1;
 }
 
-/* fallback size, loading the mask on first use */
-static int tabfal_size(unsigned int *w, unsigned int *h) {
-  if (!tabfal_load())
-    return 0;
-  if (w)
-    *w = tabfal_mw;
-  if (h)
-    *h = tabfal_mh;
-  return 1;
+/* bilinear coverage sample, in source pixels */
+static unsigned int tabfal_cov(double fx, double fy) {
+  int x0 = (int)fx, y0 = (int)fy, x1, y1;
+  double dx = fx - x0, dy = fy - y0, top, bot;
+
+  if (x0 < 0)
+    x0 = 0;
+  if (y0 < 0)
+    y0 = 0;
+  if (x0 > tabfal_sw - 1)
+    x0 = tabfal_sw - 1;
+  if (y0 > tabfal_sh - 1)
+    y0 = tabfal_sh - 1;
+  x1 = MIN(x0 + 1, tabfal_sw - 1);
+  y1 = MIN(y0 + 1, tabfal_sh - 1);
+  top = tabfal_mask[y0 * tabfal_sw + x0] +
+        (tabfal_mask[y0 * tabfal_sw + x1] - tabfal_mask[y0 * tabfal_sw + x0]) * dx;
+  bot = tabfal_mask[y1 * tabfal_sw + x0] +
+        (tabfal_mask[y1 * tabfal_sw + x1] - tabfal_mask[y1 * tabfal_sw + x0]) * dx;
+  return (unsigned int)(top + (bot - top) * dy + 0.5);
 }
 
-/* the fallback picture for a scheme, built on first use */
-static Picture tabfal_pic(int scm, unsigned int *w, unsigned int *h) {
+/* fallback picture for a scheme at the given target size, built on first use */
+static Picture tabfal_pic(int scm, int size, unsigned int *w, unsigned int *h) {
   static Picture pic[3];
-  static int state[3];
+  static int pic_size[3], state[3];
   unsigned int fg;
   DATA32 *buf;
-  int i, n;
+  int dw, dh, x, y;
 
   if (scm != SchemeNorm && scm != SchemeSel && scm != SchemeHid)
     return None;
-  if (state[scm] != 0) {
-    if (state[scm] < 0)
-      return None;
-    /* cached: the size has to come back too, or the caller draws nothing */
-    if (w)
-      *w = tabfal_mw;
-    if (h)
-      *h = tabfal_mh;
-    return pic[scm];
-  }
-  state[scm] = -1;
   if (!tabfal_load())
     return None;
+  /* longest side to size, like geticonprop does for real icons */
+  if (tabfal_sw <= tabfal_sh) {
+    dh = size;
+    dw = MAX(1, tabfal_sw * size / tabfal_sh);
+  } else {
+    dw = size;
+    dh = MAX(1, tabfal_sh * size / tabfal_sw);
+  }
+  if (state[scm] == 1 && pic_size[scm] == size) {
+    if (w)
+      *w = dw;
+    if (h)
+      *h = dh;
+    return pic[scm];
+  }
+  if (pic[scm]) {
+    XRenderFreePicture(drw->dpy, pic[scm]);
+    pic[scm] = None;
+  }
+  state[scm] = -1;
 
   fg = scheme[scm][ColFg].pixel;
-  n = tabfal_mw * tabfal_mh;
-  buf = ecalloc((size_t)n, sizeof(DATA32));
-  for (i = 0; i < n; i++) {
-    /* the mask's coverage becomes the pixel alpha, the scheme's foreground
-       its colour, and prealpha() modulates both like a real icon */
-    uint32_t p = ((uint32_t)tabfal_mask[i] << 24u) | (fg & 0x00FFFFFFu);
+  buf = ecalloc((size_t)dw * dh, sizeof(DATA32));
+  for (y = 0; y < dh; y++)
+    for (x = 0; x < dw; x++) {
+      /* the mask's coverage becomes the pixel alpha, the scheme's foreground
+         its colour, and prealpha() modulates both like a real icon */
+      unsigned int cov = tabfal_cov((double)x * tabfal_sw / dw,
+                                    (double)y * tabfal_sh / dh);
+      uint32_t p = ((uint32_t)cov << 24u) | (fg & 0x00FFFFFFu);
 
-    buf[i] = prealpha(p, fg >> 24u);
-  }
-  pic[scm] = drw_picture_create_resized(drw, (char *)buf, tabfal_mw, tabfal_mh,
-                                        tabfal_mw, tabfal_mh);
+      buf[(size_t)y * dw + x] = prealpha(p, fg >> 24u);
+    }
+  pic[scm] = drw_picture_create_resized(drw, (char *)buf, dw, dh, dw, dh);
   free(buf);
   if (!pic[scm])
     return None;
   state[scm] = 1;
+  pic_size[scm] = size;
   if (w)
-    *w = tabfal_mw;
+    *w = dw;
   if (h)
-    *h = tabfal_mh;
+    *h = dh;
   return pic[scm];
 }
 
-/* the icon to show for c's tab: the client's own, or the fallback */
-static int tabicon(Client *c, int scm, Picture *pic, unsigned int *w,
-                   unsigned int *h) {
+/* the icon c's tab shows, at the tab's own size: the client's picture or the
+   fallback. Fills the picture and its size; 0 when there is nothing to show */
+static int tabicon_get(Client *c, int scm, Picture *pic, unsigned int *w,
+                       unsigned int *h) {
+  if (c->tabicon) {
+    *pic = c->tabicon;
+    *w = c->tabicw;
+    *h = c->tabich;
+    return 1;
+  }
   if (c->icon) {
     *pic = c->icon;
     *w = c->icw;
     *h = c->ich;
     return 1;
   }
-  if ((*pic = tabfal_pic(scm, w, h)) != None)
+  if ((*pic = tabfal_pic(scm, tabiconsize(), w, h)) != None)
     return 1;
   return 0;
-}
-
-/* size of the icon c's tab will show, without creating anything */
-static void tabicon_size(Client *c, unsigned int *w, unsigned int *h) {
-  if (c->icon) {
-    *w = c->icw;
-    *h = c->ich;
-    return;
-  }
-  if (!tabfal_size(w, h))
-    *w = *h = 0;
 }
 
 /* a filled disc of diameter d at (x, y) in the scheme's background colour:
@@ -2096,6 +2132,22 @@ static void drawdisc(int x, int y, int d) {
     return;
   drw_rounded(drw, x, y, (unsigned int)(2 * r), r, RoundedLeft);
   drw_rounded(drw, x + r, y, (unsigned int)(2 * r), r, RoundedRight);
+}
+
+/* the TabModeIcons selection mark: a filled circle of radius r in the scheme's
+   foreground, centred under the selected icon. drw_rounded paints in ColBg, so
+   it is handed a scratch scheme whose background is that foreground. */
+static void tabseldot_paint(int scm, int cx, int cy, int r) {
+  Clr *work = scheme[LENGTH(colors)];
+
+  if (r <= 0)
+    return;
+  drw_setscheme(drw, work);
+  work[ColFg] = scheme[scm][ColFg];
+  work[ColBg] = scheme[scm][ColFg];
+  work[ColBorder] = scheme[scm][ColBorder];
+  drawdisc(cx - r, cy - r, 2 * r);
+  drw_setscheme(drw, scheme[scm]);
 }
 
 /* paint one tab pill of width w at x for client c, and record its slot */
@@ -2130,7 +2182,7 @@ static void tabpaint(Monitor *m, int x, int w, Client *c) {
     Picture ic = None;
     unsigned int iw = 0, ih = 0;
 
-    if (tabicon(c, scm, &ic, &iw, &ih) &&
+    if (tabicon_get(c, scm, &ic, &iw, &ih) &&
         contentw - minpad >= (int)(iw + ICONSPACING)) {
       cx = MAX(minpad, (contentw - tw - (int)(iw + ICONSPACING)) / 2);
       drw_text(drw, cxx, 0, contentw, bh, cx + iw + ICONSPACING, text, 0, 0);
@@ -2167,20 +2219,21 @@ static void tabdraw(Monitor *m, int x0, const TabCell *cells, int ncells) {
     return;
   }
 
-  /* one pill shared by every icon: body, then the icons, with the selected
-     one sitting on a SchemeSel disc (no tab outline in this mode) */
+  /* one pill shared by every icon, painted in the selected scheme: the icons'
+     own tint and the dot under the selected one carry the per-client state */
   {
     int pillw = cells[ncells - 1].x + cells[ncells - 1].w + (int)tabr;
 
-    drw_setscheme(drw, scheme[SchemeNorm]);
+    drw_setscheme(drw, scheme[SchemeSel]);
     drw_rect(drw, x0, 0, (unsigned int)pillw, bh, 1, 1);
     if (tabr > 0) {
       drw_setscheme(drw, scheme[SchemeEmpty]);
       drw_rect(drw, x0, 0, tabr, bh, 1, 0);
       drw_rect(drw, x0 + pillw - tabr, 0, tabr, bh, 1, 0);
-      drw_setscheme(drw, scheme[SchemeNorm]);
+      drw_setscheme(drw, scheme[SchemeSel]);
       drw_rounded(drw, x0, 0, bh, tabr, RoundedLeft);
       drw_rounded(drw, x0 + pillw - tabr, 0, bh, tabr, RoundedRight);
+      drawtabborder(x0, pillw, NULL);
     }
   }
 
@@ -2190,19 +2243,21 @@ static void tabdraw(Monitor *m, int x0, const TabCell *cells, int ncells) {
     unsigned int iw = 0, ih = 0;
     int scm = (m->sel == c) ? SchemeSel : (HIDDEN(c) ? SchemeHid : SchemeNorm);
     int cx = x0 + cells[i].x;
+    int r = (int)tabseldot;
+    int gap = r > 0 ? 1 : 0;
+    int total, top;
 
-    tabicon_size(c, &iw, &ih);
-    if (scm == SchemeSel) {
-      /* the selected icon sits on a SchemeSel disc, no outline */
-      int d = (iw || ih) ? MAX((int)iw, (int)ih) + 4 : ICONSIZE;
+    tabicon_get(c, scm, &ic, &iw, &ih);
+    /* the dot's room is reserved for every cell so the icons stay aligned */
+    total = (int)ih + (r > 0 ? gap + 2 * r : 0);
+    top = (bh - total) / 2;
+    if (top < 0)
+      top = 0;
 
-      if (d > bh)
-        d = bh;
-      drw_setscheme(drw, scheme[SchemeSel]);
-      drawdisc(cx + (cells[i].w - d) / 2, (bh - d) / 2, d);
-    }
-    if (tabicon(c, scm, &ic, &iw, &ih))
-      drw_pic(drw, cx, (bh - (int)ih) / 2, iw, ih, ic);
+    if (scm == SchemeSel && r > 0)
+      tabseldot_paint(scm, cx + cells[i].w / 2, top + (int)ih + gap + r, r);
+    if (ic)
+      drw_pic(drw, cx + ((int)cells[i].w - (int)iw) / 2, top, iw, ih, ic);
     /* the gap after a cell belongs to it, so clicks tile the pill */
     addslot(m, cx, cells[i].w + (int)tabgap, ClkWinTitle, (Arg){.v = c});
   }
@@ -2930,7 +2985,8 @@ static uint32_t prealpha(uint32_t p, uint32_t custom_alpha) {
   return (rb & 0xFF00FFu) | (g & 0x00FF00u) | (a << 24u);
 }
 
-Picture geticonprop(Window win, unsigned int *picw, unsigned int *pich, unsigned int alpha) {
+Picture geticonprop(Window win, unsigned int *picw, unsigned int *pich,
+                    unsigned int alpha, int target) {
   int format;
   unsigned long n, extra, *p = NULL;
   Atom real;
@@ -2949,13 +3005,19 @@ Picture geticonprop(Window win, unsigned int *picw, unsigned int *pich, unsigned
     for (i = p; i < end - 1; i += sz) {
       if ((w = *i++) >= 16384 || (h = *i++) >= 16384) { XFree(p); return None; }
       if ((sz = w * h) > end - i) break;
-      if ((m = w > h ? w : h) >= ICONSIZE && (d = m - ICONSIZE) < bstd) { bstd = d; bstp = i; }
+      if ((m = w > h ? w : h) >= (uint32_t)target && (d = m - target) < bstd) {
+        bstd = d;
+        bstp = i;
+      }
     }
     if (!bstp) {
       for (i = p; i < end - 1; i += sz) {
         if ((w = *i++) >= 16384 || (h = *i++) >= 16384) { XFree(p); return None; }
         if ((sz = w * h) > end - i) break;
-        if ((d = ICONSIZE - (w > h ? w : h)) < bstd) { bstd = d; bstp = i; }
+        if ((d = target - (w > h ? w : h)) < bstd) {
+          bstd = d;
+          bstp = i;
+        }
       }
     }
     if (!bstp) { XFree(p); return None; }
@@ -2965,11 +3027,11 @@ Picture geticonprop(Window win, unsigned int *picw, unsigned int *pich, unsigned
 
   uint32_t icw, ich;
   if (w <= h) {
-    ich = ICONSIZE; icw = w * ICONSIZE / h;
+    ich = target; icw = w * target / h;
     if (icw == 0) icw = 1;
   }
   else {
-    icw = ICONSIZE; ich = h * ICONSIZE / w;
+    icw = target; ich = h * target / w;
     if (ich == 0) ich = 1;
   }
   *picw = icw; *pich = ich;
@@ -4667,6 +4729,10 @@ void freeicon(Client *c) {
     XRenderFreePicture(dpy, c->icon);
     c->icon = None;
   }
+  if (c->tabicon) {
+    XRenderFreePicture(dpy, c->tabicon);
+    c->tabicon = None;
+  }
 }
 
 void togglewin(const Arg *arg) {
@@ -5331,7 +5397,10 @@ void updateicon(Client *c) {
 
   freeicon(c);
   c->icon_alpha = new_alpha;
-  c->icon = geticonprop(c->win, &c->icw, &c->ich, new_alpha);
+  c->icon = geticonprop(c->win, &c->icw, &c->ich, new_alpha, ICONSIZE);
+  if (tabiconsize() != ICONSIZE)
+    c->tabicon =
+        geticonprop(c->win, &c->tabicw, &c->tabich, new_alpha, tabiconsize());
 }
 
 

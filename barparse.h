@@ -41,11 +41,20 @@ int bar_pills(const char *src, const BarBlock *blocks, int nblocks,
               const int *ids, char *dst, int dstlen, BarPillCell *cells,
               int maxcells);
 
-/* Lay out n equal-width cells inside avail, one gap after each. When the
-   cells fit at their nominal width the width is kept and the row is not
-   stretched; otherwise they are levelled to fill avail exactly, the first
-   avail % n cells taking the extra pixel. Writes at most maxw widths (out may
-   be NULL) and returns the row's total width, gaps included. */
-int bar_cells(int want, int n, int avail, int gap, int *out, int maxw);
+/* How a row of cells treats the room it is given. */
+typedef enum {
+  BarCellsFit,   /* nominal width when it fits, otherwise levelled to avail */
+  BarCellsFill,  /* always levelled to fill avail exactly */
+  BarCellsFixed, /* always the nominal width, even when it overflows avail */
+} BarCellsMode;
+
+/* Lay out n equal-width cells inside avail, one gap after each. The nominal
+   width is `want`; BarCellsFit keeps it while the cells fit, BarCellsFill
+   always levels the row to avail, BarCellsFixed never levels (the row may
+   then be wider than avail, and the caller drops what does not fit). Leveling
+   gives the first avail % n cells the extra pixel. Writes at most maxw widths
+   (out may be NULL) and returns the row's total width, gaps included. */
+int bar_cells(int want, int n, int avail, int gap, BarCellsMode mode, int *out,
+              int maxw);
 
 #endif

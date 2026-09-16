@@ -26,18 +26,31 @@ static const BarItem bar_left[]   = { {BarTags, NULL}, {BarLayout, NULL}, {BarSt
 static const BarItem bar_center[] = { {BarTabs, NULL} };
 static const BarItem bar_right[]  = { {BarStatus, st_pills} };
 
-static const unsigned int tabwidth    = 6;
-static const char         tabtext[]   = ""; /* tab text template; placeholders: {title}, {class} */
+static const unsigned int tabwidth    = 6;   /* TabModeIconTitle: pill width in characters */
+static const char         tabtext[]   = "";  /* TabModeIconTitle only; {title}, {class} */
 static const unsigned int tabradius   = 8;
 static const unsigned int tabgap      = 4;
 static const unsigned int tabborderpx = 1; /* tab outline width in px; 0 = no outline */
 
 /* tab rendering mode:
- * TabModeIconTitle: one pill per client, icon + tabtext, tabwidth wide
+ * TabModeIconTitle: one pill per client, icon + title (tabtext), tabwidth wide
  * TabModeIcons:     every icon in a single shared pill, tabtext is ignored */
 typedef enum { TabModeIconTitle, TabModeIcons } TabMode;
-static const TabMode tabmode      = TabModeIcons;
-static const char   tabiconpath[] = "$HOME/.dwm/tab-fallback.png"; /* for clients without _NET_WM_ICON; missing file = no icon */
+static const TabMode tabmode = TabModeIcons;
+
+/* how TabModeIconTitle sizes its pills:
+ * TabFit   keep tabwidth while the row fits, level it to the zone otherwise
+ * TabFill  always level the row to the zone
+ * TabFixed always keep tabwidth (pills that would not fit are dropped) */
+typedef enum { TabFit, TabFill, TabFixed } TabSize;
+static const TabSize tabsize = TabFit;
+
+/* TabModeIcons selection mark: a filled circle in SchemeSel's foreground,
+ * centred under the selected client's icon. This is the radius in px; 0 turns
+ * it off. 5..10 reads well and the tab icons shrink to leave room for it. */
+static const unsigned int tabseldot = 5;
+
+static const char tabiconpath[] = "$HOME/.dwm/tab-fallback.png"; /* for clients without _NET_WM_ICON; missing file = no icon */
 
 /* tagging */
 /* tags[] only defines the number of tags (TAGMASK depends on LENGTH(tags)); its text is not rendered. */
