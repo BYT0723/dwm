@@ -19,15 +19,23 @@ static const          int sidepad      = 2;  /* horizontal padding of bar */
  * them in the status writer's output; 0 starts a new pill (its own rounded
  * caps) and -1 ends the list. Ids the writer leaves out (empty panel,
  * portrait cut) are simply skipped. */
-static const int st_pills[] = { 13, 12, 15, 0, 9, 0, 11, 0, 16, 14, 10, 3, 2, 0, 1, -1 };
+static const int st_pills[] = { 13, 12, 15, 0, 9, 0, 11, 0, 16, 14, 10, 2, 0, 1, -1 };
 static const int lt_pills[] = { 8, 7, 6, -1 };
 
-static const BarItem bar_left[]   = { {BarTags, NULL}, {BarLayout, NULL}, {BarStatus, lt_pills}};
+static const BarItem bar_left[]   = { {BarLayout, NULL}, {BarTags, NULL}, {BarStatus, lt_pills}};
 static const BarItem bar_center[] = { {BarTabs, NULL} };
 static const BarItem bar_right[]  = { {BarStatus, st_pills} };
 
-static const unsigned int tabwidth    = 6;   /* TabModeIconTitle: pill width in characters */
-static const char         tabtext[]   = "";  /* TabModeIconTitle only; {title}, {class} */
+/* portrait monitors (wh > ww) use these zones instead; orientation is a config
+ * choice now, so a different set of status ids belongs here too (the writer no
+ * longer emits a cut marker) */
+static const int st_pills_portrait[] = { 13, 12, 15, 0, 16, 14, 10, 3, 2, 0, 1, -1 };
+static const BarItem bar_left_portrait[]   = { {BarLayout, NULL}, {BarTags, NULL} };
+static const BarItem bar_center_portrait[] = { {BarTabs, NULL} };
+static const BarItem bar_right_portrait[]  = { {BarStatus, st_pills_portrait} };
+
+static const unsigned int tabwidth    = 16;   /* TabModeIconTitle: pill width in characters */
+static const char         tabtext[]   = "{class}";  /* TabModeIconTitle only; {title}, {class} */
 static const unsigned int tabradius   = 8;
 static const unsigned int tabgap      = 4;
 static const unsigned int tabborderpx = 1; /* tab outline width in px; 0 = no outline */

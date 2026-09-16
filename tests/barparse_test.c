@@ -24,13 +24,14 @@ static int checks = 0;
   } while (0)
 
 /* compare the block list against an expected id/off/end triple list */static void
-expect(const char *name, const char *src, int portrait, int dstlen, int max,       const BarBlock *want, int nwant, const char *wantdst) {
+expect(const char *name, const char *src, int dstlen, int max,
+       const BarBlock *want, int nwant, const char *wantdst) {
   char dst[256];
   BarBlock got[32];
   int n, i;
 
   memset(got, 0, sizeof(got));
-  n = bar_blocks(src, portrait, dst, dstlen > 0 ? dstlen : (int)sizeof(dst),
+  n = bar_blocks(src, dst, dstlen > 0 ? dstlen : (int)sizeof(dst),
                  got, max > 0 ? max : (int)(sizeof(got) / sizeof(got[0])));
 
   CHECK(n == nwant, "%s: block count %d, want %d", name, n, nwant);
@@ -55,7 +56,7 @@ pills_case(const char *name, const char *src, const int *ids,
   BarPillCell cells[32];
   int nblocks, n, i;
 
-  nblocks = bar_blocks(src, 0, sbuf, sizeof sbuf, blocks,
+  nblocks = bar_blocks(src, sbuf, sizeof sbuf, blocks,
                        (int)(sizeof(blocks) / sizeof(blocks[0])));
   n = bar_pills(sbuf, blocks, nblocks, ids, obuf, sizeof obuf, cells,
                 (int)(sizeof(cells) / sizeof(cells[0])));
@@ -171,51 +172,46 @@ int
 main(void) {
   { /* plain text: single leading block with id 0 */
     const BarBlock w[] = {{0, 0, 3}};
-    expect("plain", "abc", 0, 0, 0, w, 1, "abc");
+    expect("plain", "abc", 0, 0, w, 1, "abc");
   }
 
   { /* control characters delimit blocks and keep their value as id */
     const BarBlock w[] = {{1, 0, 3}, {2, 3, 5}};
-    expect("split", "\x01""abc\x02""de", 0, 0, 0, w, 2, "abcde");
+    expect("split", "\x01""abc\x02""de", 0, 0, w, 2, "abcde");
   }
 
   { /* an empty block (control char with no text) is not emitted */
     const BarBlock w[] = {{0x0c, 0, 4}};
-    expect("empty", "\x0d\x0c""mail", 0, 0, 0, w, 1, "mail");
+    expect("empty", "\x0d\x0c""mail", 0, 0, w, 1, "mail");
   }
 
   { /* ^..^ status2d codes are ordinary text: they never split a block */
     const BarBlock w[] = {{0, 0, 7}, {1, 7, 8}};
-    expect("codes", "^b#000^\x01""x", 0, 0, 0, w, 2, "^b#000^x");
+    expect("codes", "^b#000^\x01""x", 0, 0, w, 2, "^b#000^x");
   }
 
-  { /* landscape: 0x7f is skipped, both halves stay in one block */
+  { /* 0x7f is dropped: both halves stay in one block */
     const BarBlock w[] = {{0, 0, 2}};
-    expect("landscape-7f", "a\x7f" "b", 0, 0, 0, w, 1, "ab");
+    expect("drop-7f", "a\x7f" "b", 0, 0, w, 1, "ab");
   }
 
-  { /* portrait: 0x7f drops everything before it */
-    const BarBlock w[] = {{0, 0, 1}};
-    expect("portrait-7f", "a\x7f" "b", 1, 0, 0, w, 1, "b");
-  }
-
-  { /* portrait reset also drops already recorded blocks */
-    const BarBlock w[] = {{2, 0, 1}};
-    expect("portrait-reset", "\x01""a\x7f\x02""b", 1, 0, 0, w, 1, "b");
+  { /* a stale 0x7f neither splits nor resets the block it sits in */
+    const BarBlock w[] = {{1, 0, 1}, {2, 1, 2}};
+    expect("drop-7f-mid", "\x01""a\x7f\x02""b", 0, 0, w, 2, "ab");
   }
 
   { /* dst truncation keeps the blocks that fit */
     const BarBlock w[] = {{0, 0, 3}};
-    expect("truncate", "abcdef", 0, 4, 0, w, 1, "abc");
+    expect("truncate", "abcdef", 4, 0, w, 1, "abc");
   }
 
   { /* max bounds the recorded blocks */
     const BarBlock w[] = {{1, 0, 1}};
-    expect("maxblocks", "\x01""a\x02""b", 0, 0, 1, w, 1, "ab");
+    expect("maxblocks", "\x01""a\x02""b", 0, 1, w, 1, "ab");
   }
 
   { /* empty input */
-    expect("empty-input", "", 0, 0, 0, NULL, 0, "");
+    expect("empty-input", "", 0, 0, NULL, 0, "");
   }
 
   pills();

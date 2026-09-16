@@ -279,12 +279,6 @@ struct Monitor {
 
 typedef struct {
   const char *class;
-  const char *title;
-  const char *icon;
-} TaskIcon;
-
-typedef struct {
-  const char *class;
   const char *instance;
   const char *title;
   unsigned int tags;
@@ -421,8 +415,8 @@ static void sigchld(int unused);
 static void sighup(int unused);
 static void sigterm(int unused);
 static void spawn(const Arg *arg);
-static int statuswidth(Monitor *m, const int *ids);
-static void statusparse(Monitor *m, const char *text);
+static int statuswidth(const int *ids);
+static void statusparse(const char *text);
 static int status_block_width(int i);
 static void statuspills_build(const int *ids);
 static int barzonewidth(Monitor *m, const BarItem *items, size_t nitems, int occ,
@@ -1331,7 +1325,7 @@ static int barzonewidth(Monitor *m, const BarItem *items, size_t nitems,
         break;
       case BarStatus:
         if (m == selmon)
-          w += statuswidth(m, items[k + j].ids);
+          w += statuswidth(items[k + j].ids);
         break;
       default: /* BarNone: an intentionally empty slot */
         break;
@@ -1339,6 +1333,34 @@ static int barzonewidth(Monitor *m, const BarItem *items, size_t nitems,
     }
   }
   return w;
+}
+
+/* the zone lists a monitor uses: portrait (wh > ww) has its own set, so the
+   layout can differ per orientation without a marker in the status text */
+typedef struct {
+  const BarItem *left, *center, *right;
+  size_t nleft, ncenter, nright;
+} BarZones;
+
+static BarZones barzones(Monitor *m) {
+  BarZones z;
+
+  if (m->wh > m->ww) {
+    z.left = bar_left_portrait;
+    z.nleft = LENGTH(bar_left_portrait);
+    z.center = bar_center_portrait;
+    z.ncenter = LENGTH(bar_center_portrait);
+    z.right = bar_right_portrait;
+    z.nright = LENGTH(bar_right_portrait);
+  } else {
+    z.left = bar_left;
+    z.nleft = LENGTH(bar_left);
+    z.center = bar_center;
+    z.ncenter = LENGTH(bar_center);
+    z.right = bar_right;
+    z.nright = LENGTH(bar_right);
+  }
+  return z;
 }
 
 /* draw one zone left to right and record its slots; tabs take width w */
@@ -1378,6 +1400,7 @@ static int drawzone(Monitor *m, const BarItem *items, size_t nitems, int x,
 
 void drawbar(Monitor *m) {
   int leftw, centerw, centerx, rightw, barw, stw = 0, n = 0;
+  BarZones zones;
   unsigned int occ = 0, urg = 0;
   Client *c;
 
@@ -1405,14 +1428,15 @@ void drawbar(Monitor *m) {
      to its own content and then centred on the bar's middle, so it is
      absolutely centred instead of sitting in whatever the left and right
      zones happen to leave over. */
+  zones = barzones(m);
   barw = m->ww - 2 * sp - stw;
-  leftw = barzonewidth(m, bar_left, LENGTH(bar_left), occ, n, 0);
-  rightw = barzonewidth(m, bar_right, LENGTH(bar_right), occ, n, 0);
+  leftw = barzonewidth(m, zones.left, zones.nleft, occ, n, 0);
+  rightw = barzonewidth(m, zones.right, zones.nright, occ, n, 0);
   if (leftw > barw)
     leftw = barw;
   if (rightw > barw - leftw)
     rightw = barw - leftw;
-  centerw = barzonewidth(m, bar_center, LENGTH(bar_center), occ, n,
+  centerw = barzonewidth(m, zones.center, zones.ncenter, occ, n,
                          barw - leftw - rightw);
   if (centerw > barw - leftw - rightw)
     centerw = barw - leftw - rightw;
@@ -1427,9 +1451,9 @@ void drawbar(Monitor *m) {
     centerx = barw - rightw - centerw;
 
   m->nslots = 0;
-  drawzone(m, bar_left, LENGTH(bar_left), 0, 0, occ, urg, n);
-  drawzone(m, bar_center, LENGTH(bar_center), centerx, centerw, occ, urg, n);
-  drawzone(m, bar_right, LENGTH(bar_right), barw - rightw, 0, occ, urg, n);
+  drawzone(m, zones.left, zones.nleft, 0, 0, occ, urg, n);
+  drawzone(m, zones.center, zones.ncenter, centerx, centerw, occ, urg, n);
+  drawzone(m, zones.right, zones.nright, barw - rightw, 0, occ, urg, n);
 
   drw_map(drw, m->barwin, 0, 0, m->ww - stw, bh);
 }
@@ -1691,7 +1715,7 @@ static int drawstatuspills(Monitor *m, int x, const int *ids) {
   /* one shared parse for drawing and click resolution: stbuf holds the
      visible text (control characters dropped), stblocks the block ids, and
      pbuf the configured pills with their cap markers injected */
-  statusparse(m, stext);
+  statusparse(stext);
   statuspills_build(ids);
   text = pbuf;
 
@@ -4438,9 +4462,9 @@ static int status2d_advance(char **s) {
 /* parse stext into stbuf/stblocks. On portrait monitors bar_blocks keeps
    only the segment after the last 0x7f marker, which is the same rule the
    renderer used to apply inline; drawing and click resolution share it. */
-static void statusparse(Monitor *m, const char *text) {
-  nstblocks = bar_blocks(text, m && m->wh > m->ww, stbuf, sizeof stbuf,
-                         stblocks, MAX_STBLOCKS);
+static void statusparse(const char *text) {
+  nstblocks =
+      bar_blocks(text, stbuf, sizeof stbuf, stblocks, MAX_STBLOCKS);
 }
 
 /* drawn width of block i: its text with status2d codes interpreted */
@@ -4531,8 +4555,8 @@ static int status2d_runwidth(char *s) {
 }
 
 /* total drawn width of the pills selected by ids */
-static int statuswidth(Monitor *m, const int *ids) {
-  statusparse(m, stext);
+static int statuswidth(const int *ids) {
+  statusparse(stext);
   statuspills_build(ids);
   return stpills_w;
 }

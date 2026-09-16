@@ -4,8 +4,7 @@
 #include <string.h>
 
 int
-bar_blocks(const char *src, int portrait, char *dst, int dstlen, BarBlock *out,
-           int max) {
+bar_blocks(const char *src, char *dst, int dstlen, BarBlock *out, int max) {
   int len = 0, nb = 0, start = 0;
   unsigned int curid = 0;
   const char *p;
@@ -17,17 +16,8 @@ bar_blocks(const char *src, int portrait, char *dst, int dstlen, BarBlock *out,
   for (p = src; *p; p++) {
     unsigned char c = (unsigned char)*p;
 
-    if (c == 0x7f) {
-      /* cut marker: on portrait monitors everything before it is dropped */
-      if (portrait) {
-        len = 0;
-        nb = 0;
-        start = 0;
-        curid = 0;
-        dst[0] = '\0';
-      }
-      continue;
-    }
+    if (c == 0x7f)
+      continue; /* the portrait cut marker is gone; ignore a stale one */
     if (c < ' ') {
       /* control character: close the current block, tag the next one with it */
       if (len > start && nb < max) {

@@ -24,12 +24,10 @@ typedef struct {
 
 /* Filter src into dst (NUL-terminated, at most dstlen bytes), dropping
    control characters. A character below 0x20 starts a new block tagged with
-   its value. 0x7f is not a block marker: when portrait is set it restarts the
-   output (dropping everything before it), otherwise it is skipped. Blocks
-   without visible text are not emitted. Records at most max blocks in out and
-   returns the block count. */
-int bar_blocks(const char *src, int portrait, char *dst, int dstlen,
-               BarBlock *out, int max);
+   its value. 0x7f is dropped too: it used to be the portrait cut marker, and
+   the orientation is picked from config now. Blocks without visible text are
+   not emitted. Records at most max blocks in out and returns the count. */
+int bar_blocks(const char *src, char *dst, int dstlen, BarBlock *out, int max);
 
 /* Build the drawn pill string for the status block ids. src/blocks are the
    output of bar_blocks. ids lists block ids in draw order; 0 starts a new
