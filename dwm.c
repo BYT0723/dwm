@@ -499,6 +499,10 @@ static char stext[1024];
 static char stbuf[1024];                  /* stext with control chars filtered out */
 static BarBlock stblocks[MAX_STBLOCKS];   /* visible blocks of stbuf, in draw order */
 static int nstblocks;
+/* bumped whenever stext changes, so statusparse() splits it once per update
+   instead of once per zone measurement and again per zone draw */
+static int statusgen;
+static int statusparsed_gen = -1;
 static char pbuf[2048];                   /* pills built from stbuf, ^( .. ^) wrapped */
 /* one drawn status block: where it sits and how wide, so a click maps back
    to the control-character id the writer tagged it with */
@@ -873,7 +877,8 @@ void cleanup(void) {
   free(scheme);
   if (toolwin != None) {
     /* tooldrw shares fonts_set with drw (hovershow swaps it in and back);
-       don't let drw_free release it twice */
+       don't let drw_free release it twice. Its scheme pointer aliased one of
+       the Clr arrays just freed, but drw_free() never touches scheme */
     tooldrw->fonts = NULL;
     drw_free(tooldrw);
     XDestroyWindow(dpy, toolwin);
@@ -4459,12 +4464,16 @@ static int status2d_advance(char **s) {
   return adv;
 }
 
-/* parse stext into stbuf/stblocks. On portrait monitors bar_blocks keeps
-   only the segment after the last 0x7f marker, which is the same rule the
-   renderer used to apply inline; drawing and click resolution share it. */
+/* parse stext into stbuf/stblocks once per status update (see statusgen):
+   bar_blocks drops control characters (and a stale 0x7f) and records each
+   visible block with the id that introduced it, so drawing and click
+   resolution share one parse. */
 static void statusparse(const char *text) {
+  if (statusparsed_gen == statusgen)
+    return;
   nstblocks =
       bar_blocks(text, stbuf, sizeof stbuf, stblocks, MAX_STBLOCKS);
+  statusparsed_gen = statusgen;
 }
 
 /* drawn width of block i: its text with status2d codes interpreted */
@@ -4497,8 +4506,6 @@ static void statuspills_build(const int *ids) {
 
   n = bar_pills(stbuf, stblocks, nstblocks, ids, pbuf, sizeof pbuf, cells,
                 MAX_STBLOCKS);
-  spillidx = 0;
-  nspills = 0;
   for (i = 0; i < n; i++) {
     int bw = status_block_width(cells[i].block);
     int gap = cells[i].gap ? (int)tabgap : 0;
@@ -5247,6 +5254,7 @@ void updatesizehints(Client *c) {
 void updatestatus(void) {
   if (!gettextprop(root, XA_WM_NAME, stext, sizeof(stext)))
     strcpy(stext, "dwm-" VERSION);
+  statusgen++; /* stext changed: let statusparse() re-split it */
   drawbar(selmon);
 }
 
