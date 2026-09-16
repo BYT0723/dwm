@@ -329,6 +329,8 @@ static void drawbars(void);
 static void drawtabborder(int x, int w, Clr *s);
 static int drawstatuspills(Monitor *m, int x, const int *ids);
 static int tablayout(Monitor *m, int avail, TabCell *cells, int max, int *ncells);
+static int drawbarpill(Monitor *m, const BarItem *items, size_t nitems, size_t k,
+                       int x, int occ, int urg);
 static int tabicon_get(Client *c, int scm, Picture *pic, unsigned int *w,
                        unsigned int *h);
 static void tabseldot_paint(int scm, int cx, int cy, int r);
@@ -1211,57 +1213,90 @@ static const BarSlot *barslotat(Monitor *m, int x) {
   return NULL;
 }
 
-/* width of the tags pill; the layout symbol joins it when it follows */
-static int tagpillwidth(Monitor *m, const BarItem *items, size_t nitems,
-                        size_t k, int occ) {
+/* tags and the layout symbol share one pill whenever they are adjacent, in
+   either order; returns how many items starting at k form that pill */
+static size_t pillrun(const BarItem *items, size_t nitems, size_t k) {
+  if (k + 1 < nitems &&
+      ((items[k].mod == BarTags && items[k + 1].mod == BarLayout) ||
+       (items[k].mod == BarLayout && items[k + 1].mod == BarTags)))
+    return 2;
+  return 1;
+}
+
+/* width of the visible tags */
+static int tagswidth(Monitor *m, int occ) {
   int i, w = 0;
 
   for (i = 0; i < LENGTH(tags); i++)
     if (occ & 1 << i || m->tagset[m->seltags] & 1 << i)
       w += tagtextw(i);
-  if (k + 1 < nitems && items[k + 1].mod == BarLayout)
-    w += TEXTW(m->ltsymbol);
   return w;
 }
 
-/* draw the tags pill at x: the visible tags, then the layout symbol when it
-   follows, sharing one set of rounded caps and one outline */
-static int drawtagpill(Monitor *m, const BarItem *items, size_t nitems,
-                       size_t k, int x, int occ, int urg) {
-  int gx = x, i, w;
-  int withlayout = (k + 1 < nitems && items[k + 1].mod == BarLayout);
+/* the visible tags from x on. first draws the pill's left cap and keeps the
+   first run clear of it; last shortens the final run so the right cap fits
+   inside its padding, the way drawlayout() does. Returns the new x. */
+static int drawtags(Monitor *m, int x, int occ, int urg, int first, int last) {
+  int gx = x, i, w, lastvis = -1;
+
+  if (last)
+    for (i = 0; i < LENGTH(tags); i++)
+      if (occ & 1 << i || m->tagset[m->seltags] & 1 << i)
+        lastvis = i;
 
   for (i = 0; i < LENGTH(tags); i++) {
     char text[64];
-    int first, lp, skip, tx;
+    int cap, skip, tx, tw;
 
     /* Do not draw vacant tags */
     if (!(occ & 1 << i || m->tagset[m->seltags] & 1 << i))
       continue;
     template_expand(tagtext, tag_placeholder, &i, text, sizeof(text));
-    w = TEXTW(text);
+    tw = TEXTW(text);
+    w = tw - (i == lastvis ? tabr : 0);
     drw_setscheme(drw, scheme[m->tagset[m->seltags] & 1 << i ? SchemeTagSel : SchemeTagNorm]);
-    first = (x == gx);
-    lp = (first && tabr > 0) ? tabr : lpad;
-    skip = (first && tabr > 0);
-    if (skip)
+    cap = first && x == gx && tabr > 0;
+    skip = cap;
+    if (cap)
       drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
     tx = x;
-    x = drw_text(drw, x, 0, w, bh, lp, text, urg & 1 << i, skip);
-    addslot(m, tx, w, ClkTagBar, (Arg){.ui = 1 << i});
+    x = drw_text(drw, x, 0, w, bh, skip ? tabr : lpad, text, urg & 1 << i, skip);
+    addslot(m, tx, tw, ClkTagBar, (Arg){.ui = 1 << i});
   }
+  return x;
+}
 
-  if (withlayout) {
-    int first = (x == gx);
-    int lp = (first && tabr > 0) ? tabr : lpad;
-    int skip = (first && tabr > 0);
+/* the layout symbol from x on; first draws the left cap, last leaves room for
+   the right one. Returns the new x. */
+static int drawlayout(Monitor *m, int x, int first, int last) {
+  int w = TEXTW(m->ltsymbol);
+  int skip = first && tabr > 0;
 
-    w = TEXTW(m->ltsymbol);
-    drw_setscheme(drw, scheme[SchemeLayout]);
-    if (skip)
-      drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
-    addslot(m, x, w, ClkLtSymbol, (Arg){0});
-    x = drw_text(drw, x, 0, w - tabr, bh, lp, m->ltsymbol, 0, skip);
+  drw_setscheme(drw, scheme[SchemeLayout]);
+  if (skip)
+    drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
+  addslot(m, x, w, ClkLtSymbol, (Arg){0});
+  return drw_text(drw, x, 0, w - (last ? tabr : 0), bh, skip ? tabr : lpad,
+                  m->ltsymbol, 0, skip);
+}
+
+/* draw the pill formed by the items [k, k + pillrun(k)): the tags pill and the
+   layout symbol join, everything else is its own pill. Records the slots and
+   closes the pill with a right cap plus its outline. Returns the new x. */
+static int drawbarpill(Monitor *m, const BarItem *items, size_t nitems, size_t k,
+                       int x, int occ, int urg) {
+  int gx = x, first = 1;
+  size_t run = pillrun(items, nitems, k), j;
+
+  for (j = 0; j < run; j++) {
+    int before = x;
+
+    if (items[k + j].mod == BarTags)
+      x = drawtags(m, x, occ, urg, first, j + 1 == run);
+    else
+      x = drawlayout(m, x, first, j + 1 == run);
+    if (x > before)
+      first = 0;
   }
 
   if (x > gx) {
@@ -1275,30 +1310,31 @@ static int drawtagpill(Monitor *m, const BarItem *items, size_t nitems,
    room elastic tabs may stretch into (0 outside the center zone) */
 static int barzonewidth(Monitor *m, const BarItem *items, size_t nitems,
                         int occ, int n, int avail) {
-  size_t k;
+  size_t k, run, j;
   int w = 0;
 
-  for (k = 0; k < nitems; k++) {
+  for (k = 0; k < nitems; k += run) {
+    run = pillrun(items, nitems, k);
     if (k)
       w += (int)tabgap;
-    switch (items[k].mod) {
-    case BarTags:
-      w += tagpillwidth(m, items, nitems, k, occ);
-      if (k + 1 < nitems && items[k + 1].mod == BarLayout)
-        k++; /* drawn inside the tags pill */
-      break;
-    case BarLayout:
-      w += TEXTW(m->ltsymbol);
-      break;
-    case BarTabs:
-      w += tablayout(m, avail, NULL, 0, NULL);
-      break;
-    case BarStatus:
-      if (m == selmon)
-        w += statuswidth(m, items[k].ids);
-      break;
-    default:
-      break;
+    for (j = 0; j < run; j++) {
+      switch (items[k + j].mod) {
+      case BarTags:
+        w += tagswidth(m, occ);
+        break;
+      case BarLayout:
+        w += TEXTW(m->ltsymbol);
+        break;
+      case BarTabs:
+        w += tablayout(m, avail, NULL, 0, NULL);
+        break;
+      case BarStatus:
+        if (m == selmon)
+          w += statuswidth(m, items[k + j].ids);
+        break;
+      default: /* BarNone: an intentionally empty slot */
+        break;
+      }
     }
   }
   return w;
@@ -1314,12 +1350,9 @@ static int drawzone(Monitor *m, const BarItem *items, size_t nitems, int x,
       x += (int)tabgap;
     switch (items[k].mod) {
     case BarTags:
-      x = drawtagpill(m, items, nitems, k, x, occ, urg);
-      if (k + 1 < nitems && items[k + 1].mod == BarLayout)
-        k++;
-      break;
     case BarLayout:
-      x = drawtagpill(m, items, nitems, k, x, occ, urg);
+      x = drawbarpill(m, items, nitems, k, x, occ, urg);
+      k += pillrun(items, nitems, k) - 1;
       break;
     case BarTabs: {
       /* the zone was sized to this row, so laying it out again gives the
@@ -1384,7 +1417,13 @@ void drawbar(Monitor *m) {
     centerw = barw - leftw - rightw;
   if (centerw < 0)
     centerw = 0;
+  /* centred on the bar while there is slack, but never over a side zone: a
+     middle that is as wide as the gap can only fill that gap */
   centerx = (barw - centerw) / 2;
+  if (centerx < leftw)
+    centerx = leftw;
+  if (centerx + centerw > barw - rightw)
+    centerx = barw - rightw - centerw;
 
   m->nslots = 0;
   drawzone(m, bar_left, LENGTH(bar_left), 0, 0, occ, urg, n);
@@ -1765,8 +1804,11 @@ static int drawstatuspills(Monitor *m, int x, const int *ids) {
     }
   }
 
-  if (!iscode) {
-    if (capx >= 0) { /* trailing run of a pill/tab with no '^' codes after it */
+  /* an empty trailing run must not be drawn: drw_text() would fill TEXTW("")
+     (= lrpad) pixels in the scheme's background, leaving a stray block-coloured
+     rectangle after the last pill */
+  if (!iscode && *text) {
+    if (capx >= 0) { /* trailing run of a pill with no '^' codes after it */
       drawpillcap(work, capx, pillw);
       pillprologue = 0;
       capx = -1;
