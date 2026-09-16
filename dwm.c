@@ -816,6 +816,9 @@ void cleanup(void) {
   }
   free(scheme);
   if (toolwin != None) {
+    /* tooldrw shares fonts_set with drw (hovershow swaps it in and back);
+       don't let drw_free release it twice */
+    tooldrw->fonts = NULL;
     drw_free(tooldrw);
     XDestroyWindow(dpy, toolwin);
   }
