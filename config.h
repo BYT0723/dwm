@@ -68,8 +68,10 @@ static const char tabiconpath[] = "$HOME/.dwm/tab-fallback.png"; /* for clients 
 static const char tagtext[] = "{icon} {name}"; /* tag text template; placeholders: {name}, {icon}, {index} */
 static const char *tags[] = {"", "", "󰭹", "", "", "", "", "", ""};
 static const char *tag_names[] = {"dev", "web", "chat", "util", "misc", "dl", "vid", "mus", "game"};
-// tag and client preview
-static const          int hoverinfo       = 1;   /* 1 = hover a client tab to show a tooltip with client info; 0 = disabled */
+// tag and client preview, off by default: enabling it makes every tag switch
+// snapshot the whole monitor (for the tag hover preview) and the client-tab
+// tooltip re-composite its window while hovered
+static const          int previews        = 0;   /* 1 = tag snapshots + client-tab hover tooltip; 0 = disabled */
 static const unsigned int hoverdelay      = 500; /* ms of resting on a tab before the tooltip appears */
 static const unsigned int previewh        = 240; /* max live preview height; width scales by aspect */
 static const unsigned int previewrefresh  = 300; /* ms between live preview refreshes */
@@ -270,10 +272,6 @@ static const Layout layouts[] = {
     {MODKEY | ControlMask,             KEY, tag,        {.ui = 1 << TAG}},  \
     {MODKEY | ControlMask | ShiftMask, KEY, toggletag,  {.ui = 1 << TAG}},
 
-/* toggle the tag preview; TAG is the 0-based tag index */
-#define PREVIEWTAGKEYS(KEY, TAG) \
-    {SUPKEY, KEY, previewtag, {.ui = TAG}},
-
 /* helper for spawning shell commands in the pre dwm-5.0 fashion */
 #define SHCMD(cmd) { .v = (const char *[]) { "/bin/sh", "-c", cmd, NULL } }
 #define LAUNCHCMD(...) { .v = (const char *[]) { "/bin/sh", "-c", "$HOME/.dwm/dwm-launcher.sh \"$@\"", "dwm-launcher", __VA_ARGS__, NULL } }
@@ -365,15 +363,6 @@ static Key keys[] = {
     TAGKEYS(XK_7, 6)
     TAGKEYS(XK_8, 7)
     TAGKEYS(XK_9, 8)
-    PREVIEWTAGKEYS(XK_1, 0)
-    PREVIEWTAGKEYS(XK_2, 1)
-    PREVIEWTAGKEYS(XK_3, 2)
-    PREVIEWTAGKEYS(XK_4, 3)
-    PREVIEWTAGKEYS(XK_5, 4)
-    PREVIEWTAGKEYS(XK_6, 5)
-    PREVIEWTAGKEYS(XK_7, 6)
-    PREVIEWTAGKEYS(XK_8, 7)
-    PREVIEWTAGKEYS(XK_9, 8)
 };
 
 // status click event command

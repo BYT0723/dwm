@@ -30,6 +30,29 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+# screenshot the root window, cropped to $2 (WxH+X+Y); $3 is an optional integer
+# scale percent. Output goes to $1.
+snap() {
+  xwd -root -silent >"$WORK/.snap.xwd" 2>/dev/null || true
+  if [ -n "${3:-}" ]; then
+    convert "$WORK/.snap.xwd" -crop "$2" +repage -scale "$3"% "$1" \
+      2>/dev/null || true
+  else
+    convert "$WORK/.snap.xwd" -crop "$2" +repage "$1" 2>/dev/null || true
+  fi
+}
+
+# absolute pixel difference between two images, rounded to an integer; empty
+# when the images could not be compared (ImageMagick prints a leading number,
+# IM 6 as "N" and IM 7 as "N (normalized)")
+ae() {
+  d=$(compare -metric AE "$1" "$2" null: 2>&1 || true)
+  case "$d" in
+  [0-9]*) printf '%s' "$(printf '%s\n' "$d" | awk '{print int($1 + 0.5)}')" ;;
+  *) printf '' ;;
+  esac
+}
+
 # throwaway HOME + XDG dirs: no ~/.dwm, no ~/.local/share/dwm => no autostart
 export HOME="$WORK/home"
 export XDG_DATA_HOME="$WORK/xdg"
@@ -84,10 +107,8 @@ sleep 0.3
 xdotool key --clearmodifiers super+b 2>/dev/null || true
 sleep 0.5
 
-xwd -root -silent >"$WORK/root.xwd" 2>/dev/null || true
 # bar strip only, scaled up so the pills are inspectable
-convert "$WORK/root.xwd" -crop 1280x40+0+0 +repage -scale 300% \
-  "$ROOT/tests/.smoke-bar.png" 2>/dev/null || true
+snap "$ROOT/tests/.smoke-bar.png" 1280x40+0+0 300
 
 # click sweep across the status strip: with the fixture set, the click handler
 # resolves each pill back to its block id. Harmless when it could not be set.
@@ -107,25 +128,20 @@ xdotool mousemove 640 55 2>/dev/null || true
 sleep 0.2
 xdotool key --clearmodifiers super+shift+b 2>/dev/null || true
 sleep 0.5
-xwd -root -silent >"$WORK/root-icons.xwd" 2>/dev/null || true
-convert "$WORK/root-icons.xwd" -crop 1280x40+0+0 +repage -scale 300% \
-  "$ROOT/tests/.smoke-bar-icons.png" 2>/dev/null || true
+snap "$ROOT/tests/.smoke-bar-icons.png" 1280x40+0+0 300
 
 if [ -s "$ROOT/tests/.smoke-bar.png" ] && [ -s "$ROOT/tests/.smoke-bar-icons.png" ]; then
-  # ImageMagick 7 prints AE as "count (normalized)"; take the leading number
-  ndiff=$(compare -metric AE "$ROOT/tests/.smoke-bar.png" \
-    "$ROOT/tests/.smoke-bar-icons.png" null: 2>&1 || true)
-  npx=$(printf '%s\n' "$ndiff" | awk '{print int($1 + 0.5)}')
-  case "$npx" in
-  '' | *[!0-9]*)
-    echo "SKIP: could not compare the bar strips ($ndiff)"
+  ndiff=$(ae "$ROOT/tests/.smoke-bar.png" "$ROOT/tests/.smoke-bar-icons.png")
+  case "$ndiff" in
+  '')
+    echo "SKIP: could not compare the bar strips"
     ;;
   0)
     echo "FAIL: tab mode toggle did not re-render the bar"
     exit 1
     ;;
   *)
-    echo "PASS: tab mode toggle re-rendered the bar ($ndiff)"
+    echo "PASS: tab mode toggle re-rendered the bar ($ndiff px)"
     ;;
   esac
 
@@ -171,20 +187,74 @@ fi
 # titled mode, which this catches
 xdotool key --clearmodifiers super+shift+b 2>/dev/null || true
 sleep 0.5
-xwd -root -silent >"$WORK/root-back.xwd" 2>/dev/null || true
-convert "$WORK/root-back.xwd" -crop 1280x40+0+0 +repage -scale 300% \
-  "$ROOT/tests/.smoke-bar-back.png" 2>/dev/null || true
+snap "$ROOT/tests/.smoke-bar-back.png" 1280x40+0+0 300
 
 if [ -s "$ROOT/tests/.smoke-bar-back.png" ]; then
-  nback=$(compare -metric AE "$ROOT/tests/.smoke-bar.png" \
-    "$ROOT/tests/.smoke-bar-back.png" null: 2>&1 || true)
-  npx=$(printf '%s\n' "$nback" | awk '{print int($1 + 0.5)}')
-  if [ "$npx" = 0 ]; then
+  nback=$(ae "$ROOT/tests/.smoke-bar.png" "$ROOT/tests/.smoke-bar-back.png")
+  if [ "$nback" = 0 ]; then
     echo "PASS: toggling twice restores the first mode exactly"
   else
-    echo "FAIL: toggling twice did not restore the first mode ($nback)"
+    echo "FAIL: toggling twice did not restore the first mode ($nback px)"
     exit 1
   fi
+fi
+
+# preview option: with previews on, hovering a client tab shows a tooltip and
+# (after leaving a tag) hovering a tag shows its snapshot; with previews off
+# (the default) neither appears. Sweep the pointer along the bar and report
+# whether any frame differs from the off-bar baseline.
+#   hover_sweep LO HI BASEPNG  -> 0 = all frames identical, 1 = something showed
+hover_sweep() {
+  x=$1
+  hi=$2
+  base=$3
+  while [ "$x" -le "$hi" ]; do
+    xdotool mousemove "$x" 12 2>/dev/null || true
+    sleep 0.7 # hoverdelay is 500 ms
+    snap "$WORK/hover.png" 1280x64+0+0
+    n=$(ae "$base" "$WORK/hover.png")
+    if [ -n "$n" ] && [ "$n" != 0 ]; then
+      xdotool mousemove 640 55 2>/dev/null || true
+      return 1
+    fi
+    x=$((x + 10))
+  done
+  xdotool mousemove 640 55 2>/dev/null || true
+  return 0
+}
+
+# client preview: on tag 1 the client tabs are in the centred shared pill
+sleep 0.3
+snap "$WORK/nopreview-c.png" 1280x64+0+0
+client_shown=0
+if [ -s "$WORK/nopreview-c.png" ] &&
+  ! hover_sweep 600 680 "$WORK/nopreview-c.png"; then
+  client_shown=1
+fi
+
+# tag preview: leave tag 1, then hover the tag row on the left
+xdotool key --clearmodifiers super+2 >/dev/null 2>&1 || true
+sleep 0.5
+snap "$WORK/nopreview-t.png" 1280x64+0+0
+tag_shown=0
+if [ -s "$WORK/nopreview-t.png" ] &&
+  ! hover_sweep 20 160 "$WORK/nopreview-t.png"; then
+  tag_shown=1
+fi
+
+want=0
+if grep -qE 'previews[[:space:]]*=[[:space:]]*1' "$ROOT/config.h" 2>/dev/null; then
+  want=1
+fi
+if [ "$client_shown" = "$want" ] && [ "$tag_shown" = "$want" ]; then
+  if [ "$want" = 1 ]; then
+    echo "PASS: previews enabled: client tooltip and tag preview appear"
+  else
+    echo "PASS: previews disabled (default): no client tooltip, no tag preview"
+  fi
+else
+  echo "FAIL: previews want=$want, got client=$client_shown tag=$tag_shown"
+  exit 1
 fi
 
 echo "--- dwm.log ---"

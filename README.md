@@ -38,3 +38,15 @@ chmod +x install.sh
   ```shell
   sudo apt install libimlib2-dev
   ```
+
+## Tests
+
+```shell
+make test    # unit tests for the status block/pill and tab-cell geometry (no X needed)
+make smoke   # end-to-end bar test on a private Xvfb display
+```
+
+`make smoke` additionally needs `Xvfb`, `xterm`, `xdotool`, `xwd` and
+ImageMagick (`convert`/`compare`). It starts dwm on a throwaway `HOME` and
+screenshots the bar, so run it on a machine where starting a headless X server
+is acceptable.

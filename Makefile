@@ -22,6 +22,11 @@ tests/barparse_test: tests/barparse_test.c barparse.c barparse.h
 test: tests/barparse_test
 	./tests/barparse_test
 
+# end-to-end bar test on a private Xvfb display; needs Xvfb, xterm, xdotool,
+# xwd and ImageMagick (convert/compare)
+smoke: dwm
+	./tests/dwm-smoke.sh
+
 clean:
 	rm -f dwm ${OBJ} dwm-${VERSION}.tar.gz tests/barparse_test
 
@@ -46,4 +51,4 @@ uninstall:
 		${DESTDIR}${MANPREFIX}/man1/dwm.1
 	rm ${HOME}/.dwm
 
-.PHONY: all clean dist install uninstall test
+.PHONY: all clean dist install uninstall test smoke

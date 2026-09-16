@@ -442,7 +442,6 @@ static void maximize(const Arg *arg);
 static void hoverfire(void);
 static void hoverhide(void);
 static void hovershow(Client *c, int tx);
-static void previewtag(const Arg *arg);
 static void showtagpreview(unsigned int i);
 static void takesnapshot(Client *c);
 static void takepreview(void);
@@ -1604,10 +1603,8 @@ titlebtnsat(Client *c, int x)
    The icon (if shown) stays at the left; title layout follows
    titlebaralign (0 = left, 1 = true center of the full strip width,
    2 = right against the button area). */
-void
-drawtitle(Client *c)
-{
-  int scm, i, btnw, titlew, bx, lp, tx, txtw, hasicon, iconw;
+void drawtitle(Client *c) {
+  int scm, i, btnw, titlew, bx, lp, tx, txtw, hasicon, iconw, highlight;
   char text[256];
 
   if (!c || c->frame == None || titleh(c) <= 0)
@@ -1630,6 +1627,10 @@ drawtitle(Client *c)
     tx = MAX((int)lpad + iconw, (c->w - txtw) / 2);
   else /* left (0 and anything unexpected) */
     tx = lpad + iconw;
+
+  highlight = scm == SchemeSel && fonts_highlight_set;
+  if (highlight)
+    drw_setfontset(drw, fonts_highlight_set);
   drw_text(drw, 0, 0, titlew, th, tx, text, 0, 0);
   if (hasicon)
     drw_pic(drw, lpad, (th - c->ich) / 2, c->icw, c->ich, c->icon);
@@ -1638,6 +1639,8 @@ drawtitle(Client *c)
     lp = MAX((th - (int)drw_fontset_getwidth(drw, titlebtns[i])) / 2, 0);
     drw_text(drw, bx, 0, th, th, lp, titlebtns[i], 0, 0);
   }
+  if (highlight)
+    drw_setfontset(drw, fonts_set);
   drw_map(drw, c->frame, 0, 0, c->w, th);
 }
 
@@ -2359,10 +2362,13 @@ static void tabdraw(Monitor *m, int x0, const TabCell *cells, int ncells) {
 /* re-arm or dismiss the hover state from the pointer position: a tag with a
    preview, or a client tab; called from enter- and motion-notify */
 static void hoverupdate(Monitor *m, int x) {
-  const BarSlot *s = barslotat(m, x);
+  const BarSlot *s;
   Client *tc;
   int ti;
 
+  if (!previews)
+    return;
+  s = barslotat(m, x);
   if (s && s->click == ClkTagBar && (ti = tagindex(s->arg.ui)) >= 0 &&
       m->tagmap[ti] && !(m->tagset[m->seltags] & 1 << ti)) {
     if (m->previewshow != ti + 1) {
@@ -2498,7 +2504,7 @@ static void hovershow(Client *c, int tx) {
                              .colormap = cmap,
                              .event_mask = NoEventMask};
 
-  if (!m->showbar || !hoverinfo)
+  if (!m->showbar || !previews)
     return;
   lh = drw->fonts->h;
   title = c->name;
@@ -2728,7 +2734,7 @@ void showtagpreview(unsigned int i) {
   int x, y, n, iw2, ih2;
   XWindowAttributes wa;
 
-  if (selmon->tagwin == None)
+  if (!previews || selmon->tagwin == None)
     return;
   if (!selmon->previewshow || !selmon->tagmap[i]) {
     XUnmapWindow(dpy, selmon->tagwin);
@@ -2766,86 +2772,64 @@ void showtagpreview(unsigned int i) {
   XSync(dpy, False);
 }
 
-/* toggle the preview of tag arg->ui (0-based index) */
-void previewtag(const Arg *arg) {
-  if (selmon->tagwin == None)
-    return;
-  if (selmon->previewshow == arg->ui + 1) {
-    selmon->previewshow = 0;
-  } else if (selmon->tagmap[arg->ui]) { /* no snapshot, nothing to show */
-    selmon->previewshow = arg->ui + 1;
-  }
-  showtagpreview(arg->ui);
-}
+/* render the captured screen region (already uploaded as the transformed
+   source picture src, sized sw x sh) into m->tagmap[i] (a dw x dh pixmap) */
+static void previewtagshot(Monitor *m, unsigned int i, Picture src, int sw,
+                           int sh, int dw, int dh) {
+  Picture dst;
 
-/* render the scaled snapshot of the captured screen region img into
-   m->tagmap[i] (a dw x dh pixmap); the caller owns img and frees it */
-static void previewtagshot(Monitor *m, unsigned int i, XImage *img, int dw,
-                           int dh) {
-  Pixmap full;
-  GC gc;
-  XRenderPictFormat *fmt;
-  Picture src = None, dst = None;
-  XTransform tr;
-
-  full = XCreatePixmap(dpy, m->tagwin, img->width, img->height, img->depth);
-  if (!full) {
-    return;
+  if (m->tagmap[i]) { /* tagmap exists, clean it */
+    XFreePixmap(dpy, m->tagmap[i]);
+    m->tagmap[i] = 0;
   }
-  /* drw->gc belongs to the alpha-depth drawable; PutImage needs a GC
-     matching the source pixmap depth (root may be 24-bit while the
-     bar visual is 32-bit), so use a scratch GC */
-  gc = XCreateGC(dpy, full, 0, NULL);
-  XPutImage(dpy, full, gc, img, 0, 0, 0, 0, img->width, img->height);
-  XFreeGC(dpy, gc);
   m->tagmap[i] = XCreatePixmap(dpy, m->tagwin, dw, dh, depth);
-  if (!m->tagmap[i]) {
-    XFreePixmap(dpy, full);
+  if (!m->tagmap[i])
+    return;
+  dst = XRenderCreatePicture(dpy, m->tagmap[i],
+                             XRenderFindVisualFormat(dpy, visual), 0, NULL);
+  if (!dst) {
+    XFreePixmap(dpy, m->tagmap[i]);
+    m->tagmap[i] = 0;
     return;
   }
-  /* the source pixmap depth follows the root framebuffer (which may
-     differ from the alpha visual depth), so match the format to it */
-  fmt = XRenderFindStandardFormat(
-      dpy, img->depth == 32 ? PictStandardARGB32 : PictStandardRGB24);
-  if (fmt)
-    src = XRenderCreatePicture(dpy, full, fmt, 0, NULL);
-  if (src)
-    dst = XRenderCreatePicture(dpy, m->tagmap[i],
-                               XRenderFindVisualFormat(dpy, visual), 0, NULL);
-  if (src && dst) {
-    XRenderSetPictureFilter(dpy, src, FilterGood, NULL, 0);
-    scaletransform(&tr, img->width, dw, img->height, dh);
-    XRenderSetPictureTransform(dpy, src, &tr);
-    /* the source rect is the full captured image; the transform maps it
-       onto the scaled destination. PictOpSrc copies the pixels verbatim
-       so alpha bytes from the framebuffer can't punch holes */
-    XRenderComposite(dpy, PictOpSrc, src, None, dst, 0, 0, img->width,
-                     img->height, 0, 0, dw, dh);
-  } else
-    fprintf(stderr, "dwm: XRender failed for tag preview\n");
-  if (src)
-    XRenderFreePicture(dpy, src);
-  if (dst)
-    XRenderFreePicture(dpy, dst);
-  XFreePixmap(dpy, full);
+  /* the source rect is the full captured image; the transform maps it
+     onto the scaled destination. PictOpSrc copies the pixels verbatim
+     so alpha bytes from the framebuffer can't punch holes */
+  XRenderComposite(dpy, PictOpSrc, src, None, dst, 0, 0, sw, sh, 0, 0, dw, dh);
+  XRenderFreePicture(dpy, dst);
 }
 
 /* capture scaled snapshots of the current view for all occupied tags,
    so hovering a tag later re-views its last layout */
 void takepreview(void) {
   Client *c;
-  unsigned int occ = 0, i;
+  unsigned int occ = 0, view, i;
   int dw, dh;
   XImage *img;
+  Pixmap full;
+  GC gc;
+  XRenderPictFormat *fmt;
+  Picture src = None;
+  XTransform tr;
+
+  /* previews off (default): never read the monitor back for a snapshot */
+  if (!previews)
+    return;
 
   hoverhide(); /* keep the tooltip and tag preview out of the shot */
-  XSync(dpy, False);
 
   for (c = selmon->clients; c; c = c->next)
     occ |= c->tags;
+  /* only tags that are occupied and part of the current view are captured;
+     with none there is nothing to snapshot, so skip the whole-monitor
+     readback (switching to an empty tag is common and used to pay for it) */
+  view = occ & selmon->tagset[selmon->seltags];
+  if (!view)
+    return;
 
-  /* snapshot the whole monitor including the bar once; every occupied
-     tag scales the same source image, so capture it a single time */
+  XSync(dpy, False);
+  /* snapshot the whole monitor including the bar once; every captured tag
+     scales the same source image */
   img = XGetImage(dpy, root, selmon->mx, selmon->my, selmon->mw, selmon->mh,
                   AllPlanes, ZPixmap);
   if (!img) {
@@ -2854,18 +2838,39 @@ void takepreview(void) {
   }
   previewsize(selmon, selmon->mw, selmon->mh, &dw, &dh);
 
-  for (i = 0; i < LENGTH(tags); i++) {
-    /* only tags that are occupied and part of the current view */
-    if (!(occ & 1 << i) || !(selmon->tagset[selmon->seltags] & 1 << i))
-      continue;
-
-    if (selmon->tagmap[i]) { /* tagmap exists, clean it */
-      XFreePixmap(dpy, selmon->tagmap[i]);
-      selmon->tagmap[i] = 0;
-    }
-
-    previewtagshot(selmon, i, img, dw, dh);
+  /* upload the capture once and reuse the source picture for every tag:
+     XPutImage is a full-image transfer, so per-tag uploads multiply it */
+  full = XCreatePixmap(dpy, selmon->tagwin, img->width, img->height, img->depth);
+  if (!full) {
+    XDestroyImage(img);
+    return;
   }
+  /* drw->gc belongs to the alpha-depth drawable; PutImage needs a GC
+     matching the source pixmap depth (root may be 24-bit while the
+     bar visual is 32-bit), so use a scratch GC */
+  gc = XCreateGC(dpy, full, 0, NULL);
+  XPutImage(dpy, full, gc, img, 0, 0, 0, 0, img->width, img->height);
+  XFreeGC(dpy, gc);
+  /* the source pixmap depth follows the root framebuffer (which may
+     differ from the alpha visual depth), so match the format to it */
+  fmt = XRenderFindStandardFormat(
+      dpy, img->depth == 32 ? PictStandardARGB32 : PictStandardRGB24);
+  if (fmt)
+    src = XRenderCreatePicture(dpy, full, fmt, 0, NULL);
+  if (src) {
+    XRenderSetPictureFilter(dpy, src, FilterGood, NULL, 0);
+    scaletransform(&tr, img->width, dw, img->height, dh);
+    XRenderSetPictureTransform(dpy, src, &tr);
+    for (i = 0; i < LENGTH(tags); i++) {
+      if (!(view & 1 << i))
+        continue;
+      previewtagshot(selmon, i, src, img->width, img->height, dw, dh);
+    }
+  } else
+    fprintf(stderr, "dwm: XRender failed for tag preview\n");
+  if (src)
+    XRenderFreePicture(dpy, src);
+  XFreePixmap(dpy, full);
   XDestroyImage(img);
 }
 
@@ -2887,7 +2892,7 @@ void enternotify(XEvent *e) {
     selmon = m;
     focus(c);
   }
-  if (ev->window == selmon->barwin && hoverinfo)
+  if (ev->window == selmon->barwin)
     hoverupdate(selmon, ev->x);
 }
 
@@ -3588,8 +3593,7 @@ void motionnotify(XEvent *e) {
 
   if (ev->window == selmon->barwin) {
     /* moving between tags/tabs while hovering */
-    if (hoverinfo)
-      hoverupdate(selmon, ev->x);
+    hoverupdate(selmon, ev->x);
     return;
   }
   for (m = mons; m; m = m->next)
