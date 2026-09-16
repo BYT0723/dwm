@@ -4,3 +4,8 @@ dwm
 *.o
 tests/barparse_test
 tests/.smoke-bar.png
+
+# planning docs for the bar work, kept local on purpose
+docs/specs/SPEC-bar-modules.md
+docs/specs/SPEC-tab-modes.md
+tasks/
