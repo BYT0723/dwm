@@ -331,7 +331,7 @@ static void leavenotify(XEvent *e);
 static void killclient(const Arg *arg);
 static void loadxrdb(void);
 static void layoutmenu(const Arg *arg);
-static void manage(Window w, XWindowAttributes *wa);
+static void manage(Window w, XWindowAttributes *wa, int mapped);
 static void mappingnotify(XEvent *e);
 static void maprequest(XEvent *e);
 static void monocle(Monitor *m);
@@ -2657,7 +2657,7 @@ void layoutmenu(const Arg *arg) {
   setlayout(&((Arg){.v = &layouts[i]}));
 }
 
-void manage(Window w, XWindowAttributes *wa) {
+void manage(Window w, XWindowAttributes *wa, int mapped) {
   Client *c, *t = NULL;
   Window trans = None;
 
@@ -2671,8 +2671,10 @@ void manage(Window w, XWindowAttributes *wa) {
   c->oldbw = wa->border_width;
   c->cfact = 1.0;
   c->icon_alpha = 0;
-  /* tray clients hide with Withdrawn, dwm hide uses Iconic; both mean hidden */
-  c->hidden = ISHIDDENSTATE(getstate(w));
+  /* hidden state is only meaningful when adopting a pre-existing window (scan):
+     a MapRequest is explicit intent to be visible, and unmanage() writes
+     WithdrawnState itself, so trusting it there would leave the client hidden */
+  c->hidden = !mapped && ISHIDDENSTATE(getstate(w));
 
   updatetitle(c);
   if (XGetTransientForHint(dpy, w, &trans) && (t = wintoclient(trans))) {
@@ -2805,7 +2807,7 @@ void maprequest(XEvent *e) {
     drawbars();
     return;
   }
-  manage(ev->window, &wa);
+  manage(ev->window, &wa, 1);
 }
 
 void monocle(Monitor *m) {
@@ -3287,7 +3289,7 @@ void scan(void) {
         continue;
       if (wa.map_state == IsViewable || ISHIDDENSTATE(getstate(wins[i]))) {
         if (!systrayredock(wins[i]))
-          manage(wins[i], &wa);
+          manage(wins[i], &wa, 0);
       }
     }
     for (i = 0; i < num; i++) { /* now the transients */
@@ -3295,7 +3297,7 @@ void scan(void) {
         continue;
       if (XGetTransientForHint(dpy, wins[i], &d1) &&
           (wa.map_state == IsViewable || ISHIDDENSTATE(getstate(wins[i]))))
-        manage(wins[i], &wa);
+        manage(wins[i], &wa, 0);
     }
     if (showsystray && systray)
       updatesystray(1);
