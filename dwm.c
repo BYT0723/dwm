@@ -1424,10 +1424,10 @@ void drawbar(Monitor *m) {
   }
 
   /* three zones inside the bar window: left from the start, right from the
-     end (systray reserved), center in the middle. The center zone is sized
-     to its own content and then centred on the bar's middle, so it is
-     absolutely centred instead of sitting in whatever the left and right
-     zones happen to leave over. */
+     end (systray reserved), center in the middle. The center zone is sized to
+     its own content and then centred on the monitor's middle, not on the bar
+     window's: the window stops at the systray, so window centring would sit
+     half a systray left of the monitor's middle. */
   zones = barzones(m);
   barw = m->ww - 2 * sp - stw;
   leftw = barzonewidth(m, zones.left, zones.nleft, occ, n, 0);
@@ -1442,13 +1442,9 @@ void drawbar(Monitor *m) {
     centerw = barw - leftw - rightw;
   if (centerw < 0)
     centerw = 0;
-  /* centred on the bar while there is slack, but never over a side zone: a
-     middle that is as wide as the gap can only fill that gap */
-  centerx = (barw - centerw) / 2;
-  if (centerx < leftw)
-    centerx = leftw;
-  if (centerx + centerw > barw - rightw)
-    centerx = barw - rightw - centerw;
+  /* centred on the monitor while there is slack, but never over a side zone:
+     a middle that is as wide as the gap can only fill that gap */
+  centerx = bar_centerx(barw, stw, leftw, rightw, centerw);
 
   m->nslots = 0;
   drawzone(m, zones.left, zones.nleft, 0, 0, occ, urg, n);

@@ -55,4 +55,15 @@ typedef enum {
 int bar_cells(int want, int n, int avail, int gap, BarCellsMode mode, int *out,
               int maxw);
 
+/* Where the center zone starts inside the bar window. barw is that window's
+   inner width (side padding and the systray already taken out), stw the
+   systray width reserved inside the monitor, leftw/rightw the widths of the
+   side zones and centerw the middle zone's own width. The zone is centred on
+   the monitor: the bar window is narrower than the monitor by the systray, so
+   centring on the window would sit half a systray left of the monitor's
+   middle. It is then pushed back inside the span the side zones leave free,
+   so the caller must pass a centerw that fits it (centerw <= barw - leftw -
+   rightw); such a middle can only fill that span. */
+int bar_centerx(int barw, int stw, int leftw, int rightw, int centerw);
+
 #endif

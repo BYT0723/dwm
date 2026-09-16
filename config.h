@@ -13,7 +13,8 @@ static const          int sidepad      = 2;  /* horizontal padding of bar */
 /* bar modules: items are grouped into three zones and each zone is filled
  * in array order. left starts at the bar's left edge, right ends at its
  * right edge (the systray is reserved there) and center is sized to its own
- * content and centred on the bar's middle, so it is absolutely centred.
+ * content and centred on the monitor's middle (the systray is not part of that
+ * middle), clamped so it never runs over a side zone.
  * BarTabs stretches when its fixed width does not fit, so keep it last.
  * BarStatus selects status blocks by the control character that prefixes
  * them in the status writer's output; 0 starts a new pill (its own rounded

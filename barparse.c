@@ -141,3 +141,16 @@ bar_cells(int want, int n, int avail, int gap, BarCellsMode mode, int *out,
     out[i] = base + (i < rem ? 1 : 0);
   return room + gap * n;
 }
+
+int
+bar_centerx(int barw, int stw, int leftw, int rightw, int centerw) {
+  /* the monitor's middle in bar-window coordinates; the window is stw short
+     of the monitor, so the systray width comes back into the base */
+  int x = (barw + stw - centerw) / 2;
+
+  if (x < leftw)
+    x = leftw;
+  if (x + centerw > barw - rightw)
+    x = barw - rightw - centerw;
+  return x;
+}

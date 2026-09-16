@@ -168,6 +168,43 @@ cells(void) {
   }
 }
 
+/* center zone placement: the monitor middle, kept clear of the side zones */
+static void
+centerx_case(const char *name, int barw, int stw, int leftw, int rightw,
+             int centerw, int want) {
+  int got = bar_centerx(barw, stw, leftw, rightw, centerw);
+
+  CHECK(got == want, "%s: x %d, want %d", name, got, want);
+}
+
+static void
+centers(void) {
+  { /* no systray: the window middle is the monitor middle */
+    centerx_case("centers-nosystray", 1240, 0, 200, 100, 400, 420);
+  }
+  { /* a systray narrows the window, not the monitor: half of it comes back */
+    centerx_case("centers-systray", 1240, 40, 200, 100, 400, 440);
+  }
+  { /* only the monitor span barw + stw matters, not how it is split */
+    centerx_case("centers-span", 1200, 40, 200, 100, 400, 420);
+  }
+  { /* an empty middle lands exactly on the monitor middle */
+    centerx_case("centers-empty", 1240, 40, 200, 100, 0, 640);
+  }
+  { /* a wide left zone pushes the middle to its edge */
+    centerx_case("centers-clamp-left", 1240, 40, 600, 100, 400, 600);
+  }
+  { /* a wide right zone pulls the middle back off it */
+    centerx_case("centers-clamp-right", 1240, 40, 200, 600, 400, 240);
+  }
+  { /* a middle as wide as the gap fills it: both clamps land on leftw */
+    centerx_case("centers-fill", 1240, 40, 200, 100, 940, 200);
+  }
+  { /* odd slack truncates: the first of the two middle pixels takes it */
+    centerx_case("centers-odd", 1241, 0, 0, 0, 400, 420);
+  }
+}
+
 int
 main(void) {
   { /* plain text: single leading block with id 0 */
@@ -216,6 +253,7 @@ main(void) {
 
   pills();
   cells();
+  centers();
 
   printf("%s: %d checks, %d failures\n", failures ? "FAILED" : "ok", checks,
          failures);
