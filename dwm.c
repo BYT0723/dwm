@@ -97,7 +97,6 @@ enum {
   SchemeNorm,
   SchemeSel,
   SchemeHid,
-  SchemeHost,
   SchemeTagNorm,
   SchemeTagSel,
   SchemeStatus,
@@ -144,7 +143,6 @@ enum {
   WMLast
 }; /* default atoms */
 enum {
-  ClkHost,
   ClkTagBar,
   ClkLtSymbol,
   ClkStatusText,
@@ -718,9 +716,7 @@ void buttonpress(XEvent *e) {
     hoverhide();
     tabgeometry(m, &tstart, &tend);
     i = tagatx(m, ev->x, &x);
-    if (ev->x <= TEXTW(host)) {
-      click = ClkHost;
-    } else if (i >= 0) {
+    if (i >= 0) {
       click = ClkTagBar;
       arg.ui = 1 << i;
     } else if (ev->x < x + blw)
@@ -1165,27 +1161,33 @@ void drawbar(Monitor *m) {
       urg |= c->tags;
   }
 
-  w = TEXTW(host);
   gx = x;
-  drw_setscheme(drw, scheme[SchemeHost]);
-  if (tabr > 0)
-    drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
-  x = drw_text(drw, x, 0, w, bh, tabr, host, 0, tabr > 0);
-
   for (i = 0; i < LENGTH(tags); i++) {
     char text[64];
+    int is_first, lp, skip;
     /* Do not draw vacant tags */
     if (!(occ & 1 << i || m->tagset[m->seltags] & 1 << i))
       continue;
     template_expand(tagtext, tag_placeholder, &i, text, sizeof(text));
     w = TEXTW(text);
     drw_setscheme(drw, scheme[m->tagset[m->seltags] & 1 << i ? SchemeTagSel : SchemeTagNorm]);
-    drw_text(drw, x, 0, w, bh, lpad, text, urg & 1 << i,0);
-    x += w;
+    is_first = (x == gx);
+    lp = (is_first && tabr > 0) ? tabr : lpad;
+    skip = (is_first && tabr > 0);
+    if (skip)
+      drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
+    x = drw_text(drw, x, 0, w, bh, lp, text, urg & 1 << i, skip);
   }
   w = blw = TEXTW(m->ltsymbol);
   drw_setscheme(drw, scheme[SchemeLayout]);
-  x = drw_text(drw, x, 0, w - tabr, bh, lpad, m->ltsymbol, 0, 0);
+  {
+    int is_first = (x == gx);
+    int lp = (is_first && tabr > 0) ? tabr : lpad;
+    int skip = (is_first && tabr > 0);
+    if (skip)
+      drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
+    x = drw_text(drw, x, 0, w - tabr, bh, lp, m->ltsymbol, 0, skip);
+  }
   x += drw_rounded(drw, x, 0, bh, tabr, RoundedRight);
   drawtabborder(gx, x - gx, scheme[SchemeStatus]);
 
@@ -1707,21 +1709,16 @@ static Client *taskshover(Monitor *m, int xclick, int tstart, int *tabx) {
 }
 
 /* tag index under x, mirroring the drawbar/buttonpress geometry that
-   skips vacant tags; returns -1 when x sits on the host symbol or past
+   skips vacant tags; returns -1 when x sits past
    the last drawn tag. *xend receives the right edge of the last drawn
    tag (the start of the layout symbol). */
 static int tagatx(Monitor *m, int x, int *xend) {
   Client *c;
   unsigned int occ = 0, i;
-  int xpos = TEXTW(host);
+  int xpos = 0;
 
   for (c = m->clients; c; c = c->next)
     occ |= c->tags;
-  if (x <= xpos) { /* host symbol, not a tag */
-    if (xend)
-      *xend = xpos;
-    return -1;
-  }
   i = 0;
   do {
     if (!(occ & 1 << i || m->tagset[m->seltags] & 1 << i))

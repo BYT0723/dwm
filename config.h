@@ -9,7 +9,6 @@ static const          int topbar       = 1;   /* 0 means bottom bar */
 static const          int barfontpad   = 8;
 static const          int vertpad      = 2;  /* vertical padding of bar */
 static const          int sidepad      = 2;  /* horizontal padding of bar */
-static const          char host[]      = "  ";
 
 /* tab style; 0:default 1:center 2:custom_width
  * 0 0 0 0 0 0 0 0
@@ -93,8 +92,6 @@ static char col_white[]    = "#eee8d5";  /*  7: white    */
 static char col_ab_black[] = "#000000";
 static char *colors[][3] = {
     /*                    fg            bg            border   */
-    // host
-    [SchemeHost]    = { col_blue,     col_black,    col_black    },
     // tag
     [SchemeTagNorm] = { col_white,    col_black,    col_black    },
     [SchemeTagSel]  = { col_black,    col_blue,     col_black    },
@@ -122,8 +119,6 @@ static char *colors[][3] = {
 
 static const unsigned int alphas[][3]      = {
     /*                    fg         bg                border     */
-    // host
-    [SchemeHost]    = { OPAQUE,      TAB_SEL_BG_ALPHA, TRANSPARENT },
     // tag
     [SchemeTagNorm] = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     [SchemeTagSel]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
@@ -351,9 +346,6 @@ static const char *statuscmd[] = {"/bin/sh", "-c", "$HOME/.dwm/dwm-statuscmd.sh 
 /* click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, ClkTitleBar, or ClkRootWin */
 static Button buttons[] = {
     /* click          event   mask     button          function argument */
-    //hostname
-    {  ClkHost,       0,      Button1, spawn,          LAUNCHCMD("apps")},
-    {  ClkHost,       0,      Button3, spawn,          LAUNCHCMD("powermenu")},
     // tag
     {  ClkTagBar,     0,      Button1, view,           {0}},
     {  ClkTagBar,     0,      Button3, toggleview,     {0}},
