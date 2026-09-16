@@ -406,6 +406,7 @@ static int tagatx(Monitor *m, int x, int *xend);
 static int tagtextw(unsigned int i);
 typedef const char *(*template_resolve)(const char *f, size_t *plen, void *ctx);
 static void template_expand(const char *fmt, template_resolve resolve, void *ctx, char *buf, size_t len);
+static const char *tab_placeholder(const char *f, size_t *plen, void *ctx);
 static const char *tag_placeholder(const char *f, size_t *plen, void *ctx);
 static void toggletag(const Arg *arg);
 static void toggleview(const Arg *arg);
@@ -456,7 +457,7 @@ static char lastbutton[] = "-";
 static int screen;
 static int sw, sh;      /* X display screen geometry width, height */
 static int bh, blw = 0; /* bar geometry */
-static int th = 0;        /* titlebar height (== bh when enabled, 0 when disabled) */
+static int th = 0;        /* titlebar height (font height + 2 * titlebarpad when enabled, 0 when disabled) */
 static int lrpad;       /* sum of left and right padding for text */
 static int lpad;        /* left padding for text, equal lrpad/2  */
 static int vp;          /* vertical padding for bar */
@@ -1339,7 +1340,8 @@ titlebtnsat(Client *c, int x)
 void
 drawtitle(Client *c)
 {
-  int scm, i, btnw, titlew, bx, lp, cx, txtw, hasicon;
+  int scm, i, btnw, titlew, bx, lp, cx, txtw, hasicon, iconw;
+  char text[256];
 
   if (!c || c->frame == None || titleh(c) <= 0)
     return;
@@ -1350,17 +1352,21 @@ drawtitle(Client *c)
   drw_setscheme(drw, scheme[scm]);
   btnw = (c->w >= (int)(NTITLEBTNS * th + lrpad)) ? NTITLEBTNS * th : 0;
   titlew = c->w - btnw;
-  txtw = TEXTW(c->name) - lrpad;
-  hasicon = c->icon && titlew >= (int)(c->icw + ICONSPACING + lrpad);
-  if (hasicon)
-    cx = MAX((int)lpad, (titlew - txtw - (int)(c->icw + ICONSPACING)) / 2);
-  else
-    cx = MAX((int)lpad, (titlew - txtw) / 2);
+  template_expand(titlebartext, tab_placeholder, c, text, sizeof(text));
+  txtw = TEXTW(text) - lrpad;
+  hasicon = showtitleicon && c->icon && titlew >= (int)(c->icw + ICONSPACING + lrpad);
+  iconw = hasicon ? (int)(c->icw + ICONSPACING) : 0;
+  if (titlebaralign == 2) /* right: text block ends at the button area */
+    cx = MAX((int)lpad, titlew - txtw - iconw);
+  else if (titlebaralign == 1) /* center: true center of the full titlebar width */
+    cx = MAX((int)lpad, (c->w - txtw - iconw) / 2);
+  else /* left (0 and anything unexpected) */
+    cx = lpad;
   if (hasicon) {
-    drw_text(drw, 0, 0, titlew, th, cx + c->icw + ICONSPACING, c->name, 0, 0);
+    drw_text(drw, 0, 0, titlew, th, cx + c->icw + ICONSPACING, text, 0, 0);
     drw_pic(drw, cx, (th - c->ich) / 2, c->icw, c->ich, c->icon);
   } else {
-    drw_text(drw, 0, 0, titlew, th, cx, c->name, 0, 0);
+    drw_text(drw, 0, 0, titlew, th, cx, text, 0, 0);
   }
   for (i = 0; i < (int)NTITLEBTNS && btnw; i++) {
     bx = titlew + i * th;
@@ -3608,7 +3614,7 @@ void setup(void) {
   tabr = MIN(tabradius, lpad);
 
   bh = drw->fonts->h + barfontpad * 2;
-  th = showtitlebar ? bh : 0;
+  th = showtitlebar ? drw->fonts->h + 2 * titlebarpad : 0;
   sp = sidepad;
   vp = (topbar == 1) ? vertpad : -vertpad;
   updategeom();

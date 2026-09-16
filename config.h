@@ -58,10 +58,14 @@ static const          int systraypad              = 4;
 static const          char *systrayorder[]        = { "fcitx", "...", "easyeffects", "blueman", "nm-applet", "pasystray", "udiskie", NULL };
 
 // title bar
-static const          int showtitlebar  = 1;   /* 0 means no titlebar, 1 shows a per-client titlebar (height follows bh) */
-static const          char *titlebtns[] = { "", "", "" }; /* titlebar buttons, left to right: minimize, maximize, close. The order is fixed (0 = hide, 1 = togglefloating, 2 = killclient); only the labels are configurable. */
+static const          int showtitlebar    = 1;   /* 0 means no titlebar, 1 shows a per-client titlebar (height = font height + 2 * titlebarpad) */
+static const unsigned int titlebarpad     = 6;   /* per-side padding; titlebar height = font height + 2 * titlebarpad */
+static const          int showtitleicon   = 1;   /* 1 = draw the client icon in the titlebar, 0 = text only */
+static const          int titlebaralign   = 1;    /* 0 = left, 1 = center, 2 = right */
+static const          char titlebartext[] = "{title}"; /* titlebar text template; placeholders: {title}, {class} (same as tabtext) */
+static const          char *titlebtns[]   = { "", "", "" }; /* titlebar buttons, left to right: minimize, maximize, close. The order is fixed (0 = hide, 1 = togglefloating, 2 = killclient); only the labels are configurable. */
 
-static const          int autoshowhid      = 1; /* 1 = focusstackhid shows hidden windows permanently; 0                                = preview, re-hide on switch away */
+static const          int autoshowhid      = 1; /* 1 = focusstackhid shows hidden windows permanently; 0 = preview, re-hide on switch away */
 static const unsigned int attachtop        = 0; /* new window is attached to the top of the stack */
 static const          int focusonmove      = 1; /* switch view and focus follow the client moved by tag/tagmon */
 static const          int jump_on_activate = 1; /* 1 = _NET_ACTIVE_WINDOW (e.g. rofi -show window) jumps to the window's tag/monitor; 0 = only mark it urgent */
