@@ -765,6 +765,15 @@ void attachstack(Client *c) {
   c->mon->stack = c;
 }
 
+/* shared prologue when a client or its frame is clicked */
+static void
+focusclicked(Client *c) {
+  hoverhide();
+  focus(c);
+  restack(selmon);
+  XAllowEvents(dpy, ReplayPointer, CurrentTime);
+}
+
 void buttonpress(XEvent *e) {
   unsigned int click;
   int i;
@@ -794,17 +803,11 @@ void buttonpress(XEvent *e) {
       }
     }
   } else if ((c = wintoclient(ev->window))) {
-    hoverhide();
-    focus(c);
-    restack(selmon);
-    XAllowEvents(dpy, ReplayPointer, CurrentTime);
+    focusclicked(c);
     click = ClkClientWin;
   } else if ((c = frameclient(ev->window))) {
     int btn;
-    hoverhide();
-    focus(c);
-    restack(selmon);
-    XAllowEvents(dpy, ReplayPointer, CurrentTime);
+    focusclicked(c);
     if (titleh(c) > 0) {
       /* left-click on a titlebar button acts directly (min/max/close),
          clicks elsewhere fall through to the ClkTitleBar bindings (drag) */

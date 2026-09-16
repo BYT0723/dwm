@@ -3,6 +3,19 @@
 
 #include <string.h>
 
+/* record the pending [start, len) slice as a block tagged with curid */
+static int
+emit_block(BarBlock *out, int max, int nb, unsigned int curid, int start,
+           int len) {
+  if (len > start && nb < max) {
+    out[nb].id = curid;
+    out[nb].off = start;
+    out[nb].end = len;
+    return nb + 1;
+  }
+  return nb;
+}
+
 int
 bar_blocks(const char *src, char *dst, int dstlen, BarBlock *out, int max) {
   int len = 0, nb = 0, start = 0;
@@ -20,12 +33,7 @@ bar_blocks(const char *src, char *dst, int dstlen, BarBlock *out, int max) {
       continue; /* the portrait cut marker is gone; ignore a stale one */
     if (c < ' ') {
       /* control character: close the current block, tag the next one with it */
-      if (len > start && nb < max) {
-        out[nb].id = curid;
-        out[nb].off = start;
-        out[nb].end = len;
-        nb++;
-      }
+      nb = emit_block(out, max, nb, curid, start, len);
       curid = c;
       start = len;
       continue;
@@ -34,12 +42,7 @@ bar_blocks(const char *src, char *dst, int dstlen, BarBlock *out, int max) {
       dst[len++] = (char)c;
   }
 
-  if (len > start && nb < max) {
-    out[nb].id = curid;
-    out[nb].off = start;
-    out[nb].end = len;
-    nb++;
-  }
+  nb = emit_block(out, max, nb, curid, start, len);
   dst[len] = '\0';
   return nb;
 }
@@ -53,6 +56,20 @@ block_by_id(const BarBlock *blocks, int nblocks, unsigned int id) {
     if (blocks[i].id == id)
       return i;
   return -1;
+}
+
+/* append the ^)^ pill terminator and mark the gap after the last cell */
+static int
+close_pill(char *dst, int dstlen, int len, BarPillCell *cells, int ncells) {
+  if (len + 3 < dstlen) {
+    dst[len++] = '^';
+    dst[len++] = ')';
+    dst[len++] = '^';
+    dst[len] = '\0';
+  }
+  if (ncells > 0)
+    cells[ncells - 1].gap = 1;
+  return len;
 }
 
 int
@@ -71,14 +88,7 @@ bar_pills(const char *src, const BarBlock *blocks, int nblocks, const int *ids,
 
     if (ids[i] == 0) { /* pill break */
       if (open) {
-        if (len + 3 < dstlen) {
-          dst[len++] = '^';
-          dst[len++] = ')';
-          dst[len++] = '^';
-          dst[len] = '\0';
-        }
-        if (ncells > 0)
-          cells[ncells - 1].gap = 1;
+        len = close_pill(dst, dstlen, len, cells, ncells);
         open = 0;
       }
       continue;
@@ -104,16 +114,8 @@ bar_pills(const char *src, const BarBlock *blocks, int nblocks, const int *ids,
     }
   }
 
-  if (open) {
-    if (len + 3 < dstlen) {
-      dst[len++] = '^';
-      dst[len++] = ')';
-      dst[len++] = '^';
-      dst[len] = '\0';
-    }
-    if (ncells > 0)
-      cells[ncells - 1].gap = 1;
-  }
+  if (open)
+    len = close_pill(dst, dstlen, len, cells, ncells);
   return ncells;
 }
 
@@ -130,15 +132,17 @@ bar_cells(int want, int n, int avail, int gap, BarCellsMode mode, int *out,
 
   if (want > 0 && (mode == BarCellsFixed ||
                    (mode == BarCellsFit && want * n < room))) {
-    for (i = 0; i < n && i < maxw; i++)
-      out[i] = want;
+    if (out)
+      for (i = 0; i < n && i < maxw; i++)
+        out[i] = want;
     return want * n + gap * n;
   }
 
   base = room / n;
   rem = room % n;
-  for (i = 0; i < n && i < maxw; i++)
-    out[i] = base + (i < rem ? 1 : 0);
+  if (out)
+    for (i = 0; i < n && i < maxw; i++)
+      out[i] = base + (i < rem ? 1 : 0);
   return room + gap * n;
 }
 

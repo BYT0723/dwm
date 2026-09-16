@@ -35,19 +35,10 @@ static int enablegaps = 1;
 #endif // PERTAG_PATCH
 
 void setgaps(int oh, int ov, int ih, int iv) {
-  if (oh < 0)
-    oh = 0;
-  if (ov < 0)
-    ov = 0;
-  if (ih < 0)
-    ih = 0;
-  if (iv < 0)
-    iv = 0;
-
-  selmon->gappoh = oh;
-  selmon->gappov = ov;
-  selmon->gappih = ih;
-  selmon->gappiv = iv;
+  selmon->gappoh = MAX(oh, 0);
+  selmon->gappov = MAX(ov, 0);
+  selmon->gappih = MAX(ih, 0);
+  selmon->gappiv = MAX(iv, 0);
   arrange(selmon);
 }
 
@@ -63,40 +54,26 @@ void togglegaps(const Arg *arg) {
 
 void defaultgaps(const Arg *arg) { setgaps(gappoh, gappov, gappih, gappiv); }
 
-void incrgaps(const Arg *arg) {
-  setgaps(selmon->gappoh + arg->i, selmon->gappov + arg->i,
-          selmon->gappih + arg->i, selmon->gappiv + arg->i);
+/* shared body for the inc* key bindings: add the deltas to current gaps */
+static void
+addgaps(int oh, int ov, int ih, int iv) {
+  setgaps(selmon->gappoh + oh, selmon->gappov + ov, selmon->gappih + ih,
+          selmon->gappiv + iv);
 }
 
-void incrigaps(const Arg *arg) {
-  setgaps(selmon->gappoh, selmon->gappov, selmon->gappih + arg->i,
-          selmon->gappiv + arg->i);
-}
+void incrgaps(const Arg *arg) { addgaps(arg->i, arg->i, arg->i, arg->i); }
 
-void incrogaps(const Arg *arg) {
-  setgaps(selmon->gappoh + arg->i, selmon->gappov + arg->i, selmon->gappih,
-          selmon->gappiv);
-}
+void incrigaps(const Arg *arg) { addgaps(0, 0, arg->i, arg->i); }
 
-void incrohgaps(const Arg *arg) {
-  setgaps(selmon->gappoh + arg->i, selmon->gappov, selmon->gappih,
-          selmon->gappiv);
-}
+void incrogaps(const Arg *arg) { addgaps(arg->i, arg->i, 0, 0); }
 
-void incrovgaps(const Arg *arg) {
-  setgaps(selmon->gappoh, selmon->gappov + arg->i, selmon->gappih,
-          selmon->gappiv);
-}
+void incrohgaps(const Arg *arg) { addgaps(arg->i, 0, 0, 0); }
 
-void incrihgaps(const Arg *arg) {
-  setgaps(selmon->gappoh, selmon->gappov, selmon->gappih + arg->i,
-          selmon->gappiv);
-}
+void incrovgaps(const Arg *arg) { addgaps(0, arg->i, 0, 0); }
 
-void incrivgaps(const Arg *arg) {
-  setgaps(selmon->gappoh, selmon->gappov, selmon->gappih,
-          selmon->gappiv + arg->i);
-}
+void incrihgaps(const Arg *arg) { addgaps(0, 0, arg->i, 0); }
+
+void incrivgaps(const Arg *arg) { addgaps(0, 0, 0, arg->i); }
 
 void getgaps(Monitor *m, int *oh, int *ov, int *ih, int *iv, unsigned int *nc) {
   unsigned int n, oe, ie;
