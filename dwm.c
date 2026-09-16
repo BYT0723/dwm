@@ -189,9 +189,12 @@ struct Client {
   unsigned int icw, ich, icon_alpha;
   Picture icon;
   /* the same icon at the tab's own size, when the bar reserves room under it
-     for the selection dot; None when the two sizes agree */
+     for the selection dot; None when the two sizes agree. tabicon_size is the
+     target size that picture was built for (0 = none), so a mode change can
+     tell it went stale */
   unsigned int tabicw, tabich;
   Picture tabicon;
+  int tabicon_size;
   Pixmap hspm;   /* hidden snapshot pixmap, None when absent */
   Picture hspic; /* hidden snapshot picture, None when absent */
   unsigned int hspw, hsph; /* hidden snapshot size, fits the hidden box */
@@ -448,6 +451,7 @@ typedef const char *(*template_resolve)(const char *f, size_t *plen, void *ctx);
 static void template_expand(const char *fmt, template_resolve resolve, void *ctx, char *buf, size_t len);
 static const char *tab_placeholder(const char *f, size_t *plen, void *ctx);
 static const char *tag_placeholder(const char *f, size_t *plen, void *ctx);
+static void toggletabmode(const Arg *arg);
 static void toggletag(const Arg *arg);
 static void toggleview(const Arg *arg);
 static void togglewin(const Arg *arg);
@@ -2025,11 +2029,9 @@ static int tablayout(Monitor *m, int avail, TabCell *cells, int max,
 
 /* icon size the tab row uses; TabModeIcons reserves the dot's room */
 static int tabiconsize(void) {
-  int dot = (int)tabseldot * 2;
-
-  if (tabmode != TabModeIcons || dot <= 0)
+  if (tabmode != TabModeIcons || tabseldot <= 0)
     return ICONSIZE;
-  return MAX(8, ICONSIZE - dot - 2);
+  return MAX(8, ICONSIZE - tabseldot - 2);
 }
 
 /* tabiconpath with "$HOME/" or "~/" expanded */
@@ -4644,6 +4646,23 @@ void togglebar(const Arg *arg) {
   arrange(selmon);
 }
 
+/* flip the bar's tab rendering between one titled pill per client and a single
+   shared pill of icons. The mode decides the row's layout and the tab icon's
+   own size (TabModeIcons keeps room for the selection dot), so every client's
+   tab-sized icon is rebuilt and every bar is redrawn; the old slot geometry
+   and any open tab tooltip go with it. */
+static void toggletabmode(const Arg *arg) {
+  Monitor *m;
+  Client *c;
+
+  tabmode = tabmode == TabModeIconTitle ? TabModeIcons : TabModeIconTitle;
+  for (m = mons; m; m = m->next)
+    for (c = m->clients; c; c = c->next)
+      updateicon(c);
+  hoverhide();
+  drawbars();
+}
+
 /* find the Layout entry whose arrange function matches, so single-master modes
    can switch to / restore from their host layout without hardcoding an index */
 static const Layout *findlayout(void (*arrange)(Monitor *)) {
@@ -4816,6 +4835,7 @@ void freeicon(Client *c) {
     XRenderFreePicture(dpy, c->tabicon);
     c->tabicon = None;
   }
+  c->tabicon_size = 0;
 }
 
 void togglewin(const Arg *arg) {
@@ -5471,19 +5491,27 @@ void updatetitle(Client *c) {
 
 void updateicon(Client *c) {
   int scm = c->mon->sel == c ? SchemeSel : SchemeNorm;
+  unsigned int new_alpha;
+  int tabsz;
+
   if (c->hidden)
     scm = SchemeHid;
 
-  unsigned int new_alpha = alphas[scm][0];
-  if (c->icon_alpha == new_alpha && c->icon)
+  new_alpha = alphas[scm][0];
+  /* the tab icon is a second picture at a smaller size when the bar keeps
+     room under it for the selection dot; 0 when both sizes agree */
+  tabsz = tabiconsize();
+  if (tabsz == ICONSIZE)
+    tabsz = 0;
+  if (c->icon_alpha == new_alpha && c->icon && c->tabicon_size == tabsz)
     return;
 
   freeicon(c);
   c->icon_alpha = new_alpha;
+  c->tabicon_size = tabsz;
   c->icon = geticonprop(c->win, &c->icw, &c->ich, new_alpha, ICONSIZE);
-  if (tabiconsize() != ICONSIZE)
-    c->tabicon =
-        geticonprop(c->win, &c->tabicw, &c->tabich, new_alpha, tabiconsize());
+  if (tabsz)
+    c->tabicon = geticonprop(c->win, &c->tabicw, &c->tabich, new_alpha, tabsz);
 }
 
 

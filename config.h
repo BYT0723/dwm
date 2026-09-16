@@ -44,9 +44,10 @@ static const unsigned int tabborderpx = 1; /* tab outline width in px; 0 = no ou
 
 /* tab rendering mode:
  * TabModeIconTitle: one pill per client, icon + title (tabtext), tabwidth wide
- * TabModeIcons:     every icon in a single shared pill, tabtext is ignored */
+ * TabModeIcons:     every icon in a single shared pill, tabtext is ignored
+ * Starts in this mode; MODKEY|ShiftMask+b (toggletabmode) flips it at runtime. */
 typedef enum { TabModeIconTitle, TabModeIcons } TabMode;
-static const TabMode tabmode = TabModeIconTitle;
+static TabMode tabmode = TabModeIcons;
 
 /* how TabModeIconTitle sizes its pills:
  * TabFit   keep tabwidth while the row fits, level it to the zone otherwise
@@ -317,6 +318,7 @@ static Key keys[] = {
     {MODKEY|ShiftMask,             XK_r,                     cyclecfact,     {0}},
     // client manager
     {MODKEY,                       XK_b,                     togglebar,      {0}},
+    {MODKEY|ShiftMask,             XK_b,                     toggletabmode,  {0}},
     {MODKEY,                       XK_j,                     focusstackvis,  {.i = +1}},
     {MODKEY,                       XK_k,                     focusstackvis,  {.i = -1}},
     {MODKEY|ShiftMask,             XK_j,                     focusstackhid,  {.i = +1}},

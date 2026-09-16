@@ -3,7 +3,7 @@ dwm
 *.rej
 *.o
 tests/barparse_test
-tests/.smoke-bar.png
+tests/.smoke-bar*.png
 
 # planning docs for the bar work, kept local on purpose
 docs/specs/SPEC-bar-modules.md
