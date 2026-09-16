@@ -45,7 +45,6 @@
 #include <X11/extensions/Xinerama.h>
 #endif /* XINERAMA */
 #include <X11/Xft/Xft.h>
-#include <X11/extensions/Xcomposite.h>
 #include <poll.h>
 #include <errno.h>
 #include <time.h>
@@ -1840,6 +1839,14 @@ static double previewscale(Monitor *m, int sw, int sh) {
   return MIN(scale, (double)(m->mw - (int)hoverpad * 2) / MAX(sw, 1));
 }
 
+/* preview area size for a sw x sh source, using the live-tooltip scale */
+static void previewsize(Monitor *m, int sw, int sh, int *pw, int *ph) {
+  double scale = previewscale(m, sw, sh);
+
+  *pw = MAX(1, (int)(sw * scale));
+  *ph = MAX(1, (int)(sh * scale));
+}
+
 /* show the hover tooltip for client c, centered above/below the tab at tx */
 static void hovershow(Client *c, int tx) {
   int iw, lh, y, gx, gy, pw, ph;
@@ -1955,37 +1962,40 @@ static void hoverpreview(Client *c, int x, int y, int w, int h) {
   int ix = x + (int)previewborderpx, iy = y + (int)previewborderpx,
       iw2 = MAX(1, w - (int)previewborderpx * 2),
       ih2 = MAX(1, h - (int)previewborderpx * 2), i;
-  Pixmap pm = XCompositeNameWindowPixmap(dpy, c->win);
   XWindowAttributes wa;
   XRenderPictFormat *fmt;
   Picture pic;
   XTransform tr;
 
-  if (!pm)
-    return;
-  if (XGetWindowAttributes(dpy, c->win, &wa) != True ||
+  /* an InputOnly window has no contents to sample at all */
+  if (!XGetWindowAttributes(dpy, c->win, &wa) || wa.class != InputOutput ||
       !(fmt = XRenderFindVisualFormat(dpy, wa.visual))) {
-    XFreePixmap(dpy, pm);
+    drw_text(tooldrw, x, y + (h - drw->fonts->h) / 2, w, drw->fonts->h, 0,
+             "no preview", 0, 0);
     return;
   }
-  pic = XRenderCreatePicture(dpy, pm, fmt, 0, NULL);
-  if (!pic) {
-    XFreePixmap(dpy, pm);
-    return;
-  }
+
+  /* Sample the client window directly: XCompositeNameWindowPixmap needs the
+     compositor to have redirected that exact window (picom may skip one,
+     e.g. Firefox) and misses GTK child-window contents, while a window
+     picture covers the whole tree. A preview is cosmetic, so swallow any
+     error here instead of letting it take down the WM. */
+  XSetErrorHandler(xerrordummy);
+  pic = XRenderCreatePicture(dpy, c->win, fmt, 0, NULL);
   XRenderSetPictureFilter(dpy, pic, FilterGood, NULL, 0);
-  scaletransform(&tr, c->w, iw2, c->h, ih2);
+  scaletransform(&tr, wa.width, iw2, wa.height, ih2);
   XRenderSetPictureTransform(dpy, pic, &tr);
-  /* the source rect must be the full source image (c->w x c->h); the
-     transform maps it onto the destination rect (iw2 x ih2).
+  /* the source rect must be the full source image (wa.width x wa.height);
+     the transform maps it onto the destination rect (iw2 x ih2).
      PictOpOver blends over the black background: PictOpSrc would copy
      the client's alpha channel straight through, so a translucent client
      (e.g. a semi-transparent terminal) would punch a hole through the
      tooltip instead of showing against it */
-  XRenderComposite(dpy, PictOpOver, pic, None, tooldrw->picture, 0, 0, c->w,
-                   c->h, ix, iy, iw2, ih2);
+  XRenderComposite(dpy, PictOpOver, pic, None, tooldrw->picture, 0, 0,
+                   wa.width, wa.height, ix, iy, iw2, ih2);
   XRenderFreePicture(dpy, pic);
-  XFreePixmap(dpy, pm);
+  XSync(dpy, False);
+  XSetErrorHandler(xerror);
   /* highlight border in colors[x][2]; drw_rect has no border channel
      (filled=0 draws with the fg color), so draw it directly */
   XSetForeground(dpy, tooldrw->gc, scheme[SchemeSel][ColBorder].pixel);
@@ -2002,15 +2012,6 @@ static void hoverrefresh(void) {
     return;
   hoverpreview(c, prevpx, prevpy, prevw, prevh);
   drw_map(tooldrw, toolwin, 0, 0, tooldrw->w, tooldrw->h);
-}
-
-/* tag preview target size for a sw x sh source region, using the same
-   scale as the hover tooltip preview */
-static void tagpreviewsize(Monitor *m, int sw, int sh, int *dw, int *dh) {
-  double scale = previewscale(m, sw, sh);
-
-  *dw = MAX(1, (int)(sw * scale));
-  *dh = MAX(1, (int)(sh * scale));
 }
 
 /* show the scaled snapshot of tag i in the tagwin below the bar, laid
@@ -2146,7 +2147,7 @@ void takepreview(void) {
     fprintf(stderr, "dwm: XGetImage failed for tag preview\n");
     return;
   }
-  tagpreviewsize(selmon, selmon->mw, selmon->mh, &dw, &dh);
+  previewsize(selmon, selmon->mw, selmon->mh, &dw, &dh);
 
   for (i = 0; i < LENGTH(tags); i++) {
     /* only tags that are occupied and part of the current view */
@@ -2685,6 +2686,11 @@ void manage(Window w, XWindowAttributes *wa, int mapped) {
   Client *c, *t = NULL;
   Window trans = None;
 
+  /* InputOnly windows have no drawable contents and must never become
+     clients: there is nothing to frame, tab or sample from them */
+  if (!wa || wa->class == InputOnly)
+    return;
+
   c = ecalloc(1, sizeof(Client));
   c->win = w;
   /* geometry */
@@ -2817,6 +2823,12 @@ void maprequest(XEvent *e) {
 
   if (!XGetWindowAttributes(dpy, ev->window, &wa) || wa.override_redirect)
     return;
+  if (wa.class == InputOnly) {
+    /* InputOnly windows carry no contents: there is nothing to frame, tab
+       or preview, so just let them be mapped */
+    XMapWindow(dpy, ev->window);
+    return;
+  }
   if ((c = wintoclient(ev->window))) {
     /* remap request for a managed client (e.g. tray show after Withdrawn) */
     if (!HIDDEN(c) && getstate(c->win) == NormalState)
@@ -4160,7 +4172,7 @@ void updatebars(void) {
   for (m = mons; m; m = m->next) {
     int dw, dh;
 
-    tagpreviewsize(m, m->mw, m->mh, &dw, &dh);
+    previewsize(m, m->mw, m->mh, &dw, &dh);
     if (!m->tagwin) {
       XSetWindowAttributes twa = {
           .override_redirect = True,
