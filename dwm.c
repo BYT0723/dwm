@@ -3406,7 +3406,7 @@ void scan(void) {
       if (!XGetWindowAttributes(dpy, wins[i], &wa) || wa.override_redirect ||
           XGetTransientForHint(dpy, wins[i], &d1))
         continue;
-      if (wa.map_state == IsViewable || ISHIDDENSTATE(getstate(wins[i]))) {
+      if (wa.map_state == IsViewable || getstate(wins[i]) == IconicState) {
         if (!systrayredock(wins[i]))
           manage(wins[i], &wa, 0);
       }
@@ -3415,7 +3415,7 @@ void scan(void) {
       if (!XGetWindowAttributes(dpy, wins[i], &wa))
         continue;
       if (XGetTransientForHint(dpy, wins[i], &d1) &&
-          (wa.map_state == IsViewable || ISHIDDENSTATE(getstate(wins[i]))))
+          (wa.map_state == IsViewable || getstate(wins[i]) == IconicState))
         manage(wins[i], &wa, 0);
     }
     if (showsystray && systray)
