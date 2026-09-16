@@ -148,6 +148,7 @@ enum {
   ClkStatusText,
   ClkWinTitle,
   ClkClientWin,
+  ClkTitleBar,
   ClkRootWin,
   ClkLast
 }; /* clicks */
@@ -176,6 +177,7 @@ struct Client {
   float cfact;
   int x, y, w, h;
   int oldx, oldy, oldw, oldh;
+  int sfx, sfy, sfw, sfh; /* last floating geometry, restored when leaving tiled state */
   int basew, baseh, incw, inch, maxw, maxh, minw, minh, hintsvalid;
   int bw, oldbw, basebw; /* basebw = rule-specified border, restored by arrangemon */
   unsigned int tags;
@@ -186,7 +188,11 @@ struct Client {
   Client *next;
   Client *snext;
   Monitor *mon;
-  Window win;
+  Window win;   /* application window, child of frame */
+  Window frame; /* reparenting frame carrying border + titlebar, None until managed */
+  int ignoreunmap; /* expected UnmapNotifies to swallow (reparent/hide) */
+  int rule_notitle; /* Rule override: 1 = never show a titlebar for this client */
+  int notitle;  /* resolved: rule override OR motif/gtk self-decoration hints */
 };
 
 typedef struct {
@@ -250,6 +256,7 @@ typedef struct {
   int isfloating;
   int monitor;
   int bw; /* < 0 = default borderpx, >= 0 overrides c->bw/basebw */
+  int notitle; /* 1 = never show a titlebar for this client, 0 = auto-detect */
 } Rule;
 
 typedef struct Systray Systray;
@@ -287,6 +294,14 @@ static void drawbars(void);
 static void drawtabborder(int x, int w, Clr *s);
 static int drawstatusbar(Monitor *m, int bh, char *text);
 static int drawtabs(Monitor *m, int x, int w, int n);
+static int titleh(Client *c);
+static void updatenodecor(Client *c);
+static void createframe(Client *c);
+static void placeclient(Client *c);
+static void drawtitle(Client *c);
+static void drawtitles(void);
+static int titlebtnsat(Client *c, int x);
+static Client *frameclient(Window w);
 static void enternotify(XEvent *e);
 static void expose(XEvent *e);
 static void focus(Client *c);
@@ -432,6 +447,7 @@ static char lastbutton[] = "-";
 static int screen;
 static int sw, sh;      /* X display screen geometry width, height */
 static int bh, blw = 0; /* bar geometry */
+static int th = 0;        /* titlebar height (== bh when enabled, 0 when disabled) */
 static int lrpad;       /* sum of left and right padding for text */
 static int lpad;        /* left padding for text, equal lrpad/2  */
 static int vp;          /* vertical padding for bar */
@@ -457,6 +473,8 @@ static void (*handler[LASTEvent])(XEvent *) = {
     [ResizeRequest] = resizerequest,
     [UnmapNotify] = unmapnotify};
 static Atom wmatom[WMLast], netatom[NetLast], xatom[XLast];
+static Atom motifwmhints = None;   /* _MOTIF_WM_HINTS: decorations == 0 → self-decorated */
+static Atom gtkframeextents = None; /* _GTK_FRAME_EXTENTS present → GTK CSD window */
 static int restart = 0;
 static int running = 1;
 static Cur *cursor[CurLast];
@@ -516,6 +534,7 @@ void applyrules(Client *c) {
   /* rule matching */
   c->isfloating = 0;
   c->tags = 0;
+  c->rule_notitle = 0;
   c->bw = c->basebw = borderpx;
   XGetClassHint(dpy, c->win, &ch);
   class = ch.res_class ? ch.res_class : broken;
@@ -531,6 +550,7 @@ void applyrules(Client *c) {
         (!r->instance || strstr(instance, r->instance))) {
       c->isfloating = r->isfloating;
       c->tags |= r->tags;
+      c->rule_notitle = r->notitle;
       if (r->bw >= 0)
         c->bw = c->basebw = r->bw;
       for (m = mons; m && m->num != r->monitor; m = m->next);
@@ -640,7 +660,8 @@ void arrangemon(Monitor *m) {
       target = 0;
     if (c->bw != target) {
       c->bw = target;
-      XSetWindowBorderWidth(dpy, c->win, c->bw);
+      if (c->frame != None)
+        XSetWindowBorderWidth(dpy, c->frame, c->bw);
     }
   }
   strncpy(m->ltsymbol, m->lt[m->sellt]->symbol, sizeof m->ltsymbol);
@@ -710,6 +731,28 @@ void buttonpress(XEvent *e) {
     restack(selmon);
     XAllowEvents(dpy, ReplayPointer, CurrentTime);
     click = ClkClientWin;
+  } else if ((c = frameclient(ev->window))) {
+    int btn;
+    hoverhide();
+    focus(c);
+    restack(selmon);
+    XAllowEvents(dpy, ReplayPointer, CurrentTime);
+    if (titleh(c) > 0) {
+      /* left-click on a titlebar button acts directly (min/max/close),
+         clicks elsewhere fall through to the ClkTitleBar bindings (drag) */
+      if (ev->button == Button1 && (btn = titlebtnsat(c, ev->x)) >= 0) {
+        if (btn == 0)
+          hide(NULL);
+        else if (btn == 1)
+          togglefloating(NULL);
+        else
+          killclient(NULL);
+        return;
+      }
+      click = ClkTitleBar;
+    } else {
+      click = ClkClientWin;
+    }
   } else if (ev->window == root) {
     hoverhide();
   }
@@ -848,16 +891,18 @@ void clientmessage(XEvent *e) {
 
 void configure(Client *c) {
   XConfigureEvent ce;
+  int dh = titleh(c);
 
+  /* report the client's visible geometry inside its frame */
   ce.type = ConfigureNotify;
   ce.display = dpy;
   ce.event = c->win;
   ce.window = c->win;
   ce.x = c->x;
-  ce.y = c->y;
+  ce.y = c->y + dh;
   ce.width = c->w;
-  ce.height = c->h;
-  ce.border_width = c->bw;
+  ce.height = MAX(c->h - dh, 1);
+  ce.border_width = 0;
   ce.above = None;
   ce.override_redirect = False;
   XSendEvent(dpy, c->win, False, StructureNotifyMask, (XEvent *)&ce);
@@ -896,9 +941,13 @@ void configurerequest(XEvent *e) {
   XWindowChanges wc;
 
   if ((c = wintoclient(ev->window))) {
-    if (ev->value_mask & CWBorderWidth)
-      c->bw = ev->border_width;
-    else if (c->isfloating || !selmon->lt[selmon->sellt]->arrange) {
+    if (ev->value_mask & CWBorderWidth) {
+      /* the frame owns the border; the client stays borderless */
+      if (c->frame != None) {
+        c->bw = ev->border_width;
+        XSetWindowBorderWidth(dpy, c->frame, c->bw);
+      }
+    } else if (c->isfloating || !selmon->lt[selmon->sellt]->arrange) {
       m = c->mon;
       if (ev->value_mask & CWX) {
         c->oldx = c->x;
@@ -906,7 +955,7 @@ void configurerequest(XEvent *e) {
       }
       if (ev->value_mask & CWY) {
         c->oldy = c->y;
-        c->y = m->my + ev->y;
+        c->y = m->my + ev->y - titleh(c);
       }
       if (ev->value_mask & CWWidth) {
         c->oldw = c->w;
@@ -914,7 +963,7 @@ void configurerequest(XEvent *e) {
       }
       if (ev->value_mask & CWHeight) {
         c->oldh = c->h;
-        c->h = ev->height;
+        c->h = ev->height + titleh(c);
       }
       if ((c->x + c->w) > m->mx + m->mw && c->isfloating)
         c->x = m->mx + (m->mw / 2 - WIDTH(c) / 2); /* center in x direction */
@@ -924,10 +973,10 @@ void configurerequest(XEvent *e) {
           !(ev->value_mask & (CWWidth | CWHeight)))
         configure(c);
       if (ISVISIBLE(c))
-        XMoveResizeWindow(dpy, c->win, c->x, c->y, c->w, c->h);
+        resize(c, c->x, c->y, c->w, c->h, 0);
     } else
       configure(c);
-  } else {
+  } else if (!frameclient(ev->window)) {
     wc.x = ev->x;
     wc.y = ev->y;
     wc.width = ev->width;
@@ -981,6 +1030,8 @@ void destroynotify(XEvent *e) {
   Client *c;
   XDestroyWindowEvent *ev = &e->xdestroywindow;
 
+  if (frameclient(ev->window))
+    return; /* our own frame teardown, ignore */
   if ((c = wintoclient(ev->window))) {
     if (c == hoverc)
       hoverhide();
@@ -1132,6 +1183,198 @@ void drawbars(void) {
 
   if (showsystray && !systraypinning)
     updatesystray(0);
+}
+
+/* vertical space the titlebar takes inside c's frame, 0 when disabled/hidden.
+   c->x/y/w/h always describe the FRAME; the client lives at (0, titleh). */
+int
+titleh(Client *c)
+{
+  if (!showtitlebar || !c || c->isfullscreen || c->notitle)
+    return 0;
+  return th;
+}
+
+/* 1 if the client asked for no window-manager decorations via Motif hints */
+static int
+motifnodecor(Window w)
+{
+  Atom actual;
+  int fmt;
+  unsigned long n, extra;
+  unsigned char *p = NULL;
+  long *m;
+  int nodecor = 0;
+
+  if (motifwmhints == None)
+    return 0;
+  if (XGetWindowProperty(dpy, w, motifwmhints, 0, 5, False, AnyPropertyType,
+                         &actual, &fmt, &n, &extra, &p) != Success ||
+      !p || fmt != 32 || n < 3)
+    goto out;
+  m = (long *)p;
+  nodecor = ((m[0] & 2L) && m[2] == 0); /* MWM_HINTS_DECORATIONS && decorations == 0 */
+out:
+  if (p)
+    XFree(p);
+  return nodecor;
+}
+
+/* 1 if the client advertises GTK client-side decorations */
+static int
+hasgtkcsd(Window w)
+{
+  Atom actual;
+  int fmt;
+  unsigned long n, extra;
+  unsigned char *p = NULL;
+  int found = 0;
+
+  if (gtkframeextents == None)
+    return 0;
+  if (XGetWindowProperty(dpy, w, gtkframeextents, 0, 4, False, AnyPropertyType,
+                         &actual, &fmt, &n, &extra, &p) != Success || !p)
+    goto out;
+  found = (n > 0);
+out:
+  if (p)
+    XFree(p);
+  return found;
+}
+
+/* resolve c->notitle from the rule override and live self-decoration hints */
+void
+updatenodecor(Client *c)
+{
+  if (c->rule_notitle) {
+    c->notitle = 1;
+    return;
+  }
+  c->notitle = 0;
+  if (motifnodecor(c->win) || hasgtkcsd(c->win))
+    c->notitle = 1;
+}
+
+/* create c->frame, reparent c->win into it and place it below the title area.
+   The frame owns the border (c->bw); the client border is forced to 0. */
+void
+createframe(Client *c)
+{
+  XSetWindowAttributes wa = {
+    .override_redirect = False,
+    .background_pixel = 0,
+    .border_pixel = scheme[SchemeNorm][ColBorder].pixel,
+    .colormap = cmap,
+    .event_mask = ButtonPressMask | ExposureMask | EnterWindowMask |
+                  LeaveWindowMask | SubstructureRedirectMask |
+                  SubstructureNotifyMask,
+  };
+  XClassHint ch = {"dwm", "dwm"};
+  XWindowChanges wc;
+
+  c->frame = XCreateWindow(dpy, root, c->x, c->y, c->w, c->h, c->bw,
+    depth, InputOutput, visual,
+    CWBackPixel | CWBorderPixel | CWColormap | CWEventMask, &wa);
+  XDefineCursor(dpy, c->frame, cursor[CurNormal]->cursor);
+  XSetClassHint(dpy, c->frame, &ch);
+  c->ignoreunmap++;
+  /* keep the client alive if the frame dies with us (quit/hot-restart) */
+  XAddToSaveSet(dpy, c->win);
+  XReparentWindow(dpy, c->win, c->frame, 0, titleh(c));
+  wc.border_width = 0;
+  XConfigureWindow(dpy, c->win, CWBorderWidth, &wc);
+  placeclient(c);
+}
+
+/* (re)position c->win inside c->frame below the title area */
+void
+placeclient(Client *c)
+{
+  int dh = titleh(c);
+
+  XMoveResizeWindow(dpy, c->win, 0, dh, c->w, MAX(c->h - dh, 1));
+}
+
+/* titlebtns is configured in config.h; index 0 = minimize, 1 = maximize, 2 = close */
+#define NTITLEBTNS (LENGTH(titlebtns))
+
+/* index of the titlebar button at frame-relative x, -1 for none */
+int
+titlebtnsat(Client *c, int x)
+{
+  int btnw;
+
+  if (!c || titleh(c) <= 0)
+    return -1;
+  btnw = NTITLEBTNS * th;
+  if (c->w < btnw + lrpad || x < c->w - btnw)
+    return -1;
+  return MIN((x - (c->w - btnw)) / th, (int)NTITLEBTNS - 1);
+}
+
+/* draw the title + buttons onto c->frame's top strip.
+   The title (icon + text) is centered in the area left of the buttons. */
+void
+drawtitle(Client *c)
+{
+  int scm, i, btnw, titlew, bx, lp, cx, txtw, hasicon;
+
+  if (!c || c->frame == None || titleh(c) <= 0)
+    return;
+  if (!ISVISIBLE(c) || HIDDEN(c))
+    return;
+  scm = (c == c->mon->sel) ? SchemeSel : SchemeNorm;
+  updateicon(c);
+  drw_setscheme(drw, scheme[scm]);
+  btnw = (c->w >= (int)(NTITLEBTNS * th + lrpad)) ? NTITLEBTNS * th : 0;
+  titlew = c->w - btnw;
+  txtw = TEXTW(c->name) - lrpad;
+  hasicon = c->icon && titlew >= (int)(c->icw + ICONSPACING + lrpad);
+  if (hasicon)
+    cx = MAX((int)lpad, (titlew - txtw - (int)(c->icw + ICONSPACING)) / 2);
+  else
+    cx = MAX((int)lpad, (titlew - txtw) / 2);
+  if (hasicon) {
+    drw_text(drw, 0, 0, titlew, th, cx + c->icw + ICONSPACING, c->name, 0, 0);
+    drw_pic(drw, cx, (th - c->ich) / 2, c->icw, c->ich, c->icon);
+  } else {
+    drw_text(drw, 0, 0, titlew, th, cx, c->name, 0, 0);
+  }
+  for (i = 0; i < (int)NTITLEBTNS && btnw; i++) {
+    bx = titlew + i * th;
+    lp = MAX((th - (int)drw_fontset_getwidth(drw, titlebtns[i])) / 2, 0);
+    drw_text(drw, bx, 0, th, th, lp, titlebtns[i], 0, 0);
+  }
+  drw_map(drw, c->frame, 0, 0, c->w, th);
+}
+
+void
+drawtitles(void)
+{
+  Monitor *m;
+  Client *c;
+
+  if (th <= 0)
+    return;
+  for (m = mons; m; m = m->next)
+    for (c = m->clients; c; c = c->next)
+      if (ISVISIBLE(c) && !HIDDEN(c))
+        drawtitle(c);
+}
+
+Client *
+frameclient(Window w)
+{
+  Monitor *m;
+  Client *c;
+
+  if (w == None)
+    return NULL;
+  for (m = mons; m; m = m->next)
+    for (c = m->clients; c; c = c->next)
+      if (c->frame != None && c->frame == w)
+        return c;
+  return NULL;
 }
 
 /* 1 if s is an "#RRGGBB" color string */
@@ -1936,8 +2179,13 @@ void leavenotify(XEvent *e) {
 
 void expose(XEvent *e) {
   Monitor *m;
+  Client *c;
   XExposeEvent *ev = &e->xexpose;
 
+  if (ev->count == 0 && (c = frameclient(ev->window))) {
+    drawtitle(c);
+    return;
+  }
   if (ev->count == 0 && (m = wintomon(ev->window))) {
     drawbar(m);
 
@@ -1967,7 +2215,8 @@ void focus(Client *c) {
     detachstack(c);
     attachstack(c);
     grabbuttons(c, 1);
-    XSetWindowBorder(dpy, c->win, scheme[SchemeSel][ColBorder].pixel);
+    if (c->frame != None)
+      XSetWindowBorder(dpy, c->frame, scheme[SchemeSel][ColBorder].pixel);
     setfocus(c);
   } else {
     XSetInputFocus(dpy, root, RevertToPointerRoot, CurrentTime);
@@ -1977,6 +2226,7 @@ void focus(Client *c) {
   if (c && focusclient(c->mon))
     arrange(c->mon); /* keep the focused window in the single master slot */
   drawbars();
+  drawtitles();
 }
 
 /* there are some broken focus acquiring clients needing extra handling */
@@ -2257,6 +2507,10 @@ void grabbuttons(Client *c, int focused) {
     unsigned int modifiers[] = {0, LockMask, numlockmask,
                                 numlockmask | LockMask};
     XUngrabButton(dpy, AnyButton, AnyModifier, c->win);
+    /* NOTE: never grab on c->frame. The frame is our own window, so title
+       clicks already reach us via its ButtonPressMask; a passive grab there
+       would also swallow every click inside the client (ancestor grabs
+       intercept descendant presses) and break all in-client mouse input. */
     if (!focused)
       XGrabButton(dpy, AnyButton, AnyModifier, c->win, False, BUTTONMASK,
                   GrabModeSync, GrabModeSync, None, None);
@@ -2296,24 +2550,13 @@ void hidewin(Client *c) {
   if (!c || HIDDEN(c))
     return;
 
-  Window w = c->win;
-  static XWindowAttributes ra, ca;
-
-  // more or less taken directly from blackbox's hide() function
-  XGrabServer(dpy);
-  XGetWindowAttributes(dpy, root, &ra);
-  XGetWindowAttributes(dpy, w, &ca);
-  // prevent UnmapNotify events
-  XSelectInput(dpy, root, ra.your_event_mask & ~SubstructureNotifyMask);
-  XSelectInput(dpy, w, ca.your_event_mask & ~StructureNotifyMask);
-  XUnmapWindow(dpy, w);
+  /* hiding unmaps the frame only; the client stays mapped inside it.
+     Frame unmaps are ignored by unmapnotify, so no event juggling needed. */
+  XUnmapWindow(dpy, c->frame);
   c->hidden = 1;
   setclientstate(c, IconicState);
   // refresh tab icon after IconicState; alpha follows client state
   updateicon(c);
-  XSelectInput(dpy, root, ra.your_event_mask);
-  XSelectInput(dpy, w, ca.your_event_mask);
-  XUngrabServer(dpy);
 }
 
 void incnmaster(const Arg *arg) {
@@ -2417,7 +2660,6 @@ void layoutmenu(const Arg *arg) {
 void manage(Window w, XWindowAttributes *wa) {
   Client *c, *t = NULL;
   Window trans = None;
-  XWindowChanges wc;
 
   c = ecalloc(1, sizeof(Client));
   c->win = w;
@@ -2461,9 +2703,15 @@ void manage(Window w, XWindowAttributes *wa) {
   c->x = MAX(MIN(c->x ,c->mon->mx + c->mon->mw - WIDTH(c)), c->mon->mx);
   c->y = MAX(MIN(c->y, c->mon->my + c->mon->mh - HEIGHT(c)), c->mon->my);
 
-  wc.border_width = c->bw;
-  XConfigureWindow(dpy, w, CWBorderWidth, &wc);
-  XSetWindowBorder(dpy, w, scheme[SchemeNorm][ColBorder].pixel);
+  /* resolve titlebar opt-out (rule override + motif/gtk hints) first:
+     the frame grows by titleh() below only when a title is wanted */
+  updatenodecor(c);
+
+  /* wa->width/height is the size the client asked for; the frame wraps it
+     and the titlebar (when enabled) comes on top inside the frame */
+  c->h = c->oldh = c->h + titleh(c);
+  createframe(c);
+  XSetWindowBorder(dpy, c->frame, scheme[SchemeNorm][ColBorder].pixel);
   updatewindowtype(c);
   updatesizehints(c);
   updatewmhints(c);
@@ -2514,8 +2762,11 @@ void manage(Window w, XWindowAttributes *wa) {
     unfocus(selmon->sel, 0);
   c->mon->sel = c;
   arrange(c->mon);
-  if (!HIDDEN(c))
+  if (!HIDDEN(c)) {
+    XMapWindow(dpy, c->frame);
     XMapWindow(dpy, c->win);
+    drawtitle(c);
+  }
   focus(NULL);
 }
 
@@ -2544,7 +2795,9 @@ void maprequest(XEvent *e) {
     /* remap request for a managed client (e.g. tray show after Withdrawn) */
     if (!HIDDEN(c) && getstate(c->win) == NormalState)
       return;
+    XMapWindow(dpy, c->frame);
     XMapWindow(dpy, ev->window);
+    drawtitle(c);
     c->hidden = 0;
     setclientstate(c, NormalState);
     updateicon(c);
@@ -2698,8 +2951,9 @@ void propertynotify(XEvent *e) {
 
   if ((ev->window == root) && (ev->atom == XA_WM_NAME))
     updatestatus();
-  else if (ev->state == PropertyDelete && ev->atom != wmatom[WMState])
-    return; /* ignore */
+  else if (ev->state == PropertyDelete && ev->atom != wmatom[WMState] &&
+           ev->atom != motifwmhints && ev->atom != gtkframeextents)
+    return; /* ignore (but decor-hint removal must re-resolve the title) */
   else if ((c = wintoclient(ev->window))) {
     if (ev->atom == wmatom[WMState]) {
       /* WM_STATE can be rewritten by the client or external tools
@@ -2738,6 +2992,16 @@ void propertynotify(XEvent *e) {
       updateicon(c);
       if (c == c->mon->sel && !c->isfullscreen)
         drawbar(c->mon);
+      drawtitle(c);
+    } else if (ev->atom == motifwmhints || ev->atom == gtkframeextents) {
+      /* self-decoration hints (un)set at runtime: grow/shrink the frame */
+      int old = c->notitle;
+      updatenodecor(c);
+      if (old != c->notitle && !c->isfullscreen) {
+        c->h += c->notitle ? -th : th;
+        c->oldh = c->h;
+        arrange(c->mon);
+      }
     }
     if (ev->atom == netatom[NetWMWindowType])
       updatewindowtype(c);
@@ -2797,9 +3061,12 @@ void resizeclient(Client *c, int x, int y, int w, int h) {
   c->oldh = c->h;
   c->h = wc.height = h;
   wc.border_width = c->bw;
-  XConfigureWindow(dpy, c->win, CWX | CWY | CWWidth | CWHeight | CWBorderWidth,
+  /* x, y, w, h describe the frame; the client fills it below the title */
+  XConfigureWindow(dpy, c->frame, CWX | CWY | CWWidth | CWHeight | CWBorderWidth,
                    &wc);
+  placeclient(c);
   configure(c);
+  drawtitle(c);
   XSync(dpy, False);
 }
 
@@ -2820,7 +3087,7 @@ void resizemouse(const Arg *arg) {
   if (XGrabPointer(dpy, root, False, MOUSEMASK, GrabModeAsync, GrabModeAsync,
                    None, cursor[CurResize]->cursor, CurrentTime) != GrabSuccess)
     return;
-  XWarpPointer(dpy, None, c->win, 0, 0, 0, 0, c->w + c->bw - 1, c->h + c->bw - 1);
+  XWarpPointer(dpy, None, c->frame, 0, 0, 0, 0, c->w + c->bw - 1, c->h + c->bw - 1);
   do {
     XMaskEvent(dpy, MOUSEMASK | ExposureMask | SubstructureRedirectMask, &ev);
     switch (ev.type) {
@@ -2849,7 +3116,7 @@ void resizemouse(const Arg *arg) {
       break;
     }
   } while (ev.type != ButtonRelease);
-  XWarpPointer(dpy, None, c->win, 0, 0, 0, 0, c->w + c->bw - 1, c->h + c->bw - 1);
+  XWarpPointer(dpy, None, c->frame, 0, 0, 0, 0, c->w + c->bw - 1, c->h + c->bw - 1);
   XUngrabPointer(dpy, CurrentTime);
   while (XCheckMaskEvent(dpy, EnterWindowMask, &ev))
     ;
@@ -2876,17 +3143,18 @@ void restack(Monitor *m) {
   XWindowChanges wc;
 
   drawbar(m);
+  drawtitles();
   if (!m->sel)
     return;
   if (m->sel->isfloating || !m->lt[m->sellt]->arrange)
-    XRaiseWindow(dpy, m->sel->win);
+    XRaiseWindow(dpy, m->sel->frame);
   if (m->lt[m->sellt]->arrange) {
     wc.stack_mode = Below;
     wc.sibling = m->barwin;
     for (c = m->stack; c; c = c->snext)
       if (!c->isfloating && ISVISIBLE(c)) {
-        XConfigureWindow(dpy, c->win, CWSibling | CWStackMode, &wc);
-        wc.sibling = c->win;
+        XConfigureWindow(dpy, c->frame, CWSibling | CWStackMode, &wc);
+        wc.sibling = c->frame;
       }
   }
   XSync(dpy, False);
@@ -3126,7 +3394,7 @@ void setfullscreen(Client *c, int fullscreen) {
     c->bw = 0;
     c->isfloating = 1;
     resizeclient(c, c->mon->mx, c->mon->my, c->mon->mw, c->mon->mh);
-    XRaiseWindow(dpy, c->win);
+    XRaiseWindow(dpy, c->frame);
   } else if (!fullscreen && c->isfullscreen) {
     XChangeProperty(dpy, c->win, netatom[NetWMState], XA_ATOM, 32,
                     PropModeReplace, (unsigned char *)0, 0);
@@ -3226,6 +3494,7 @@ void setup(void) {
   tabr = MIN(tabradius, lpad);
 
   bh = drw->fonts->h + barfontpad * 2;
+  th = showtitlebar ? bh : 0;
   sp = sidepad;
   vp = (topbar == 1) ? vertpad : -vertpad;
   updategeom();
@@ -3303,6 +3572,8 @@ void setup(void) {
   xatom[Manager] = XInternAtom(dpy, "MANAGER", False);
   xatom[Xembed] = XInternAtom(dpy, "_XEMBED", False);
   xatom[XembedInfo] = XInternAtom(dpy, "_XEMBED_INFO", False);
+  motifwmhints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
+  gtkframeextents = XInternAtom(dpy, "_GTK_FRAME_EXTENTS", False);
   /* init cursors */
   cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
   cursor[CurResize] = drw_cur_create(drw, XC_sizing);
@@ -3359,23 +3630,25 @@ void showhide(Client *c) {
   if (!c)
     return;
   if (ISVISIBLE(c)) {
-    /* show clients top down */
-    XMoveWindow(dpy, c->win, c->x, c->y);
+    /* show clients top down (position only; mapping is owned by
+       manage/showwin — an iconically hidden client must stay unmapped) */
+    XMoveWindow(dpy, c->frame, c->x, c->y);
     if ((!c->mon->lt[c->mon->sellt]->arrange || c->isfloating) &&
         !c->isfullscreen)
       resize(c, c->x, c->y, c->w, c->h, 0);
     showhide(c->snext);
   } else {
-    /* hide clients bottom up */
+    /* hide clients bottom up: park the frame offscreen but keep it mapped
+       so composite snapshots (tag previews) keep working */
     showhide(c->snext);
 
     static XWindowAttributes ra;
     XGetWindowAttributes(dpy, root, &ra);
 
     if (c->tags < selmon->tagset[selmon->seltags])
-      XMoveWindow(dpy, c->win, -c->w * 3/2, c->y);
+      XMoveWindow(dpy, c->frame, -c->w * 3/2, c->y);
     else if (c->tags > selmon->tagset[selmon->seltags])
-      XMoveWindow(dpy, c->win, ra.width * 3/2, c->y);
+      XMoveWindow(dpy, c->frame, ra.width * 3/2, c->y);
   }
   updateicon(c);
 }
@@ -3665,13 +3938,27 @@ static int focusmode(Monitor *m) {
 }
 
 void togglefloating(const Arg *arg) {
+  Client *c;
   if (!selmon->sel)
     return;
   if (selmon->sel->isfullscreen) /* no support for fullscreen windows */
     return;
-  selmon->sel->isfloating = !selmon->sel->isfloating || selmon->sel->isfixed;
-  if (selmon->sel->isfloating)
-    resize(selmon->sel, selmon->sel->x, selmon->sel->y, selmon->sel->w,selmon->sel->h, 0);
+  c = selmon->sel;
+  if (c->isfloating && !c->isfixed) {
+    /* floating -> tiled: remember the floating geometry ... */
+    c->sfx = c->x;
+    c->sfy = c->y;
+    c->sfw = c->w;
+    c->sfh = c->h;
+    c->isfloating = 0;
+  } else {
+    /* ... tiled -> floating: go back to it (fixed windows stay floating) */
+    c->isfloating = 1;
+    if (c->sfw > 0)
+      resize(c, c->sfx, c->sfy, c->sfw, c->sfh, 0);
+    else
+      resize(c, c->x, c->y, c->w, c->h, 0);
+  }
 
   arrange(selmon);
 }
@@ -3757,7 +4044,8 @@ void unfocus(Client *c, int setfocus) {
   if (!c)
     return;
   grabbuttons(c, 0);
-  XSetWindowBorder(dpy, c->win, scheme[SchemeNorm][ColBorder].pixel);
+  if (c->frame != None)
+    XSetWindowBorder(dpy, c->frame, scheme[SchemeNorm][ColBorder].pixel);
   if (setfocus) {
     XSetInputFocus(dpy, root, RevertToPointerRoot, CurrentTime);
     XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
@@ -3775,13 +4063,18 @@ void unmanage(Client *c, int destroyed) {
     wc.border_width = c->oldbw;
     XGrabServer(dpy); /* avoid race conditions */
     XSetErrorHandler(xerrordummy);
-    XConfigureWindow(dpy, c->win, CWBorderWidth, &wc); /* restore border */
+    /* give the client back to root and restore its border */
+    XRemoveFromSaveSet(dpy, c->win);
+    XReparentWindow(dpy, c->win, root, c->x, c->y);
+    XConfigureWindow(dpy, c->win, CWBorderWidth, &wc);
     XUngrabButton(dpy, AnyButton, AnyModifier, c->win);
     setclientstate(c, WithdrawnState);
     XSync(dpy, False);
     XSetErrorHandler(xerror);
     XUngrabServer(dpy);
   }
+  if (c->frame != None)
+    XDestroyWindow(dpy, c->frame);
   free(c);
   focus(NULL);
   updateclientlist();
@@ -3792,7 +4085,13 @@ void unmapnotify(XEvent *e) {
   Client *c;
   XUnmapEvent *ev = &e->xunmap;
 
+  if (frameclient(ev->window))
+    return; /* frame unmaps are WM-initiated (hide/showhide), ignore */
   if ((c = wintoclient(ev->window))) {
+    if (c->ignoreunmap > 0) {
+      c->ignoreunmap--;
+      return;
+    }
     if (c == hoverc)
       hoverhide();
     if (ev->send_event) {
@@ -4353,18 +4652,20 @@ void showwin(Client *c) {
     return;
 
   if (!HIDDEN(c)) {
-    /* fallback: flag says visible but window is actually unmapped
+    /* fallback: flag says visible but frame is actually unmapped
        (e.g. WM_STATE rewritten after hide()); remap or it stays selected-but-invisible */
     XWindowAttributes wa;
-    if (XGetWindowAttributes(dpy, c->win, &wa) && wa.map_state == IsViewable)
+    if (XGetWindowAttributes(dpy, c->frame, &wa) && wa.map_state == IsViewable)
       return;
   }
 
+  XMapWindow(dpy, c->frame);
   XMapWindow(dpy, c->win);
   c->hidden = 0;
   setclientstate(c, NormalState);
   updateicon(c);
   arrange(c->mon);
+  drawtitle(c);
 }
 
 void updatetitle(Client *c) {
@@ -4372,6 +4673,7 @@ void updatetitle(Client *c) {
     gettextprop(c->win, XA_WM_NAME, c->name, sizeof c->name);
   if (c->name[0] == '\0') /* hack to mark broken clients */
     strcpy(c->name, broken);
+  drawtitle(c);
 }
 
 void updateicon(Client *c) {
@@ -4480,6 +4782,8 @@ Monitor *wintomon(Window w) {
       return m;
   if ((c = wintoclient(w)))
     return c->mon;
+  if ((c = frameclient(w)))
+    return c->mon;
   return selmon;
 }
 
@@ -4587,19 +4891,20 @@ void restorestacking(void) {
       attachstack(c);
     }
 
-  /* strictly restore X stacking order (bottom → top) */
+  /* strictly restore X stacking order (bottom → top); stack frames,
+     the saved ids are client windows */
   {
     XWindowChanges wc = {0};
     Window prev = 0;
     for (i = 0; i < n; i++) {
-      if (!wintoclient(seq[i]))
+      if (!(c = wintoclient(seq[i])) || c->frame == None)
         continue;
       if (prev) {
         wc.sibling = prev;
         wc.stack_mode = Above;
-        XConfigureWindow(dpy, seq[i], CWSibling | CWStackMode, &wc);
+        XConfigureWindow(dpy, c->frame, CWSibling | CWStackMode, &wc);
       }
-      prev = seq[i];
+      prev = c->frame;
     }
   }
   /* restore panel (bar/systray) vs client stacking: the new barwin and
@@ -4617,7 +4922,7 @@ void restorestacking(void) {
         if (ISVISIBLE(c2) && c2->isfullscreen)
           bottomfs = c2;
       if (bottomfs) {
-        wc.sibling = bottomfs->win;
+        wc.sibling = bottomfs->frame;
         wc.stack_mode = Below;
         XConfigureWindow(dpy, m2->barwin, CWSibling | CWStackMode, &wc);
         if (showsystray && systray && systraytomon(m2) == m2)
@@ -4749,18 +5054,18 @@ int main(int argc, char *argv[]) {
         setstateprop(c->win, dfa, &fl, 1);
         setstateprop(c->win, dfs, fstate, c->isfullscreen ? 7 : 0);
       }
-    // Store the stacking order
+    // Store the stacking order (bottom → top) as client windows; on
+    // restart the frames are recreated, so only client ids stay valid
     {
       Atom sa = XInternAtom(dpy, "_DWM_STACKING", False);
-      Window d1, d2, *wins = NULL;
-      unsigned int i, num;
+      Monitor *sm;
+      Client *sc;
       XDeleteProperty(dpy, root, sa);
-      if (XQueryTree(dpy, root, &d1, &d2, &wins, &num)) {
-        for (i = 0; i < num; i++)
-          XChangeProperty(dpy, root, sa, XA_WINDOW, 32, PropModeAppend,
-                          (unsigned char *)&wins[i], 1);
-        XFree(wins);
-      }
+      for (sm = mons; sm; sm = sm->next)
+        /* m->stack head is topmost: prepend so the property reads bottom → top */
+        for (sc = sm->stack; sc; sc = sc->snext)
+          XChangeProperty(dpy, root, sa, XA_WINDOW, 32, PropModePrepend,
+                          (unsigned char *)&sc->win, 1);
     }
     // Store the tile order per monitor
     {

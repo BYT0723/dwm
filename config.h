@@ -52,6 +52,10 @@ static const          int systraypinningfailfirst = 1;  /* 1: if pinning fails, 
 static const          int systraypad              = 4;
 static const          char *systrayorder[]        = { "fcitx", "...", "easyeffects", "blueman", "nm-applet", "pasystray", "udiskie", NULL };
 
+// title bar
+static const          int showtitlebar  = 1;   /* 0 means no titlebar, 1 shows a per-client titlebar (height follows bh) */
+static const          char *titlebtns[] = { "", "", "" }; /* titlebar buttons, left to right: minimize, maximize, close. The order is fixed (0 = hide, 1 = togglefloating, 2 = killclient); only the labels are configurable. */
+
 static const          int autoshowhid      = 1; /* 1 = focusstackhid shows hidden windows permanently; 0                                = preview, re-hide on switch away */
 static const unsigned int attachtop        = 0; /* new window is attached to the top of the stack */
 static const          int focusonmove      = 1; /* switch view and focus follow the client moved by tag/tagmon */
@@ -141,7 +145,10 @@ static const Rule rules[] = {
      * WM_CLASS(STRING) = instance, class
      * WM_NAME(STRING) = title
      */
-    /* class                instance    title     tags mask     isfloating    monitor       border width */
+    /* class                instance    title     tags mask     isfloating    monitor       border width    notitle */
+    /* notitle: 1 = never show the frame titlebar for this client (e.g. it draws its own);
+       0 = auto (honor _MOTIF_WM_HINTS/_GTK_FRAME_EXTENTS). Trailing fields may be
+       omitted and default to 0. Last matching rule wins, like the other fields. */
     {"firefox",             NULL,       NULL,     1 << 1,       0,            -1,          -1},
     {"chromium",            NULL,       NULL,     1 << 1,       0,            -1,          -1},
     {"Tor Browser",         NULL,       NULL,     1 << 1,       0,            -1,          -1},
@@ -338,7 +345,7 @@ static Key keys[] = {
 static const char *statuscmd[] = {"/bin/sh", "-c", "$HOME/.dwm/dwm-statuscmd.sh $INDEX $BUTTON", NULL};
 
 /* button definitions */
-/* click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, or ClkRootWin */
+/* click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, ClkTitleBar, or ClkRootWin */
 static Button buttons[] = {
     /* click          event   mask     button          function argument */
     //hostname
@@ -366,4 +373,7 @@ static Button buttons[] = {
     {  ClkClientWin,  MODKEY, Button1, movemouse,      {0}},
     {  ClkClientWin,  MODKEY, Button2, togglefloating, {0}},
     {  ClkClientWin,  MODKEY, Button3, resizemouse,    {0}},
+    // titlebar       (per-client titlebar, only active when showtitlebar = 1)
+    {  ClkTitleBar,   0,      Button1, movemouse,      {0}},
+    {  ClkTitleBar,   0,      Button3, togglefloating, {0}},
 };
