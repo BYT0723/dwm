@@ -187,6 +187,9 @@ struct Client {
   int hidden; /* 1 = IconicState (hide) or WithdrawnState (tray hide), mirrors WM_STATE */
   unsigned int icw, ich, icon_alpha;
   Picture icon;
+  Pixmap hspm;   /* hidden snapshot pixmap, None when absent */
+  Picture hspic; /* hidden snapshot picture, None when absent */
+  unsigned int hspw, hsph; /* hidden snapshot size, fits the hidden box */
   Client *next;
   Client *snext;
   Monitor *mon;
@@ -314,6 +317,7 @@ static void focusmon(const Arg *arg);
 static void focusstack(int inc, int vis);
 static void focusstackhid(const Arg *arg);
 static void focusstackvis(const Arg *arg);
+static void freehspic(Client *c);
 static void freeicon(Client *c);
 static void fullscreen(const Arg *arg);
 static Atom getatomprop(Client *c, Atom prop);
@@ -396,6 +400,7 @@ static void hoverhide(void);
 static void hovershow(Client *c, int tx);
 static void previewtag(const Arg *arg);
 static void showtagpreview(unsigned int i);
+static void takesnapshot(Client *c);
 static void takepreview(void);
 static int tagatx(Monitor *m, int x, int *xend);
 static int tagtextw(unsigned int i);
@@ -1865,18 +1870,11 @@ static void hovershow(Client *c, int tx) {
   lh = drw->fonts->h;
   title = c->name;
 
-  /* live preview area: height fixed to previewh, width scales by aspect */
-  if (HIDDEN(c)) {
-    pw = 160; /* placeholder: just enough for the icon or "no preview" text */
-    ph = 100;
-  } else {
-    /* scale by height, then by width so the preview never exceeds the
-       monitor; wide-but-short windows would otherwise overflow the screen */
-    double scale = previewscale(m, c->w, c->h);
-
-    pw = MAX(1, (int)(c->w * scale));
-    ph = MAX(1, (int)(c->h * scale));
-  }
+  /* preview area: the same scale for visible and hidden clients, so the
+     tooltip is the same size either way; a hidden client shows the snapshot
+     cached at hide time. Scale by height, then by width so the preview never
+     exceeds the monitor; wide-but-short windows would otherwise overflow */
+  previewsize(m, c->w, c->h, &pw, &ph);
 
   /* width follows the preview; a long title is ellipsized to fit */
   tw = pw + hoverpad * 2;
@@ -1920,8 +1918,11 @@ static void hovershow(Client *c, int tx) {
   prevh = ph;
   hoverpreview(c, prevpx, prevpy, prevw, prevh);
 
-  drw_map(tooldrw, toolwin, 0, 0, tw, th);
+  /* map before copying: draws on an unmapped window are discarded on the
+     first map, which would show an empty tooltip; the server processes
+     map + copy in order, so no flash (same as showtagpreview) */
   XMapRaised(dpy, toolwin);
+  drw_map(tooldrw, toolwin, 0, 0, tw, th);
   XFlush(dpy);
 }
 
@@ -1940,13 +1941,84 @@ static void scaletransform(XTransform *tr, int sw, int dw, int sh, int dh) {
   tr->matrix[2][2] = 1 << 16;
 }
 
+/* set while a snapshot capture runs; the handler only records, XSync
+   collects */
+static int snapfail;
+
+static int snaperror(Display *d, XErrorEvent *e) {
+  (void)d; (void)e;
+  snapfail = 1;
+  return 0;
+}
+
+/* capture c's visible contents into the hidden-snapshot cache, scaled to
+   the live-tooltip size so it exactly fills its box; the frame is still
+   mapped at this point (hidewin calls this before unmapping). A failed
+   capture is discarded and the previous snapshot is kept. */
+static void takesnapshot(Client *c) {
+  XWindowAttributes wa, fwa;
+  XRenderPictFormat *fmt;
+  int pw, ph;
+  Pixmap pm;
+  Picture src, dst;
+  XTransform tr;
+
+  if (!c || !c->mon)
+    return;
+  /* only a currently viewable frame holds readable contents */
+  if (!XGetWindowAttributes(dpy, c->frame, &fwa) ||
+      fwa.map_state != IsViewable)
+    return;
+  if (!XGetWindowAttributes(dpy, c->win, &wa) || wa.class != InputOutput ||
+      !(fmt = XRenderFindVisualFormat(dpy, wa.visual)))
+    return;
+
+  /* same size as the live tooltip (which is sized from the frame), so the
+     snapshot exactly fills its box; the client itself is the source, scaled
+     to fit, just like the live path */
+  previewsize(c->mon, c->w, c->h, &pw, &ph);
+
+  snapfail = 0;
+  XSetErrorHandler(snaperror);
+  pm = XCreatePixmap(dpy, root, pw, ph, wa.depth);
+  dst = XRenderCreatePicture(dpy, pm, fmt, 0, NULL);
+  src = XRenderCreatePicture(dpy, c->win, fmt, 0, NULL);
+  XRenderSetPictureFilter(dpy, src, FilterGood, NULL, 0);
+  scaletransform(&tr, wa.width, pw, wa.height, ph);
+  XRenderSetPictureTransform(dpy, src, &tr);
+  XRenderComposite(dpy, PictOpSrc, src, None, dst, 0, 0, wa.width, wa.height,
+                   0, 0, pw, ph);
+  XRenderFreePicture(dpy, src);
+  XSync(dpy, False);
+  if (snapfail) { /* keep the old snapshot; drop the broken attempt */
+    XRenderFreePicture(dpy, dst);
+    XFreePixmap(dpy, pm);
+  }
+  XSetErrorHandler(xerror);
+  if (snapfail)
+    return;
+  freehspic(c);
+  c->hspm = pm;
+  c->hspic = dst;
+  c->hspw = pw;
+  c->hsph = ph;
+}
+
 /* composite a live scaled snapshot of c into the preview area (x, y, w, h);
-   hidden clients get an icon or a placeholder instead */
+   hidden clients show the snapshot cached at hide time, then fall back to
+   an icon or a placeholder */
 static void hoverpreview(Client *c, int x, int y, int w, int h) {
   if (!c || !tooldrw)
     return;
 
   if (HIDDEN(c)) {
+    if (c->hspic && c->hspw && c->hsph && (unsigned int)w >= c->hspw &&
+        (unsigned int)h >= c->hsph) {
+      /* last visible frame, cached at hide time, centered */
+      drw_pic(tooldrw, x + (w - (int)c->hspw) / 2, y + (h - (int)c->hsph) / 2,
+              c->hspw, c->hsph, c->hspic);
+      return;
+    }
     if (c->icon && w >= c->icw + 8 && h >= c->ich + 8) {
       drw_pic(tooldrw, x + (w - c->icw) / 2, y + (h - c->ich) / 2, c->icw,
               c->ich, c->icon);
@@ -2575,6 +2647,7 @@ void hidewin(Client *c) {
   if (!c || HIDDEN(c))
     return;
 
+  takesnapshot(c);
   /* hiding unmaps the frame only; the client stays mapped inside it.
      Frame unmaps are ignored by unmapnotify, so no event juggling needed. */
   XUnmapWindow(dpy, c->frame);
@@ -4062,6 +4135,18 @@ void toggleview(const Arg *arg) {
   }
 }
 
+void freehspic(Client *c) {
+  if (c->hspic) {
+    XRenderFreePicture(dpy, c->hspic);
+    c->hspic = None;
+  }
+  if (c->hspm) {
+    XFreePixmap(dpy, c->hspm);
+    c->hspm = None;
+  }
+  c->hspw = c->hsph = 0;
+}
+
 void freeicon(Client *c) {
   if (c->icon) {
     XRenderFreePicture(dpy, c->icon);
@@ -4103,6 +4188,7 @@ void unmanage(Client *c, int destroyed) {
   detach(c);
   detachstack(c);
   freeicon(c);
+  freehspic(c);
   if (!destroyed) {
     wc.border_width = c->oldbw;
     XGrabServer(dpy); /* avoid race conditions */
