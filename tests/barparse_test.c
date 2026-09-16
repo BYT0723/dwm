@@ -94,6 +94,35 @@ pills(void) {
     const int wb[] = {0}, wg[] = {1};
     pills_case("pills-trailing", "\x01""a", ids, "^(^a^)^", 1, wb, wg);
   }
+  { /* ids are matched by value: a repeated id only exposes its first block */
+    const int ids[] = {1, -1};
+    const int wb[] = {0}, wg[] = {1};
+    pills_case("pills-dup-id", "\x01""a\x01""b", ids, "^(^a^)^", 1, wb, wg);
+  }
+}
+
+/* tab selection-dot reservation: the icon shrink (TabModeIcons) and the
+   painter's reserved row must use the same arithmetic, or the dot clips */
+static void
+dots(void) {
+  CHECK(bar_tabdotroom(0) == 0, "dotroom-0: %d", bar_tabdotroom(0));
+  CHECK(bar_tabdotroom(2) == 5, "dotroom-2: %d", bar_tabdotroom(2));
+  CHECK(bar_tabdotroom(10) == 21, "dotroom-10: %d", bar_tabdotroom(10));
+
+  CHECK(bar_tabiconsize(24, 0) == 24, "tabicon-off: %d", bar_tabiconsize(24, 0));
+  CHECK(bar_tabiconsize(24, 2) == 18, "tabicon-2: %d", bar_tabiconsize(24, 2));
+  CHECK(bar_tabiconsize(24, 10) == 8, "tabicon-floor: %d", bar_tabiconsize(24, 10));
+  CHECK(bar_tabiconsize(40, 10) == 18, "tabicon-10: %d", bar_tabiconsize(40, 10));
+
+  { /* an icon left above the floor plus its dot's room must fit the icon box
+       the config comment says the room comes from */
+    int dot;
+    for (dot = 0; dot <= 12; dot++) {
+      int size = bar_tabiconsize(24, dot);
+      CHECK(size + bar_tabdotroom(dot) <= 24 || size == 8,
+            "tabicon-fit(%d): %d + %d", dot, size, bar_tabdotroom(dot));
+    }
+  }
 }
 
 /* tab row cell layout: n equal-width cells inside avail, gap after each */
@@ -254,6 +283,7 @@ main(void) {
   pills();
   cells();
   centers();
+  dots();
 
   printf("%s: %d checks, %d failures\n", failures ? "FAILED" : "ok", checks,
          failures);

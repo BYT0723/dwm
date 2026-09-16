@@ -34,7 +34,9 @@ int bar_blocks(const char *src, char *dst, int dstlen, BarBlock *out, int max);
    pill and -1 ends the list. Each pill is wrapped in the ^( .. ^) markers the
    renderer turns into rounded caps, and ids with no matching block are
    skipped, so a pill whose blocks are all absent emits nothing. Records at
-   most maxcells drawn blocks in cells and returns their count. */
+   most maxcells drawn blocks in cells and returns their count.
+   Ids are matched by value, so if the source holds two blocks with the same
+   control-character id only the first is reachable: ids must be unique. */
 int bar_pills(const char *src, const BarBlock *blocks, int nblocks,
               const int *ids, char *dst, int dstlen, BarPillCell *cells,
               int maxcells);
@@ -65,5 +67,15 @@ int bar_cells(int want, int n, int avail, int gap, BarCellsMode mode, int *out,
    so the caller must pass a centerw that fits it (centerw <= barw - leftw -
    rightw); such a middle can only fill that span. */
 int bar_centerx(int barw, int stw, int leftw, int rightw, int centerw);
+
+/* Vertical room TabModeIcons reserves under a tab icon for the selection dot:
+   the dot's diameter (2 * dot) plus the one-pixel gap above it. 0 when the
+   dot is off. */
+int bar_tabdotroom(int dot);
+
+/* Tab icon size when the dot is on: iconsize shrunk by the dot's room and one
+   spare pixel so the dot never touches the icon, floored at 8. Returns
+   iconsize unchanged when dot <= 0 (callers pass 0 outside TabModeIcons). */
+int bar_tabiconsize(int iconsize, int dot);
 
 #endif

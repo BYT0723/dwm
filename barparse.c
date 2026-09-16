@@ -154,3 +154,18 @@ bar_centerx(int barw, int stw, int leftw, int rightw, int centerw) {
     x = barw - rightw - centerw;
   return x;
 }
+
+int
+bar_tabdotroom(int dot) {
+  return dot > 0 ? 2 * dot + 1 : 0;
+}
+
+int
+bar_tabiconsize(int iconsize, int dot) {
+  int room = bar_tabdotroom(dot), size;
+
+  if (room <= 0)
+    return iconsize;
+  size = iconsize - room - 1; /* one spare pixel keeps the dot off the icon */
+  return size < 8 ? 8 : size;
+}

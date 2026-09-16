@@ -2027,11 +2027,11 @@ static int tablayout(Monitor *m, int avail, TabCell *cells, int max,
  * TabModeIcons shrinks the tab icon to leave room under it for the selection
  * dot, so a client carries a second picture at that size (c->tabicon). */
 
-/* icon size the tab row uses; TabModeIcons reserves the dot's room */
+/* icon size the tab row uses; TabModeIcons reserves the dot's room, sharing
+   the same arithmetic bar_tabdotroom() the painter uses */
 static int tabiconsize(void) {
-  if (tabmode != TabModeIcons || tabseldot <= 0)
-    return ICONSIZE;
-  return MAX(8, ICONSIZE - tabseldot - 2);
+  return bar_tabiconsize(ICONSIZE,
+                         tabmode == TabModeIcons ? (int)tabseldot : 0);
 }
 
 /* tabiconpath with "$HOME/" or "~/" expanded */
@@ -2334,8 +2334,10 @@ static void tabdraw(Monitor *m, int x0, const TabCell *cells, int ncells) {
     int total, top;
 
     tabicon_get(c, scm, &ic, &iw, &ih);
-    /* the dot's room is reserved for every cell so the icons stay aligned */
-    total = (int)ih + (r > 0 ? gap + 2 * r : 0);
+    /* the dot's room is reserved for every cell so the icons stay aligned;
+       bar_tabdotroom() is what tabiconsize() shrank the icon by, so the icon
+       and its dot always fit the row together */
+    total = (int)ih + bar_tabdotroom(r);
     top = (bh - total) / 2;
     if (top < 0)
       top = 0;
