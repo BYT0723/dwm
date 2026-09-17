@@ -647,6 +647,9 @@ void applyrules(Client *c) {
 int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact) {
   int baseismin;
   Monitor *m = c->mon;
+  /* frame geometry in, client hints operate on the client area only.
+     Frameless clients (systray icons, frame == None) have no titlebar. */
+  int dh = (c->frame != None) ? titleh(c) : 0;
 
   /* set minimum possible */
   *w = MAX(1, *w);
@@ -674,7 +677,11 @@ int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact) {
     *h = bh;
   if (*w < bh)
     *w = bh;
+  /* strip the titlebar before honoring ICCCM hints (base/inc/min/max/aspect
+     all describe the client, not the frame) */
   if (resizehints || c->isfloating || !c->mon->lt[c->mon->sellt]->arrange) {
+    *h -= dh;
+    *h = MAX(1, *h);
     if (!c->hintsvalid)
       updatesizehints(c);
     /* see last two sentences in ICCCM 4.1.2.3 */
@@ -706,6 +713,8 @@ int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact) {
       *w = MIN(*w, c->maxw);
     if (c->maxh)
       *h = MIN(*h, c->maxh);
+    /* back to frame geometry for resizeclient()/placeclient() */
+    *h += dh;
   }
   return *x != c->x || *y != c->y || *w != c->w || *h != c->h;
 }
