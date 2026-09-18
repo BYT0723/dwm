@@ -1,0 +1,31 @@
+# Status block ids: SINGLE SOURCE OF TRUTH. Edit only this file.
+#
+# make derives both consumers from here in one step (tests/gen-status-ids.sh):
+# - C: status-ids.h enum entries, included by barparse.h. Rebuild dwm as usual.
+# - shell: contrib/status-ids.sh assignments, shipped to ~/.dwm by
+#   `make install-ids` (only when the ids changed) and sourced by
+#   ~/.dwm/dwm-status.sh (ST_*_BYTE block prefixes) and dwm-statuscmd.sh
+#   (ST_* click keys, which match dwm's $INDEX). Restart the status daemon
+#   afterwards.
+# tests/check-status-ids.sh (in `make test`) fails loudly on any drift.
+#
+# Format: <Name> <decimal-id>, one per line. Name becomes St<Name> in C
+# and ST_<UPPER> in shell. Id = the control character prefixing the block
+# on the wire; a click reports it back as $INDEX.
+# Reserved* lines reserve a number without emitting it anywhere.
+Date 1
+Battery 2
+Volume 3
+Reserved4 4
+Reserved5 5
+Disk 6
+Mem 7
+Cpu 8
+Weather 9
+Mpd 10
+Net 11
+Mail 12
+Rss 13
+Singbox 14
+Notify 15
+Screencast 16

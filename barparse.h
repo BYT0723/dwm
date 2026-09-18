@@ -7,6 +7,21 @@
 #ifndef BARPARSER_H
 #define BARPARSER_H
 
+/* Status block ids: the control character that prefixes each block in the
+   status writer's output (see ~/.dwm/dwm-status.sh panes() and
+   ~/.dwm/dwm-statuscmd.sh actions[]; a click reports the block's id as
+   $INDEX). The single source of truth is status-ids.def: make derives both
+   status-ids.h (this enum) and contrib/status-ids.sh (the shell's ST_* /
+   ST_*_BYTE, sourced by the writer) from it in one step, so one edit
+   updates both sides. `make test` (tests/check-status-ids.sh) fails loudly
+   on any drift. 0 starts a new pill (StPillBreak) and -1 ends the list
+   (StPillEnd); neither is a real block. */
+typedef enum {
+  StPillBreak = 0,
+#include "status-ids.h" /* generated from status-ids.def; do not edit */
+  StPillEnd = -1
+} StatusBlockId;
+
 /* One status block: the visible slice [off, end) inside the filtered buffer,
    tagged with the control character that introduced it. The run before any
    control character has id 0. Offsets index the filtered buffer, not src. */

@@ -16,12 +16,14 @@ static const          int sidepad      = 2;  /* horizontal padding of bar */
  * content and centred on the monitor's middle (the systray is not part of that
  * middle), clamped so it never runs over a side zone.
  * BarTabs stretches when its fixed width does not fit, so keep it last.
- * BarStatus selects status blocks by the control character that prefixes
- * them in the status writer's output; 0 starts a new pill (its own rounded
- * caps) and -1 ends the list. Ids the writer leaves out (empty panel,
- * portrait cut) are simply skipped. */
-static const int st_pills[] = { 13, 12, 15, 0, 9, 0, 11, 0, 16, 14, 10, 2, 0, 1, -1 };
-static const int lt_pills[] = { 8, 7, 6, -1 };
+ * BarStatus selects status blocks by StatusBlockId (barparse.h, the control
+ * character that prefixes them in the status writer's output);
+ * StPillBreak starts a new pill (its own rounded caps) and StPillEnd ends
+ * the list. Ids the writer leaves out (empty panel, portrait cut) are
+ * simply skipped. NOTE: StVolume is not shown in any pill here although the
+ * writer still emits it; add it to the tools pill to show it. */
+static const int st_pills[] = { StRss, StMail, StNotify, StPillBreak, StWeather, StPillBreak, StNet, StPillBreak, StDate, StPillBreak, StScreencast, StSingbox, StMpd, StBattery, StPillEnd };
+static const int lt_pills[] = { StCpu, StMem, StDisk, StPillEnd };
 
 static const BarItem bar_left[]   = { {BarLayout, NULL}, {BarTags, NULL}, {BarStatus, lt_pills}};
 static const BarItem bar_center[] = { {BarTabs, NULL} };
@@ -30,8 +32,8 @@ static const BarItem bar_right[]  = { {BarStatus, st_pills} };
 /* portrait monitors (wh > ww) use these zones instead; orientation is a config
  * choice now, so a different set of status ids belongs here too (the writer no
  * longer emits a cut marker) */
-static const int st_pills_portrait[] = { 13, 12, 15, 0, 16, 14, 10, 2, 0, 1, -1 };
-static const int lt_pills_portrait[] = { 8, 7, -1 };
+static const int st_pills_portrait[] = { StRss, StMail, StNotify, StPillBreak, StDate, StPillBreak, StScreencast, StSingbox, StMpd, StBattery, StPillEnd };
+static const int lt_pills_portrait[] = { StCpu, StMem, StPillEnd };
 static const BarItem bar_left_portrait[]   = { {BarLayout, NULL}, {BarTags, NULL}, {BarStatus, lt_pills_portrait}};
 static const BarItem bar_center_portrait[] = { {BarTabs, NULL} };
 static const BarItem bar_right_portrait[]  = { {BarStatus, st_pills_portrait} };

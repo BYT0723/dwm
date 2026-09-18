@@ -2,6 +2,8 @@ dwm
 *.orig
 *.rej
 *.o
+status-ids.h
+contrib/status-ids.sh
 tests/barparse_test
 tests/.smoke-bar*.png
 
