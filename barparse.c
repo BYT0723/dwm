@@ -4,9 +4,8 @@
 #include <string.h>
 
 /* record the pending [start, len) slice as a block tagged with curid */
-static int
-emit_block(BarBlock *out, int max, int nb, unsigned int curid, int start,
-           int len) {
+static int emit_block(BarBlock *out, int max, int nb, unsigned int curid,
+                      int start, int len) {
   if (len > start && nb < max) {
     out[nb].id = curid;
     out[nb].off = start;
@@ -16,8 +15,7 @@ emit_block(BarBlock *out, int max, int nb, unsigned int curid, int start,
   return nb;
 }
 
-int
-bar_blocks(const char *src, char *dst, int dstlen, BarBlock *out, int max) {
+int bar_blocks(const char *src, char *dst, int dstlen, BarBlock *out, int max) {
   int len = 0, nb = 0, start = 0;
   unsigned int curid = 0;
   const char *p;
@@ -48,8 +46,7 @@ bar_blocks(const char *src, char *dst, int dstlen, BarBlock *out, int max) {
 }
 
 /* index of the first block tagged with id, -1 when absent */
-static int
-block_by_id(const BarBlock *blocks, int nblocks, unsigned int id) {
+static int block_by_id(const BarBlock *blocks, int nblocks, unsigned int id) {
   int i;
 
   for (i = 0; i < nblocks; i++)
@@ -59,8 +56,8 @@ block_by_id(const BarBlock *blocks, int nblocks, unsigned int id) {
 }
 
 /* append the ^)^ pill terminator and mark the gap after the last cell */
-static int
-close_pill(char *dst, int dstlen, int len, BarPillCell *cells, int ncells) {
+static int close_pill(char *dst, int dstlen, int len, BarPillCell *cells,
+                      int ncells) {
   if (len + 3 < dstlen) {
     dst[len++] = '^';
     dst[len++] = ')';
@@ -72,9 +69,9 @@ close_pill(char *dst, int dstlen, int len, BarPillCell *cells, int ncells) {
   return len;
 }
 
-int
-bar_pills(const char *src, const BarBlock *blocks, int nblocks, const int *ids,
-          char *dst, int dstlen, BarPillCell *cells, int maxcells) {
+int bar_pills(const char *src, const BarBlock *blocks, int nblocks,
+              const int *ids, char *dst, int dstlen, BarPillCell *cells,
+              int maxcells) {
   int i, len = 0, ncells = 0, open = 0;
 
   if (!dst || dstlen <= 0)
@@ -119,9 +116,8 @@ bar_pills(const char *src, const BarBlock *blocks, int nblocks, const int *ids,
   return ncells;
 }
 
-int
-bar_cells(int want, int n, int avail, int gap, BarCellsMode mode, int *out,
-          int maxw) {
+int bar_cells(int want, int n, int avail, int gap, BarCellsMode mode, int *out,
+              int maxw) {
   int base, i, rem, room;
 
   if (n <= 0)
@@ -130,8 +126,8 @@ bar_cells(int want, int n, int avail, int gap, BarCellsMode mode, int *out,
   if (room < 0)
     room = 0;
 
-  if (want > 0 && (mode == BarCellsFixed ||
-                   (mode == BarCellsFit && want * n < room))) {
+  if (want > 0 &&
+      (mode == BarCellsFixed || (mode == BarCellsFit && want * n < room))) {
     if (out)
       for (i = 0; i < n && i < maxw; i++)
         out[i] = want;
@@ -146,8 +142,7 @@ bar_cells(int want, int n, int avail, int gap, BarCellsMode mode, int *out,
   return room + gap * n;
 }
 
-int
-bar_centerx(int barw, int stw, int leftw, int rightw, int centerw) {
+int bar_centerx(int barw, int stw, int leftw, int rightw, int centerw) {
   /* the monitor's middle in bar-window coordinates; the window is stw short
      of the monitor, so the systray width comes back into the base */
   int x = (barw + stw - centerw) / 2;
@@ -159,13 +154,9 @@ bar_centerx(int barw, int stw, int leftw, int rightw, int centerw) {
   return x;
 }
 
-int
-bar_tabdotroom(int dot) {
-  return dot > 0 ? 2 * dot + 1 : 0;
-}
+int bar_tabdotroom(int dot) { return dot > 0 ? 2 * dot + 1 : 0; }
 
-int
-bar_tabiconsize(int iconsize, int dot) {
+int bar_tabiconsize(int iconsize, int dot) {
   int room = bar_tabdotroom(dot), size;
 
   if (room <= 0)
