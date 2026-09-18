@@ -53,7 +53,7 @@ grep -q '#include "status-ids.h"' barparse.h ||
   err "barparse.h does not include status-ids.h"
 
 # 2. pill arrays: names only, and every name must be in the def
-for arr in st_pills lt_pills st_pills_portrait lt_pills_portrait; do
+for arr in lst_pills rst_pills lst_pills_portrait rst_pills_portrait; do
   init=$(awk "/static const int $arr\\[\\]/ {f=1} f {printf \"%s\", \$0; if (/\\}/) exit}" config.h |
     sed 's/.*{//; s/}.*//')
   [ -n "$init" ] || { err "array $arr not found in config.h"; continue; }

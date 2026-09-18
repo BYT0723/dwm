@@ -22,21 +22,30 @@ static const          int sidepad      = 2;  /* horizontal padding of bar */
  * the list. Ids the writer leaves out (empty panel, portrait cut) are
  * simply skipped. NOTE: StVolume is not shown in any pill here although the
  * writer still emits it; add it to the tools pill to show it. */
-static const int st_pills[] = { StRss, StMail, StNotify, StPillBreak, StWeather, StPillBreak, StNet, StPillBreak, StDate, StPillBreak, StScreencast, StSingbox, StMpd, StBattery, StPillEnd };
-static const int lt_pills[] = { StCpu, StMem, StDisk, StPillEnd };
-
-static const BarItem bar_left[]   = { {BarLayout, NULL}, {BarTags, NULL}, {BarStatus, lt_pills}};
+static const int lst_pills[] = { StCpu, StMem, StDisk, StPillEnd };
+static const int rst_pills[] = {
+  StRss, StMail, StNotify, StPillBreak,
+  StWeather, StPillBreak,
+  StNet, StPillBreak,
+  StDate, StPillBreak,
+  StScreencast, StSingbox, StMpd, StBattery, StPillEnd
+};
+static const BarItem bar_left[]   = { {BarLayout, NULL}, {BarTags, NULL}, {BarStatus, lst_pills}};
 static const BarItem bar_center[] = { {BarTabs, NULL} };
-static const BarItem bar_right[]  = { {BarStatus, st_pills} };
+static const BarItem bar_right[]  = { {BarStatus, rst_pills} };
 
 /* portrait monitors (wh > ww) use these zones instead; orientation is a config
  * choice now, so a different set of status ids belongs here too (the writer no
  * longer emits a cut marker) */
-static const int st_pills_portrait[] = { StRss, StMail, StNotify, StPillBreak, StDate, StPillBreak, StScreencast, StSingbox, StMpd, StBattery, StPillEnd };
-static const int lt_pills_portrait[] = { StCpu, StMem, StPillEnd };
-static const BarItem bar_left_portrait[]   = { {BarLayout, NULL}, {BarTags, NULL}, {BarStatus, lt_pills_portrait}};
+static const int lst_pills_portrait[] = { StCpu, StMem, StPillEnd };
+static const int rst_pills_portrait[] = {
+  StRss, StMail, StNotify, StPillBreak,
+  StDate, StPillBreak,
+  StScreencast, StSingbox, StMpd, StBattery, StPillEnd
+};
+static const BarItem bar_left_portrait[]   = { {BarLayout, NULL}, {BarTags, NULL}, {BarStatus, lst_pills_portrait}};
 static const BarItem bar_center_portrait[] = { {BarTabs, NULL} };
-static const BarItem bar_right_portrait[]  = { {BarStatus, st_pills_portrait} };
+static const BarItem bar_right_portrait[]  = { {BarStatus, rst_pills_portrait} };
 
 static const unsigned int tabwidth    = 16;   /* TabModeIconTitle: pill width in characters */
 static const char         tabtext[]   = "{class}";  /* TabModeIconTitle only; {title}, {class} */
@@ -58,7 +67,7 @@ static TabMode tabmode = TabModeIcons;
 typedef enum { TabFit, TabFill, TabFixed } TabSize;
 static const TabSize tabsize = TabFit;
 
-/* TabModeIcons selection mark: a filled circle in SchemeSel's foreground,
+/* TabModeIcons selection mark: a filled circle in SchemeTabIcons foreground,
  * centred under the selected client's icon. This is the radius in px; 0 turns
  * it off. 5..10 reads well and the tab icons shrink to leave room for it. */
 static const unsigned int tabseldot = 2;
@@ -131,24 +140,25 @@ static char col_cyan[]     = "#2aa198";  /*  6: cyan     */
 static char col_white[]    = "#eee8d5";  /*  7: white    */
 static char col_ab_black[] = "#000000";
 static char *colors[][3] = {
-    /*                    fg            bg            border   */
+    /*                      fg            bg           border    */
     // tag
-    [SchemeTagNorm] = { col_white,    col_black,    col_black    },
-    [SchemeTagSel]  = { col_black,    col_blue,     col_black    },
+    [SchemeTagNorm]  = { col_white,    col_black,    col_black    },
+    [SchemeTagSel]   = { col_black,    col_blue,     col_black    },
     // layout
-    [SchemeLayout]  = { col_green,    col_black,    col_ab_black },
-    // tasks
-    [SchemeNorm]    = { col_white,    col_black,    col_ab_black },
-    [SchemeSel]     = { col_black,    col_cyan,     col_cyan     },
-    [SchemeHid]     = { col_white,    col_ab_black, col_ab_black },
+    [SchemeLayout]   = { col_green,    col_black,    col_ab_black },
+    // tabs
+    [SchemeNorm]     = { col_white,    col_black,    col_ab_black },
+    [SchemeSel]      = { col_black,    col_cyan,     col_cyan     },
+    [SchemeHid]      = { col_white,    col_ab_black, col_ab_black },
+    [SchemeTabIcons] = { col_white,    col_black,    col_ab_black },
     // status
-    [SchemeStatus]  = { col_white,    col_black,    col_white    },
+    [SchemeStatus]   = { col_white,    col_black,    col_white    },
     // systray
-    [SchemeSystray] = { col_white,    col_black,    col_white    },
+    [SchemeSystray]  = { col_white,    col_black,    col_white    },
     // hover tooltip
-    [SchemeTooltip] = { col_blue,     col_black,    col_cyan     },
+    [SchemeTooltip]  = { col_blue,     col_black,    col_cyan     },
     // empty
-    [SchemeEmpty]   = { col_ab_black, col_ab_black, col_black    },
+    [SchemeEmpty]    = { col_ab_black, col_ab_black, col_black    },
 };
 
 #define OPAQUE        0xffU
@@ -158,24 +168,25 @@ static char *colors[][3] = {
 #define TAB_HID_BG_ALPHA 0x66U
 
 static const unsigned int alphas[][3]      = {
-    /*                    fg         bg                border     */
+    /*                     fg            bg               border   */
     // tag
-    [SchemeTagNorm] = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
-    [SchemeTagSel]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
+    [SchemeTagNorm]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
+    [SchemeTagSel]   = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     // layout
-    [SchemeLayout]  = { OPAQUE,      OPAQUE,           TRANSPARENT },
-    // tab
-    [SchemeNorm]    = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
-    [SchemeSel]     = { OPAQUE,      TAB_SEL_BG_ALPHA, TAB_SEL_BG_ALPHA },
-    [SchemeHid]     = { BG_ALPHA,    TAB_HID_BG_ALPHA, TRANSPARENT },
+    [SchemeLayout]   = { OPAQUE,      OPAQUE,           TRANSPARENT },
+    // tabs
+    [SchemeNorm]     = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
+    [SchemeSel]      = { OPAQUE,      TAB_SEL_BG_ALPHA, TAB_SEL_BG_ALPHA },
+    [SchemeHid]      = { BG_ALPHA,    TAB_HID_BG_ALPHA, TRANSPARENT },
+    [SchemeTabIcons] = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     // Status
-    [SchemeStatus]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
+    [SchemeStatus]   = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     // systray
-    [SchemeSystray] = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
+    [SchemeSystray]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     // hover tooltip
-    [SchemeTooltip] = { OPAQUE,      TAB_SEL_BG_ALPHA, OPAQUE      },
+    [SchemeTooltip]  = { OPAQUE,      TAB_SEL_BG_ALPHA, OPAQUE      },
     // empty
-    [SchemeEmpty]   = { TRANSPARENT, TRANSPARENT,      TRANSPARENT },
+    [SchemeEmpty]    = { TRANSPARENT, TRANSPARENT,      TRANSPARENT },
 };
 
 static const Rule rules[] = {

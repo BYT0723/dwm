@@ -100,6 +100,7 @@ enum {
   SchemeNorm,
   SchemeSel,
   SchemeHid,
+  SchemeTabIcons,
   SchemeTagNorm,
   SchemeTagSel,
   SchemeStatus,
@@ -2050,8 +2051,7 @@ static int tablayout(Monitor *m, int avail, TabCell *cells, int max,
 /* icon size the tab row uses; TabModeIcons reserves the dot's room, sharing
    the same arithmetic bar_tabdotroom() the painter uses */
 static int tabiconsize(void) {
-  return bar_tabiconsize(ICONSIZE,
-                         tabmode == TabModeIcons ? (int)tabseldot : 0);
+  return bar_tabiconsize(ICONSIZE, tabmode == TabModeIcons ? (int)tabseldot : 0);
 }
 
 /* tabiconpath with "$HOME/" or "~/" expanded */
@@ -2256,14 +2256,14 @@ static void tabseldot_paint(int scm, int cx, int cy, int r) {
   drw_setscheme(drw, scheme[scm]);
 }
 
-/* the TabModeIcons hidden mark: a hollow circle of radius r in SchemeSel's
+/* the TabModeIcons hidden mark: a hollow circle of radius r in SchemeTabIcons
    foreground, centred under a hidden client's icon. Same geometry as the
    selection dot so the two read as a pair: filled = selected, hollow = hidden.
    Hidden wins when both apply. */
 static void tabhiddot_paint(int cx, int cy, int r) {
   if (r <= 0)
     return;
-  drw_setscheme(drw, scheme[SchemeSel]);
+  drw_setscheme(drw, scheme[SchemeTabIcons]);
   drw_circle_empty(drw, cx, cy, r);
 }
 
@@ -2336,18 +2336,18 @@ static void tabdraw(Monitor *m, int x0, const TabCell *cells, int ncells) {
     return;
   }
 
-  /* one pill shared by every icon, painted in the selected scheme: the icons'
+  /* one pill shared by every icon, painted in SchemeTabIcons: the icons'
      own tint and the dot under the selected one carry the per-client state */
   {
     int pillw = cells[ncells - 1].x + cells[ncells - 1].w + (int)tabr;
 
-    drw_setscheme(drw, scheme[SchemeSel]);
+    drw_setscheme(drw, scheme[SchemeTabIcons]);
     drw_rect(drw, x0, 0, (unsigned int)pillw, bh, 1, 1);
     if (tabr > 0) {
       drw_setscheme(drw, scheme[SchemeEmpty]);
       drw_rect(drw, x0, 0, tabr, bh, 1, 0);
       drw_rect(drw, x0 + pillw - tabr, 0, tabr, bh, 1, 0);
-      drw_setscheme(drw, scheme[SchemeSel]);
+      drw_setscheme(drw, scheme[SchemeTabIcons]);
       drw_rounded(drw, x0, 0, bh, tabr, RoundedLeft);
       drw_rounded(drw, x0 + pillw - tabr, 0, bh, tabr, RoundedRight);
       drawtabborder(x0, pillw, NULL);
@@ -2379,7 +2379,7 @@ static void tabdraw(Monitor *m, int x0, const TabCell *cells, int ncells) {
       if (HIDDEN(c) && r > 0)
         tabhiddot_paint(dotx, doty, r);
       else if (scm == SchemeSel && r > 0)
-        tabseldot_paint(scm, dotx, doty, r);
+        tabseldot_paint(SchemeTabIcons, dotx, doty, r);
     }
     if (ic)
       drw_pic(drw, cx + ((int)cells[i].w - (int)iw) / 2, top, iw, ih, ic);
