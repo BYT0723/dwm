@@ -2256,6 +2256,17 @@ static void tabseldot_paint(int scm, int cx, int cy, int r) {
   drw_setscheme(drw, scheme[scm]);
 }
 
+/* the TabModeIcons hidden mark: a hollow circle of radius r in SchemeSel's
+   foreground, centred under a hidden client's icon. Same geometry as the
+   selection dot so the two read as a pair: filled = selected, hollow = hidden.
+   Hidden wins when both apply. */
+static void tabhiddot_paint(int cx, int cy, int r) {
+  if (r <= 0)
+    return;
+  drw_setscheme(drw, scheme[SchemeSel]);
+  drw_circle_empty(drw, cx, cy, r);
+}
+
 /* paint one tab pill of width w at x for client c, and record its slot */
 static void tabpaint(Monitor *m, int x, int w, Client *c) {
   int scm, highlight, tw, cx;
@@ -2362,8 +2373,14 @@ static void tabdraw(Monitor *m, int x0, const TabCell *cells, int ncells) {
     if (top < 0)
       top = 0;
 
-    if (scm == SchemeSel && r > 0)
-      tabseldot_paint(scm, cx + cells[i].w / 2, top + (int)ih + gap + r, r);
+    {
+      int dotx = cx + cells[i].w / 2;
+      int doty = top + (int)ih + gap + r;
+      if (HIDDEN(c) && r > 0)
+        tabhiddot_paint(dotx, doty, r);
+      else if (scm == SchemeSel && r > 0)
+        tabseldot_paint(scm, dotx, doty, r);
+    }
     if (ic)
       drw_pic(drw, cx + ((int)cells[i].w - (int)iw) / 2, top, iw, ih, ic);
     /* the gap after a cell belongs to it, so clicks tile the pill */

@@ -340,6 +340,15 @@ void drw_rect(Drw *drw, int x, int y, unsigned int w, unsigned int h,
     XDrawRectangle(drw->dpy, drw->drawable, drw->gc, x, y, w - 1, h - 1);
 }
 
+/* 1px hollow circle in the scheme foreground, centred at (cx, cy) */
+void drw_circle_empty(Drw *drw, int cx, int cy, int r) {
+  if (!drw || !drw->scheme || r <= 0)
+    return;
+  XSetForeground(drw->dpy, drw->gc, drw->scheme[ColFg].pixel);
+  XDrawArc(drw->dpy, drw->drawable, drw->gc, cx - r, cy - r,
+           (unsigned int)(2 * r), (unsigned int)(2 * r), 0, 360 * 64);
+}
+
 /* border RGB with alpha forced opaque: outlines must stay visible even
  * when the scheme's border alpha is TRANSPARENT */
 static unsigned long drw_border_pixel(Drw *drw) {
