@@ -150,7 +150,7 @@ static char *colors[][3] = {
     [SchemeNorm]     = { col_white,    col_black,    col_ab_black },
     [SchemeSel]      = { col_black,    col_cyan,     col_cyan     },
     [SchemeHid]      = { col_white,    col_ab_black, col_ab_black },
-    [SchemeTabIcons] = { col_white,    col_black,    col_ab_black },
+    [SchemeTabIcons] = { col_white,    col_black,    col_white    },
     // status
     [SchemeStatus]   = { col_white,    col_black,    col_white    },
     // systray
