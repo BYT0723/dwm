@@ -50,7 +50,7 @@ static const BarItem bar_center_portrait[] = { {BarTabs, NULL} };
 static const BarItem bar_right_portrait[]  = { {BarStatus, rst_pills_portrait} };
 
 static const unsigned int tabwidth    = 16;   /* TabModeIconTitle: pill width in characters */
-static const char         tabtext[]   = "{class}";  /* TabModeIconTitle only; {title}, {class} */
+static const char         tabtext[]   = "{title}";  /* TabModeIconTitle only; {title}, {class} */
 static const unsigned int tabradius   = 8;
 static const unsigned int tabgap      = 4; /* gaps between pills/zones, and between TabModeIconTitle pills */
 static const unsigned int tabicongap  = 8; /* TabModeIcons only: space in px between icons in the shared pill */
@@ -97,7 +97,7 @@ static const unsigned int previewborderpx = 2;   /* px highlight border around t
 static const unsigned int gappih    = 6;
 static const unsigned int gappiv    = 6;
 static const unsigned int gappoh    = 6;
-static const unsigned int gappov    = 6;
+static const unsigned int gappov    = 8;
 static                int smartgaps = 0;   /* 1 means no outer gap when there is only one window */
 
 // systray
