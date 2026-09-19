@@ -455,6 +455,7 @@ static void toggletabmode(const Arg *arg);
 static void toggletag(const Arg *arg);
 static void toggleview(const Arg *arg);
 static void togglewin(const Arg *arg);
+static void fitmonitor(Client *c);
 static int trayrank(const char *class);
 static void unfocus(Client *c, int setfocus);
 static void unmanage(Client *c, int destroyed);
@@ -1060,6 +1061,8 @@ void configurerequest(XEvent *e) {
         c->oldh = c->h;
         c->h = ev->height + titleh(c);
       }
+      if (c->isfloating && !c->isfullscreen)
+        fitmonitor(c);
       if ((c->x + c->w) > m->mx + m->mw && c->isfloating)
         c->x = m->mx + (m->mw / 2 - WIDTH(c) / 2); /* center in x direction */
       if ((c->y + c->h) > m->my + m->mh && c->isfloating)
@@ -3430,6 +3433,32 @@ void layoutmenu(const Arg *arg) {
   setlayout(&((Arg){.v = &layouts[i]}));
 }
 
+/* shrink a floating frame proportionally until it fits the monitor, so an
+   oversized request (e.g. a huge video) stays fully visible and grabbable.
+   Only the client area scales, keeping its aspect; the titlebar stays on top
+   at full height. No-op when the frame already fits. */
+static void fitmonitor(Client *c) {
+  int th = titleh(c);
+  int cw = c->w, ch = c->h - th;
+  int maxw = c->mon->mw - 2 * c->bw;
+  int maxh = c->mon->mh - 2 * c->bw - th;
+
+  if (cw <= 0 || ch <= 0 || maxw <= 0 || maxh <= 0)
+    return;
+  if (cw <= maxw && ch <= maxh)
+    return;
+  /* binding constraint in pure integer arithmetic */
+  if ((long)maxw * ch <= (long)maxh * cw) {
+    c->w = maxw;
+    c->h = (int)((long)ch * maxw / cw) + th;
+  } else {
+    c->w = (int)((long)cw * maxh / ch);
+    c->h = maxh + th;
+  }
+  c->w = MAX(c->w, 1);
+  c->h = MAX(c->h - th, 1) + th;
+}
+
 void manage(Window w, XWindowAttributes *wa, int mapped) {
   Client *c, *t = NULL;
   Window trans = None;
@@ -3525,11 +3554,33 @@ void manage(Window w, XWindowAttributes *wa, int mapped) {
         c->oldbw = (int)fstate[6];
     }
   }
+  if (c->isfloating && !c->isfullscreen)
+    fitmonitor(c); /* first: right/bottom below need the fitted size */
   if (c->isfloating) {
-    c->x = (c->x == c->mon->mx || c->x + c->w == c->mon->mx + c->mon->mw)
-            ? c->mon->mx+(c->mon->mw - c->w)/2 : c->x;
-    c->y = (c->y == c->mon->my + bh || c->y == c->mon->my ||
-            c->y + c->h == c->mon->my + c->mon->mh) ? c->mon->my+(c->mon->mh - c->h)/2 : c->y;
+    /* c->x/y/w describe the frame now (c->h already grew by titleh above),
+       but the client's request was for its own area: keep that area where it
+       was asked to be. An edge request means "no position", so centre the
+       client area instead of the frame. The clamp above parks an off-monitor
+       request at the border, borders included (WIDTH/HEIGHT): test that parked
+       geometry, or a window shoved into the corner by clamping would stick
+       there instead of being centred. */
+    int th = titleh(c);
+    int right = c->mon->mx + c->mon->mw - WIDTH(c);
+    /* HEIGHT grew by th after the clamp ran, so the clamp-time bottom edge
+       sits th higher */
+    int bottom = c->mon->my + c->mon->mh - (HEIGHT(c) - th);
+
+    if (c->x == c->mon->mx || c->x == right)
+      c->x = c->mon->mx + (c->mon->mw - c->w) / 2;
+    if (c->y == c->mon->my + bh || c->y == c->mon->my || c->y == bottom)
+      c->y = c->mon->my + (c->mon->mh - c->h) / 2 - th / 2;
+    else {
+      /* explicit position: grow the frame upward so the client area stays
+         where it was asked to be */
+      c->y -= th;
+      if (c->y < c->mon->my)
+        c->y = c->mon->my; /* keep the titlebar on screen */
+    }
   }
   configure(c); /* propagates border_width, if size doesn't change */
   attachtop ? attach(c) : attachbottom(c);
