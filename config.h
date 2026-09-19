@@ -22,11 +22,13 @@ static const          int sidepad      = 2;  /* horizontal padding of bar */
  * the list. Ids the writer leaves out (empty panel, portrait cut) are
  * simply skipped. NOTE: StVolume is not shown in any pill here although the
  * writer still emits it; add it to the tools pill to show it. */
-static const int lst_pills[] = { StCpu, StMem, StDisk, StPillEnd };
+static const int lst_pills[] = {
+  StCpu, StMem, StDisk, StPillBreak,
+  StNet, StPillEnd
+};
 static const int rst_pills[] = {
   StRss, StMail, StNotify, StPillBreak,
   StWeather, StPillBreak,
-  StNet, StPillBreak,
   StDate, StPillBreak,
   StScreencast, StSingbox, StMpd, StBattery, StPillEnd
 };
