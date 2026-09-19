@@ -52,7 +52,8 @@ static const BarItem bar_right_portrait[]  = { {BarStatus, rst_pills_portrait} }
 static const unsigned int tabwidth    = 16;   /* TabModeIconTitle: pill width in characters */
 static const char         tabtext[]   = "{class}";  /* TabModeIconTitle only; {title}, {class} */
 static const unsigned int tabradius   = 8;
-static const unsigned int tabgap      = 4;
+static const unsigned int tabgap      = 4; /* gaps between pills/zones, and between TabModeIconTitle pills */
+static const unsigned int tabicongap  = 8; /* TabModeIcons only: space in px between icons in the shared pill */
 static const unsigned int tabborderpx = 1; /* tab outline width in px; 0 = no outline */
 
 /* tab rendering mode:

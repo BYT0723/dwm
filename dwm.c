@@ -1968,7 +1968,7 @@ static int tablayout(Monitor *m, int avail, TabCell *cells, int max,
   if (tabmode == TabModeIcons) {
     int end[TAB_CELLS];
 
-    for (g = (int)tabgap;; g--) {
+    for (g = (int)tabicongap;; g--) {
       x = (int)tabr;
       i = 0;
       for (c = m->clients; c && i < TAB_CELLS; c = c->next) {
@@ -2384,7 +2384,7 @@ static void tabdraw(Monitor *m, int x0, const TabCell *cells, int ncells) {
     if (ic)
       drw_pic(drw, cx + ((int)cells[i].w - (int)iw) / 2, top, iw, ih, ic);
     /* the gap after a cell belongs to it, so clicks tile the pill */
-    addslot(m, cx, cells[i].w + (int)tabgap, ClkWinTitle, (Arg){.v = c});
+    addslot(m, cx, cells[i].w + (int)tabicongap, ClkWinTitle, (Arg){.v = c});
   }
 }
 
