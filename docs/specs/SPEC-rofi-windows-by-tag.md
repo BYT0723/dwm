@@ -1,5 +1,8 @@
 # Spec: rofi windows 按 tag 分组、组内按 bar 顺序
 
+> NOTE: 配套的 `-dmenu` 脚本已移至 `~/.dwm`（scripts 仓），本仓不再收录；
+> 本 spec 保留设计记录，dwm 侧 EWMH 部分仍有效。
+
 ## Objective
 
 `Mod+w`（`LAUNCHCMD("windows")` → `rofi -show window`）的窗口列表按 tag 分组显示：
