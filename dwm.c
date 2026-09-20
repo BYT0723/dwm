@@ -123,6 +123,7 @@ enum {
   NetWMFullscreen,
   NetWMMaximizedVert,
   NetWMMaximizedHorz,
+  NetWMStateDemandsAttention,
   NetActiveWindow,
   NetWMMoveResize,
   NetCloseWindow,
@@ -365,6 +366,8 @@ static void freehspic(Client *c);
 static void freeicon(Client *c);
 static void fullscreen(const Arg *arg);
 static Atom getatomprop(Client *c, Atom prop);
+static int getatomlist(Client *c, Atom prop, Atom *out, int max);
+static int hasatomprop(Client *c, Atom prop, Atom val);
 static Picture geticonprop(Window w, unsigned int *icw, unsigned int *ich,
                            unsigned int alpha, int target);
 static int getrootptr(int *x, int *y);
@@ -418,6 +421,8 @@ static void setstateprop(Window w, Atom a, unsigned long *vals, int nvals);
 static void setup(void);
 static void setframeextents(Client *c);
 static void setframeextentswin(Window w, int bw, int top);
+static void syncattention(Client *c);
+static void clearattention(Client *c);
 static void seturgent(Client *c, int urg);
 static void show(const Arg *arg);
 static void showall(const Arg *arg);
@@ -3051,8 +3056,10 @@ void focus(Client *c) {
   if (c) {
     if (c->mon != selmon)
       selmon = c->mon;
-    if (c->isurgent)
+    if (c->isurgent) {
       seturgent(c, 0);
+      clearattention(c); /* EWMH counterpart: WM unsets it once attended */
+    }
     detachstack(c);
     attachstack(c);
     grabbuttons(c, 1);
@@ -3188,6 +3195,41 @@ Atom getatomprop(Client *c, Atom prop) {
     XFree(p);
   }
   return atom;
+}
+
+/* read an ATOM-list property into out (at most max items); returns count */
+static int
+getatomlist(Client *c, Atom prop, Atom *out, int max)
+{
+  Atom actual;
+  int fmt;
+  unsigned long i, nitems, extra, n = 0;
+  unsigned char *p = NULL;
+
+  if (XGetWindowProperty(dpy, c->win, prop, 0L, max, False, XA_ATOM,
+                         &actual, &fmt, &nitems, &extra, &p) != Success || !p)
+    return 0;
+  if (fmt == 32) {
+    n = MIN(nitems, (unsigned long)max);
+    for (i = 0; i < n; i++)
+      out[i] = ((Atom *)p)[i];
+  }
+  XFree(p);
+  return (int)n;
+}
+
+/* 1 if the ATOM-list property prop on c->win contains val. Non-destructive:
+   getatomprop reads the first item only, getstateprop deletes after reading */
+int
+hasatomprop(Client *c, Atom prop, Atom val)
+{
+  Atom list[64];
+  int i, n = getatomlist(c, prop, list, LENGTH(list));
+
+  for (i = 0; i < n; i++)
+    if (list[i] == val)
+      return 1;
+  return 0;
 }
 
 static uint32_t prealpha(uint32_t p, uint32_t custom_alpha) {
@@ -3617,6 +3659,7 @@ void manage(Window w, XWindowAttributes *wa, int mapped) {
   updatesizehints(c);
   updatewmhints(c);
   setframeextents(c);
+  syncattention(c);
   XSelectInput(dpy, w, EnterWindowMask | FocusChangeMask |
                PropertyChangeMask | StructureNotifyMask);
   grabbuttons(c, 0);
@@ -3881,6 +3924,7 @@ void propertynotify(XEvent *e) {
   if ((ev->window == root) && (ev->atom == XA_WM_NAME))
     updatestatus();
   else if (ev->state == PropertyDelete && ev->atom != wmatom[WMState] &&
+           ev->atom != netatom[NetWMState] &&
            ev->atom != motifwmhints && ev->atom != gtkframeextents)
     return; /* ignore (but decor-hint removal must re-resolve the title) */
   else if ((c = wintoclient(ev->window))) {
@@ -3922,6 +3966,10 @@ void propertynotify(XEvent *e) {
       if (c == c->mon->sel && !c->isfullscreen)
         drawbar(c->mon);
       drawtitle(c);
+    } else if (ev->atom == netatom[NetWMState]) {
+      /* EWMH attention flag set/unset at runtime: mirror into urgency */
+      syncattention(c);
+      drawbars();
     } else if (ev->atom == motifwmhints || ev->atom == gtkframeextents) {
       /* self-decoration hints (un)set at runtime: grow/shrink the frame */
       int old = c->notitle;
@@ -4494,6 +4542,8 @@ void setup(void) {
       XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_VERT", False);
   netatom[NetWMMaximizedHorz] =
       XInternAtom(dpy, "_NET_WM_STATE_MAXIMIZED_HORZ", False);
+  netatom[NetWMStateDemandsAttention] =
+      XInternAtom(dpy, "_NET_WM_STATE_DEMANDS_ATTENTION", False);
   netatom[NetWMWindowType] = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
   netatom[NetWMWindowTypeDock] =
       XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
@@ -5708,6 +5758,40 @@ void updateicon(Client *c) {
     c->tabicon = geticonprop(c->win, &c->tabicw, &c->tabich, new_alpha, tabsz);
 }
 
+
+/* mirror _NET_WM_STATE_DEMANDS_ATTENTION into isurgent, the EWMH
+   counterpart of the ICCCM urgency hint (re-derived from XUrgencyHint
+   when the flag is absent). Never writes back to the client. */
+void
+syncattention(Client *c)
+{
+  if (hasatomprop(c, netatom[NetWMState], netatom[NetWMStateDemandsAttention]))
+    c->isurgent = 1;
+  else
+    updatewmhints(c);
+}
+
+/* drop DEMANDS_ATTENTION from _NET_WM_STATE, keeping the other state atoms.
+   The WM owns clearing it once the window got attention (EWMH 5.7), so a
+   focused client does not re-light its tag on the next state change. */
+void
+clearattention(Client *c)
+{
+  Atom list[64], keep[64];
+  int i, n, m = 0;
+
+  n = getatomlist(c, netatom[NetWMState], list, LENGTH(list));
+  for (i = 0; i < n; i++)
+    if (list[i] != netatom[NetWMStateDemandsAttention])
+      keep[m++] = list[i];
+  if (m == n)
+    return; /* flag absent, nothing to do */
+  if (m)
+    XChangeProperty(dpy, c->win, netatom[NetWMState], XA_ATOM, 32,
+                    PropModeReplace, (unsigned char *)keep, m);
+  else
+    XDeleteProperty(dpy, c->win, netatom[NetWMState]);
+}
 
 void updatewindowtype(Client *c) {
   Atom state = getatomprop(c, netatom[NetWMState]);
