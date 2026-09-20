@@ -4491,9 +4491,9 @@ void showhide(Client *c) {
     XGetWindowAttributes(dpy, root, &ra);
 
     if (c->tags < selmon->tagset[selmon->seltags])
-      XMoveWindow(dpy, c->frame, -c->w * 3/2, c->y);
+      XMoveWindow(dpy, c->frame, c->x, -c->h * 3/2);
     else if (c->tags > selmon->tagset[selmon->seltags])
-      XMoveWindow(dpy, c->frame, ra.width * 3/2, c->y);
+      XMoveWindow(dpy, c->frame, c->x, ra.height * 3/2);
   }
   updateicon(c);
 }
