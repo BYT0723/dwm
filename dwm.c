@@ -126,6 +126,7 @@ enum {
   NetActiveWindow,
   NetWMMoveResize,
   NetCloseWindow,
+  NetMoveResizeWindow,
   NetWMWindowType,
   NetWMWindowTypeDock,
   NetWMWindowTypeDialog,
@@ -967,6 +968,34 @@ void clientmessage(XEvent *e) {
     /* EWMH close: close the target without stealing focus, so it also
        works for hidden clients and clients on other tags/monitors */
     closeclient(c);
+  } else if (cme->message_type == netatom[NetMoveResizeWindow]) {
+    /* EWMH programmatic move/resize: data.l[0] = gravity + flags
+       (bit8/9/10/11 = x/y/w/h present), then x, y, width, height.
+       Treated exactly as a ConfigureRequest (NorthWest gravity):
+       floating clients move, tiled ones keep layout geometry. */
+    XEvent rq;
+    XConfigureRequestEvent *rev = &rq.xconfigurerequest;
+    long gf = cme->data.l[0];
+    memset(&rq, 0, sizeof rq);
+    rev->type = ConfigureRequest;
+    rev->window = cme->window;
+    rev->value_mask = ((gf & (1 << 8)) ? CWX : 0) |
+                      ((gf & (1 << 9)) ? CWY : 0) |
+                      ((gf & (1 << 10)) ? CWWidth : 0) |
+                      ((gf & (1 << 11)) ? CWHeight : 0);
+    rev->x = cme->data.l[1];
+    rev->y = cme->data.l[2];
+    rev->width = cme->data.l[3];
+    rev->height = cme->data.l[4];
+    configurerequest(&rq);
+    /* configurerequest pre-writes c->x/y, so resize()'s change check can
+       come back clean with the frame still at the old spot; sync the
+       screen whenever a position was requested. c->w/h are hints-clean
+       here: resize() snapped them, or they were never touched. */
+    if ((gf & ((1 << 8) | (1 << 9))) &&
+        !c->isfullscreen && ISVISIBLE(c) &&
+        (c->isfloating || !selmon->lt[selmon->sellt]->arrange))
+      resizeclient(c, c->x, c->y, c->w, c->h);
   } else if (cme->message_type == netatom[NetWMMoveResize]) {
     /* CSD drag: the client draws its own titlebar and asks the WM to
        move/resize. data.l[2]: 8 = move, 0-7 = resize, others ignored. */
@@ -4408,6 +4437,7 @@ void setup(void) {
   netatom[NetActiveWindow] = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
   netatom[NetWMMoveResize] = XInternAtom(dpy, "_NET_WM_MOVERESIZE", False);
   netatom[NetCloseWindow] = XInternAtom(dpy, "_NET_CLOSE_WINDOW", False);
+  netatom[NetMoveResizeWindow] = XInternAtom(dpy, "_NET_MOVERESIZE_WINDOW", False);
   netatom[NetSupported] = XInternAtom(dpy, "_NET_SUPPORTED", False);
   netatom[NetSystemTray] = XInternAtom(dpy, "_NET_SYSTEM_TRAY_S0", False);
   netatom[NetSystemTrayOP] = XInternAtom(dpy, "_NET_SYSTEM_TRAY_OPCODE", False);
