@@ -127,6 +127,8 @@ enum {
   NetWMMoveResize,
   NetCloseWindow,
   NetMoveResizeWindow,
+  NetRequestFrameExtents,
+  NetFrameExtents,
   NetWMWindowType,
   NetWMWindowTypeDock,
   NetWMWindowTypeDialog,
@@ -414,6 +416,8 @@ static void setfullscreen(Client *c, int fullscreen);
 static void setlayout(const Arg *arg);
 static void setstateprop(Window w, Atom a, unsigned long *vals, int nvals);
 static void setup(void);
+static void setframeextents(Client *c);
+static void setframeextentswin(Window w, int bw, int top);
 static void seturgent(Client *c, int urg);
 static void show(const Arg *arg);
 static void showall(const Arg *arg);
@@ -946,8 +950,14 @@ void clientmessage(XEvent *e) {
     return;
   }
 
-  if (!c)
+  if (!c) {
+    /* _NET_REQUEST_FRAME_EXTENTS targets not-yet-mapped windows (EWMH 4.5).
+       Rules and self-decoration hints cannot be resolved before manage, so
+       answer with the config defaults; the spec allows imperfect estimates. */
+    if (cme->message_type == netatom[NetRequestFrameExtents])
+      setframeextentswin(cme->window, borderpx, showtitlebar ? th : 0);
     return;
+  }
   if (cme->message_type == netatom[NetWMState]) {
     if (cme->data.l[1] == netatom[NetWMFullscreen] ||
         cme->data.l[2] == netatom[NetWMFullscreen])
@@ -968,6 +978,8 @@ void clientmessage(XEvent *e) {
     /* EWMH close: close the target without stealing focus, so it also
        works for hidden clients and clients on other tags/monitors */
     closeclient(c);
+  } else if (cme->message_type == netatom[NetRequestFrameExtents]) {
+    setframeextents(c);
   } else if (cme->message_type == netatom[NetMoveResizeWindow]) {
     /* EWMH programmatic move/resize: data.l[0] = gravity + flags
        (bit8/9/10/11 = x/y/w/h present), then x, y, width, height.
@@ -1093,6 +1105,7 @@ void configurerequest(XEvent *e) {
       if (c->frame != None) {
         c->bw = ev->border_width;
         XSetWindowBorderWidth(dpy, c->frame, c->bw);
+        setframeextents(c);
       }
     } else if (c->isfloating || !selmon->lt[selmon->sellt]->arrange) {
       m = c->mon;
@@ -1647,6 +1660,25 @@ placeclient(Client *c)
   int dh = titleh(c);
 
   XMoveResizeWindow(dpy, c->win, 0, dh, c->w, MAX(c->h - dh, 1));
+}
+
+/* publish the frame extents (left, right, top, bottom) on a client window
+   so CSD clients can align shadows and hit areas to our decorations */
+void
+setframeextentswin(Window w, int bw, int top)
+{
+  long ext[4] = { bw, bw, bw + top, bw };
+
+  XChangeProperty(dpy, w, netatom[NetFrameExtents], XA_CARDINAL, 32,
+                  PropModeReplace, (unsigned char *)ext, 4);
+}
+
+void
+setframeextents(Client *c)
+{
+  if (!c)
+    return;
+  setframeextentswin(c->win, c->bw, titleh(c));
 }
 
 /* titlebtns is configured in config.h; index 0 = minimize, 1 = maximize, 2 = close */
@@ -3584,6 +3616,7 @@ void manage(Window w, XWindowAttributes *wa, int mapped) {
   updatewindowtype(c);
   updatesizehints(c);
   updatewmhints(c);
+  setframeextents(c);
   XSelectInput(dpy, w, EnterWindowMask | FocusChangeMask |
                PropertyChangeMask | StructureNotifyMask);
   grabbuttons(c, 0);
@@ -4290,6 +4323,7 @@ void setfullscreen(Client *c, int fullscreen) {
     c->bw = 0;
     c->isfloating = 1;
     resizeclient(c, c->mon->mx, c->mon->my, c->mon->mw, c->mon->mh);
+    setframeextents(c);
     XRaiseWindow(dpy, c->frame);
   } else if (!fullscreen && c->isfullscreen) {
     XChangeProperty(dpy, c->win, netatom[NetWMState], XA_ATOM, 32,
@@ -4302,6 +4336,7 @@ void setfullscreen(Client *c, int fullscreen) {
     c->w = c->oldw;
     c->h = c->oldh;
     resizeclient(c, c->x, c->y, c->w, c->h);
+    setframeextents(c);
     arrange(c->mon);
   }
 }
@@ -4438,6 +4473,8 @@ void setup(void) {
   netatom[NetWMMoveResize] = XInternAtom(dpy, "_NET_WM_MOVERESIZE", False);
   netatom[NetCloseWindow] = XInternAtom(dpy, "_NET_CLOSE_WINDOW", False);
   netatom[NetMoveResizeWindow] = XInternAtom(dpy, "_NET_MOVERESIZE_WINDOW", False);
+  netatom[NetRequestFrameExtents] = XInternAtom(dpy, "_NET_REQUEST_FRAME_EXTENTS", False);
+  netatom[NetFrameExtents] = XInternAtom(dpy, "_NET_FRAME_EXTENTS", False);
   netatom[NetSupported] = XInternAtom(dpy, "_NET_SUPPORTED", False);
   netatom[NetSystemTray] = XInternAtom(dpy, "_NET_SYSTEM_TRAY_S0", False);
   netatom[NetSystemTrayOP] = XInternAtom(dpy, "_NET_SYSTEM_TRAY_OPCODE", False);
