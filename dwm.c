@@ -134,6 +134,10 @@ enum {
   NetWMWindowTypeDock,
   NetWMWindowTypeDialog,
   NetWMWindowTypeTooltip,
+  NetWMWindowTypeSplash,
+  NetWMWindowTypeUtility,
+  NetWMWindowTypeNotification,
+  NetWMWindowTypeMenu,
   NetClientList,
   NetWMWindowOpacity,
   NetNumberOfDesktops,
@@ -3980,8 +3984,13 @@ void propertynotify(XEvent *e) {
         arrange(c->mon);
       }
     }
-    if (ev->atom == netatom[NetWMWindowType])
+    if (ev->atom == netatom[NetWMWindowType]) {
+      int old = c->isfloating;
+
       updatewindowtype(c);
+      if (old != c->isfloating)
+        arrange(c->mon); /* re-flow so the new float state takes effect */
+    }
   }
 }
 
@@ -4551,6 +4560,14 @@ void setup(void) {
       XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DIALOG", False);
   netatom[NetWMWindowTypeTooltip] =
       XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_TOOLTIP", False);
+  netatom[NetWMWindowTypeSplash] =
+      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_SPLASH", False);
+  netatom[NetWMWindowTypeUtility] =
+      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_UTILITY", False);
+  netatom[NetWMWindowTypeNotification] =
+      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_NOTIFICATION", False);
+  netatom[NetWMWindowTypeMenu] =
+      XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_MENU", False);
   netatom[NetWMWindowOpacity] =
       XInternAtom(dpy, "_NET_WM_WINDOW_OPACITY", False);
   netatom[NetClientList] = XInternAtom(dpy, "_NET_CLIENT_LIST", False);
@@ -5799,7 +5816,11 @@ void updatewindowtype(Client *c) {
 
   if (state == netatom[NetWMFullscreen])
     setfullscreen(c, 1);
-  if (wtype == netatom[NetWMWindowTypeDialog])
+  if (wtype == netatom[NetWMWindowTypeDialog] ||
+      wtype == netatom[NetWMWindowTypeSplash] ||
+      wtype == netatom[NetWMWindowTypeUtility] ||
+      wtype == netatom[NetWMWindowTypeNotification] ||
+      wtype == netatom[NetWMWindowTypeMenu])
     c->isfloating = 1;
 }
 
