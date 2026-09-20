@@ -125,6 +125,7 @@ enum {
   NetWMMaximizedHorz,
   NetActiveWindow,
   NetWMMoveResize,
+  NetCloseWindow,
   NetWMWindowType,
   NetWMWindowTypeDock,
   NetWMWindowTypeDialog,
@@ -310,6 +311,7 @@ static void attachbottom(Client *c);
 static void attachstack(Client *c);
 static void buttonpress(XEvent *e);
 static void checkotherwm(void);
+static void closeclient(Client *c);
 static void cleanup(void);
 static void cleanupmon(Monitor *mon);
 static void clientmessage(XEvent *e);
@@ -961,6 +963,10 @@ void clientmessage(XEvent *e) {
   } else if (cme->message_type == wmatom[WMChangeState]) {
     if (cme->data.l[0] == IconicState)
       hideclient(c);
+  } else if (cme->message_type == netatom[NetCloseWindow]) {
+    /* EWMH close: close the target without stealing focus, so it also
+       works for hidden clients and clients on other tags/monitors */
+    closeclient(c);
   } else if (cme->message_type == netatom[NetWMMoveResize]) {
     /* CSD drag: the client draws its own titlebar and asks the WM to
        move/resize. data.l[2]: 8 = move, 0-7 = resize, others ignored. */
@@ -3381,22 +3387,31 @@ void keypress(XEvent *e) {
       keys[i].func(&(keys[i].arg));
 }
 
+/* ask c to close (WM_DELETE_WINDOW), killing it as a fallback. Does not
+   touch focus/selmon, so it is safe for background clients too. */
+void
+closeclient(Client *c)
+{
+  if (!c)
+    return;
+  if (!sendevent(c->win, wmatom[WMDelete], NoEventMask,
+                 wmatom[WMDelete], CurrentTime, 0, 0, 0)) {
+    XGrabServer(dpy);
+    XSetErrorHandler(xerrordummy);
+    XSetCloseDownMode(dpy, DestroyAll);
+    XKillClient(dpy, c->win);
+    XSync(dpy, False);
+    XSetErrorHandler(xerror);
+    XUngrabServer(dpy);
+  }
+}
+
 void killclient(const Arg *arg) {
   if (!selmon->sel)
     return;
 
   if (selmon->hidsel) selmon->hidsel = 0;
-
-  if (!sendevent(selmon->sel->win, wmatom[WMDelete], NoEventMask,
-                 wmatom[WMDelete], CurrentTime, 0, 0, 0)) {
-    XGrabServer(dpy);
-    XSetErrorHandler(xerrordummy);
-    XSetCloseDownMode(dpy, DestroyAll);
-    XKillClient(dpy, selmon->sel->win);
-    XSync(dpy, False);
-    XSetErrorHandler(xerror);
-    XUngrabServer(dpy);
-  }
+  closeclient(selmon->sel);
 }
 
 /* copy an "#RRGGBB" resource value into dest; invalid values are ignored */
@@ -4392,6 +4407,7 @@ void setup(void) {
   wmatom[WMTakeFocus] = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
   netatom[NetActiveWindow] = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
   netatom[NetWMMoveResize] = XInternAtom(dpy, "_NET_WM_MOVERESIZE", False);
+  netatom[NetCloseWindow] = XInternAtom(dpy, "_NET_CLOSE_WINDOW", False);
   netatom[NetSupported] = XInternAtom(dpy, "_NET_SUPPORTED", False);
   netatom[NetSystemTray] = XInternAtom(dpy, "_NET_SYSTEM_TRAY_S0", False);
   netatom[NetSystemTrayOP] = XInternAtom(dpy, "_NET_SYSTEM_TRAY_OPCODE", False);
