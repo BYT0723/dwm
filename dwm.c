@@ -124,6 +124,7 @@ enum {
   NetWMMaximizedVert,
   NetWMMaximizedHorz,
   NetActiveWindow,
+  NetWMMoveResize,
   NetWMWindowType,
   NetWMWindowTypeDock,
   NetWMWindowTypeDialog,
@@ -960,6 +961,21 @@ void clientmessage(XEvent *e) {
   } else if (cme->message_type == wmatom[WMChangeState]) {
     if (cme->data.l[0] == IconicState)
       hideclient(c);
+  } else if (cme->message_type == netatom[NetWMMoveResize]) {
+    /* CSD drag: the client draws its own titlebar and asks the WM to
+       move/resize. data.l[2]: 8 = move, 0-7 = resize, others ignored. */
+    long dir = cme->data.l[2];
+    if (c->isfullscreen || (dir != 8 && (dir < 0 || dir > 7)))
+      return;
+    /* movemouse/resizemouse act on selmon->sel, so focus first */
+    if (c != selmon->sel)
+      focus(c);
+    if (selmon->sel != c)
+      return;
+    if (dir == 8)
+      movemouse(NULL);
+    else
+      resizemouse(NULL);
   } else if (cme->message_type == netatom[NetActiveWindow]) {
     if (jump_on_activate) {
       if (c != selmon->sel) {
@@ -4375,6 +4391,7 @@ void setup(void) {
   wmatom[WMChangeState] = XInternAtom(dpy, "WM_CHANGE_STATE", False);
   wmatom[WMTakeFocus] = XInternAtom(dpy, "WM_TAKE_FOCUS", False);
   netatom[NetActiveWindow] = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
+  netatom[NetWMMoveResize] = XInternAtom(dpy, "_NET_WM_MOVERESIZE", False);
   netatom[NetSupported] = XInternAtom(dpy, "_NET_SUPPORTED", False);
   netatom[NetSystemTray] = XInternAtom(dpy, "_NET_SYSTEM_TRAY_S0", False);
   netatom[NetSystemTrayOP] = XInternAtom(dpy, "_NET_SYSTEM_TRAY_OPCODE", False);
