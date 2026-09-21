@@ -101,7 +101,8 @@ All user configuration lives in `config.h` (edit, then rebuild):
   `BarTags`/`BarLayout`/`BarStatus` items share one pill, `{BarPillBreak, 0}`
   starts a new one. `BarTabs` stretches — keep it last. `bar24bit` switches
   to a 24-bit opaque flat bar (unified `SchemeSystray` background, no pill
-  shapes, same layout) with the systray merged into the bar window.
+  shapes, same layout, real X border for picom rounding) with the systray
+  merged into the bar window.
 - **Tabs/titlebar**: `tabwidth`, `tabgap`, `tabmode` (`TabModeIcons` default),
   `tabsize`, titlebar icon/alignment/buttons.
 - **Tags/rules/layouts**: `tags[]` (count only), `tagtext`, per-class `rules[]`,
