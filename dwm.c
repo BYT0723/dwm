@@ -1434,13 +1434,14 @@ static int drawlayout(Monitor *m, int x, int first, int last) {
    and closes the pill with a right cap plus its outline. Returns the new x. */
 static int drawbarpill(Monitor *m, const BarItem *items, size_t nitems, size_t k,
                        int x, int occ, int urg) {
-  int gx = x, first = 1, appendcap = 0;
+  int gx = x, first = !flatbar, appendcap = 0;
   size_t run = pillrun(items, nitems, k), j;
 
   statusparse(stext);
   for (j = 0; j < run; j++) {
-    /* the last drawn segment of the run leaves room for the shared cap */
-    int before = x, last = !hasdrawnafter(m, items, k, run, j + 1, occ);
+    /* the last drawn segment of the run leaves room for the shared cap;
+       flat has no caps, so every segment draws full-bleed */
+    int before = x, last = flatbar ? 0 : !hasdrawnafter(m, items, k, run, j + 1, occ);
 
     if (items[k + j].mod == BarTags) {
       if (!segdrawn(m, BarTags, 0, occ))
@@ -1459,7 +1460,7 @@ static int drawbarpill(Monitor *m, const BarItem *items, size_t nitems, size_t k
 
       while (j + g < run && items[k + j + g].mod == BarStatus)
         g++;
-      last = !hasdrawnafter(m, items, k, run, j + g, occ);
+      last = flatbar ? 0 : !hasdrawnafter(m, items, k, run, j + g, occ);
       x = drawstatusseg(m, x, items, k + j, g, first, last);
       j += g - 1;
     }
@@ -1467,7 +1468,7 @@ static int drawbarpill(Monitor *m, const BarItem *items, size_t nitems, size_t k
       first = 0;
   }
 
-  if (x > gx) {
+  if (x > gx && !flatbar) {
     /* tags/layout shorten their last run for the cap; a trailing status
        segment already painted its own cap over its last runs */
     if (appendcap)
@@ -1620,7 +1621,7 @@ void drawbar(Monitor *m) {
     stw = getsystraywidth();
   }
 
-  drw_setscheme(drw, scheme[SchemeEmpty]);
+  drw_setscheme(drw, scheme[flatbar ? SchemeSystray : SchemeEmpty]);
   drw_rect(drw, 0, 0, m->ww, bh, 1, 1);
   resizebarwin(m);
 
@@ -2512,13 +2513,15 @@ static void tabpaint(Monitor *m, int x, int w, Client *c) {
   tw = TEXTW(text) - lrpad;
 
   /* content area: the rounded-cap branch insets it by the cap radius;
-     icon+text are centred inside it, minpad is the left stop */
+     icon+text are centred inside it, minpad is the left stop. Flat draws
+     full-bleed with no caps or outline. */
+  int cap = tabr > 0 && !flatbar;
   {
-    int cxx = x + tabr;
-    int contentw = MAX(w - tabr * 2, 0);
-    int minpad = tabr > 0 ? 0 : (int)lpad;
+    int cxx = x + (cap ? tabr : 0);
+    int contentw = MAX(w - (cap ? tabr * 2 : 0), 0);
+    int minpad = cap ? 0 : (int)lpad;
 
-    if (tabr > 0)
+    if (cap)
       drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
     Picture ic = None;
     unsigned int iw = 0, ih = 0;
@@ -2532,15 +2535,15 @@ static void tabpaint(Monitor *m, int x, int w, Client *c) {
       cx = MAX(minpad, (contentw - tw) / 2);
       drw_text(drw, cxx, 0, contentw, bh, cx, text, 0, 0);
     }
-    if (tabr > 0)
+    if (cap)
       drw_rounded(drw, x + w - tabr, 0, bh, tabr, RoundedRight);
   }
-  if (drw->scheme == scheme[SchemeSel])
+  if (!flatbar && drw->scheme == scheme[SchemeSel])
     drawtabborder(x, w, NULL);
 
   // floating marker
   if (c->isfloating)
-    drw_rect(drw, x + w - tabr - boxw, (bh - boxw) / 2, boxw, boxw, c->isfixed, 0);
+    drw_rect(drw, x + w - (cap ? tabr : 0) - boxw, (bh - boxw) / 2, boxw, boxw, c->isfixed, 0);
   if (highlight)
     drw_setfontset(drw, fonts_set);
 
@@ -2567,7 +2570,7 @@ static void tabdraw(Monitor *m, int x0, const TabCell *cells, int ncells) {
 
     drw_setscheme(drw, scheme[SchemeTabIcons]);
     drw_rect(drw, x0, 0, (unsigned int)pillw, bh, 1, 1);
-    if (tabr > 0) {
+    if (tabr > 0 && !flatbar) {
       drw_setscheme(drw, scheme[SchemeEmpty]);
       drw_rect(drw, x0, 0, tabr, bh, 1, 0);
       drw_rect(drw, x0 + pillw - tabr, 0, tabr, bh, 1, 0);
