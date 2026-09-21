@@ -310,7 +310,8 @@ typedef struct {
 
 typedef struct Systray Systray;
 struct Systray {
-  Window win;
+  Window win;    /* 32-bit mode only: the separate tray window */
+  Monitor *mon;  /* flat mode only: monitor whose barwin owns the tray */
   Client *icons;
 };
 
@@ -503,6 +504,7 @@ static void updatenumlockmask(void);
 static void updatesizehints(Client *c);
 static void updatestatus(void);
 static void updatesystray(int flag);
+static Window traywin(void);
 static void updatesystrayicongeom(Client *i, int w, int h);
 static void updatesystrayiconstate(Client *i, XPropertyEvent *ev);
 static void updatetitle(Client *c);
@@ -902,11 +904,13 @@ void cleanup(void) {
   while (mons)
     cleanupmon(mons);
 
-  if (showsystray) {
+  if (showsystray && systray) {
     while (systray->icons)
       removesystrayicon(systray->icons);
-    XUnmapWindow(dpy, systray->win);
-    XDestroyWindow(dpy, systray->win);
+    if (!flatbar) {
+      XUnmapWindow(dpy, systray->win);
+      XDestroyWindow(dpy, systray->win);
+    }
     free(systray);
   }
 
@@ -965,7 +969,7 @@ void clientmessage(XEvent *e) {
   XClientMessageEvent *cme = &e->xclient;
   Client *c = wintoclient(cme->window);
 
-  if (showsystray && cme->window == systray->win &&
+  if (showsystray && cme->window == traywin() &&
       cme->message_type == netatom[NetSystemTrayOP]) {
     /* add systray icons */
     if (cme->data.l[1] == SYSTEM_TRAY_REQUEST_DOCK)
@@ -3888,8 +3892,10 @@ void maprequest(XEvent *e) {
   Client *i, *c;
   if (showsystray && (i = wintosystrayicon(ev->window))) {
     sendevent(i->win, netatom[Xembed], StructureNotifyMask, CurrentTime,
-              XEMBED_WINDOW_ACTIVATE, 0, systray->win, XEMBED_EMBEDDED_VERSION);
+              XEMBED_WINDOW_ACTIVATE, 0, traywin(), XEMBED_EMBEDDED_VERSION);
     updatesystray(1);
+    return; /* docked icons are not regular clients; never manage them,
+               or a self-mapping icon would be stolen into a frame */
   }
 
   if (!XGetWindowAttributes(dpy, ev->window, &wa) || wa.override_redirect)
@@ -4162,7 +4168,8 @@ void resize(Client *c, int x, int y, int w, int h, int interact) {
 
 void resizebarwin(Monitor *m) {
   unsigned int w = m->ww - 2 * sp;
-  if (showsystray && m == systraytomon(m))
+  /* flat mode keeps the full width: icons are barwin children past barw */
+  if (showsystray && !flatbar && m == systraytomon(m))
     w -= getsystraywidth();
   XMoveResizeWindow(dpy, m->barwin, m->wx + sp, m->by + vp, w, bh);
 }
@@ -4999,6 +5006,16 @@ Monitor *systraytomon(Monitor *m) {
   return t;
 }
 
+/* window parenting tray icons and owning the tray selection: the separate
+   systray window in 32-bit mode, the owner monitor's barwin in flat mode */
+static Window traywin(void) {
+  if (flatbar) {
+    Monitor *m = systraytomon(NULL);
+    return m ? m->barwin : None;
+  }
+  return systray ? systray->win : None;
+}
+
 void tag(const Arg *arg) {
   if (selmon->sel && arg->ui & TAGMASK) {
     Client *c = selmon->sel;
@@ -5034,7 +5051,7 @@ void togglebar(const Arg *arg) {
       !selmon->showbar;
   updatebarpos(selmon);
   resizebarwin(selmon);
-  if (showsystray) {
+  if (showsystray && !flatbar) {
     XWindowChanges wc;
     if (!selmon->showbar)
       wc.y = -bh;
@@ -5369,12 +5386,17 @@ void updatebars(void) {
                             CWColormap | CWEventMask,
                         &wa);
       XDefineCursor(dpy, m->barwin, cursor[CurNormal]->cursor);
-      if (showsystray && m == systraytomon(m))
+      if (showsystray && !flatbar && m == systraytomon(m))
         XMapRaised(dpy, systray->win);
       XMapRaised(dpy, m->barwin);
       XSetClassHint(dpy, m->barwin, &ch);
     }
   }
+  /* flat mode owns the tray on a barwin, so adoption must follow barwin
+     creation (randr re-init recreates them too); the 32-bit window needs
+     no such hook */
+  if (showsystray && flatbar)
+    updatesystray(0);
 }
 
 void updatebarpos(Monitor *m) {
@@ -5702,12 +5724,12 @@ void systraydock(Window w) {
   XAddToSaveSet(dpy, c->win);
   XSelectInput(dpy, c->win,
                StructureNotifyMask | PropertyChangeMask | ResizeRedirectMask);
-  XReparentWindow(dpy, c->win, systray->win, 0, 0);
+  XReparentWindow(dpy, c->win, traywin(), 0, 0);
   swa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
   XChangeWindowAttributes(dpy, c->win, CWBackPixel, &swa);
   XSetWindowBackgroundPixmap(dpy, c->win, ParentRelative);
   sendevent(c->win, netatom[Xembed], StructureNotifyMask, CurrentTime,
-            XEMBED_EMBEDDED_NOTIFY, 0, systray->win, XEMBED_EMBEDDED_VERSION);
+            XEMBED_EMBEDDED_NOTIFY, 0, traywin(), XEMBED_EMBEDDED_VERSION);
   XSync(dpy, False);
   setclientstate(c, NormalState);
 
@@ -5719,6 +5741,59 @@ void systraydock(Window w) {
     *cur = c;
   }
   updatesystray(1);
+}
+
+/* flat-mode tray: the owner monitor's barwin is the tray window. Icons live
+   as its children in bar-local coords from barw (the bar layout already
+   reserves their width via stw), on the unified background. */
+static void updatesystraymerged(int flag) {
+  XSetWindowAttributes wa;
+  Client *i;
+  Monitor *m = systraytomon(NULL);
+  unsigned int base, w = 0;
+  int updatebar = flag & 1, refresh = flag & 2;
+
+  if (!m || !m->barwin)
+    return; /* monitors not up yet; a later call adopts */
+  if (systray->mon != m) {
+    /* adopt (or migrate) ownership to this monitor's barwin */
+    wa.event_mask = ButtonPressMask | ExposureMask | EnterWindowMask |
+                    LeaveWindowMask | PointerMotionMask | SubstructureNotifyMask;
+    XSelectInput(dpy, m->barwin, wa.event_mask);
+    XChangeProperty(dpy, m->barwin, netatom[NetSystemTrayOrientation], XA_CARDINAL, 32,
+                    PropModeReplace, (unsigned char *)&netatom[NetSystemTrayOrientationHorz], 1);
+    XSetSelectionOwner(dpy, netatom[NetSystemTray], m->barwin, CurrentTime);
+    if (XGetSelectionOwner(dpy, netatom[NetSystemTray]) != m->barwin)
+      return; /* lost the race; retry on the next call */
+    sendevent(root, xatom[Manager], StructureNotifyMask, CurrentTime,
+              netatom[NetSystemTray], m->barwin, 0, 0);
+    XSync(dpy, False);
+    for (i = systray->icons; i; i = i->next) {
+      XReparentWindow(dpy, i->win, m->barwin, i->x, i->y);
+      i->mon = m;
+    }
+    systray->mon = m;
+  }
+
+  base = (unsigned int)(m->ww - 2 * sp) - getsystraywidth();
+  for (i = systray->icons; i; i = i->next) {
+    wa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
+    XChangeWindowAttributes(dpy, i->win, CWBackPixel, &wa);
+    XSetWindowBackgroundPixmap(dpy, i->win, ParentRelative);
+    XMapRaised(dpy, i->win);
+    w += systrayspacing;
+    i->x = (int)(base + w);
+    XMoveResizeWindow(dpy, i->win, i->x, i->y, i->w, i->h);
+    if (refresh)
+      XClearArea(dpy, i->win, 0, 0, 0, 0, True);
+    w += i->w;
+    if (i->mon != m)
+      i->mon = m;
+  }
+  XSync(dpy, False);
+
+  if (updatebar)
+    drawbar(m);
 }
 
 void updatesystray(int flag) {
@@ -5736,6 +5811,14 @@ void updatesystray(int flag) {
 
   if (!showsystray)
     return;
+  if (flatbar) {
+    /* the struct is allocated eagerly so icon tracking never sees NULL,
+       even before the first adoption (barwin missing above just defers) */
+    if (!systray && !(systray = (Systray *)calloc(1, sizeof(Systray))))
+      die("fatal: could not malloc() %u bytes\n", sizeof(Systray));
+    updatesystraymerged(flag);
+    return;
+  }
   if (!systray) {
     /* init systray */
     if (!(systray = (Systray *)calloc(1, sizeof(Systray))))
@@ -5838,7 +5921,7 @@ void updatesystrayiconstate(Client *i, XPropertyEvent *ev) {
   } else
     return;
   sendevent(i->win, xatom[Xembed], StructureNotifyMask, CurrentTime, code, 0,
-            systray->win, XEMBED_EMBEDDED_VERSION);
+            traywin(), XEMBED_EMBEDDED_VERSION);
 }
 
 void show(const Arg *arg) {
