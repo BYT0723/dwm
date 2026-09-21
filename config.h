@@ -16,38 +16,48 @@ static const          int sidepad      = 2;  /* horizontal padding of bar */
  * content and centred on the monitor's middle (the systray is not part of that
  * middle), clamped so it never runs over a side zone.
  * BarTabs stretches when its fixed width does not fit, so keep it last.
- * BarStatus selects status blocks by StatusBlockId (barparse.h, the control
- * character that prefixes them in the status writer's output);
- * StPillBreak starts a new pill (its own rounded caps) and StPillEnd ends
- * the list. Ids the writer leaves out (empty panel, portrait cut) are
- * simply skipped. NOTE: StVolume is not shown in any pill here although the
- * writer still emits it; add it to the tools pill to show it. */
-static const int lst_pills[] = {
-  StCpu, StMem, StDisk, StPillBreak,
-  StNet, StPillEnd
+ * Every status block is its own item, ST(Cpu), and consecutive
+ * BarTags/BarLayout/BarStatus items share one pill; { BarPillBreak, 0 }
+ * starts a new pill. BarTabs always starts its own pill and never joins.
+ * A St* id the writer leaves out (empty panel, portrait cut) draws nothing.
+ * NOTE: StVolume is not listed in any zone although the writer still emits
+ * it; add a ST(Volume) item to show it. */
+static const BarItem bar_left[] = {
+  { BarLayout, 0 }, { BarTags, 0 },
+  { BarPillBreak, 0 },
+  ST(Cpu), ST(Mem), ST(Disk),
+  { BarPillBreak, 0 },
+  ST(Net)
 };
-static const int rst_pills[] = {
-  StRss, StMail, StNotify, StPillBreak,
-  StWeather, StPillBreak,
-  StDate, StPillBreak,
-  StScreencast, StSingbox, StMpd, StBattery, StPillEnd
+static const BarItem bar_center[] = { { BarTabs, 0 } };
+static const BarItem bar_right[] = {
+  ST(Rss), ST(Mail), ST(Notify),
+  { BarPillBreak, 0 },
+  ST(Weather),
+  { BarPillBreak, 0 },
+  ST(Date),
+  { BarPillBreak, 0 },
+  ST(Screencast), ST(Singbox), ST(Mpd), ST(Battery)
 };
-static const BarItem bar_left[]   = { {BarLayout, NULL}, {BarTags, NULL}, {BarStatus, lst_pills}};
-static const BarItem bar_center[] = { {BarTabs, NULL} };
-static const BarItem bar_right[]  = { {BarStatus, rst_pills} };
 
 /* portrait monitors (wh > ww) use these zones instead; orientation is a config
  * choice now, so a different set of status ids belongs here too (the writer no
  * longer emits a cut marker) */
-static const int lst_pills_portrait[] = { StCpu, StMem, StPillEnd };
-static const int rst_pills_portrait[] = {
-  StRss, StMail, StNotify, StPillBreak,
-  StDate, StPillBreak,
-  StScreencast, StSingbox, StMpd, StBattery, StPillEnd
+static const BarItem bar_left_portrait[] = {
+  { BarLayout, 0 }, { BarTags, 0 },
+  { BarPillBreak, 0 },
+  ST(Cpu), ST(Mem)
 };
-static const BarItem bar_left_portrait[]   = { {BarLayout, NULL}, {BarTags, NULL}, {BarStatus, lst_pills_portrait}};
-static const BarItem bar_center_portrait[] = { {BarTabs, NULL} };
-static const BarItem bar_right_portrait[]  = { {BarStatus, rst_pills_portrait} };
+static const BarItem bar_center_portrait[] = { { BarTabs, 0 } };
+static const BarItem bar_right_portrait[] = {
+  ST(Rss), ST(Mail), ST(Notify),
+  { BarPillBreak, 0 },
+  ST(Weather),
+  { BarPillBreak, 0 },
+  ST(Date),
+  { BarPillBreak, 0 },
+  ST(Screencast), ST(Singbox), ST(Mpd), ST(Battery)
+};
 
 static const unsigned int tabwidth    = 16;   /* TabModeIconTitle: pill width in characters */
 static const char         tabtext[]   = "{title}";  /* TabModeIconTitle only; {title}, {class} */
@@ -102,7 +112,7 @@ static                int smartgaps = 0;   /* 1 means no outer gap when there is
 
 // systray
 static const          int showsystray             = 1;  /* 0 means no systray */
-static const unsigned int systraypinning          = 0;  /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
+static const unsigned int systraypinning          = 2;  /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
 static const unsigned int systrayspacing          = 4;  /* systray spacing */
 static const          int systraypinningfailfirst = 1;  /* 1: if pinning fails, display systray on the first monitor, False: display systray on the last monitor*/
 static const          int systraypad              = 4;

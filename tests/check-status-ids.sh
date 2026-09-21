@@ -52,25 +52,30 @@ fi
 grep -q '#include "status-ids.h"' barparse.h ||
   err "barparse.h does not include status-ids.h"
 
-# 2. pill arrays: names only, and every name must be in the def
-for arr in lst_pills rst_pills lst_pills_portrait rst_pills_portrait; do
-  init=$(awk "/static const int $arr\\[\\]/ {f=1} f {printf \"%s\", \$0; if (/\\}/) exit}" config.h |
-    sed 's/.*{//; s/}.*//')
-  [ -n "$init" ] || { err "array $arr not found in config.h"; continue; }
-  if printf '%s' "$init" | grep -Eq '(^|[^A-Za-z0-9_])-?[0-9]+'; then
-    err "$arr has a raw number, use St* names: {$init }"
+# 2. bar zones: status ids only via ST(Name), all known; the old int-array
+#    pill mechanics (StPillBreak/StPillEnd in config.h) are gone, grouping is
+#    { BarPillBreak, 0 } between BarItems now.
+if grep -Eq 'StPill(Break|End)' config.h; then
+  err "config.h still uses StPillBreak/StPillEnd; group ST(*) items with { BarPillBreak, 0 }"
+fi
+found=0
+# shellcheck disable=SC2086
+for item in $(grep -o 'ST([A-Za-z0-9_]*)' config.h); do
+  found=1
+  tok=$(printf '%s' "$item" | sed 's/^ST(//; s/)$//')
+  case "$tok" in
+    PillBreak | PillEnd)
+      err "ST($tok) is list mechanics, not a block id; use { BarPillBreak, 0 } between items"
+      continue ;;
+  esac
+  if ! contains "$def_names" "$tok"; then
+    err "config.h references unknown id 'ST($tok)' (not in $DEF)"
   fi
-  # shellcheck disable=SC2086
-  for tok in $(printf '%s' "$init" | tr ',' ' '); do
-    tok=$(printf '%s' "$tok" | tr -d '[:space:]')
-    [ -n "$tok" ] || continue
-    short=${tok#St}
-    case "$short" in PillBreak | PillEnd) continue ;; esac # list mechanics, not block ids
-    if ! contains "$def_names" "$short"; then
-      err "$arr references unknown id '$tok' (not in $DEF)"
-    fi
-  done
 done
+[ "$found" -eq 1 ] || err "no ST(*) items found in config.h"
+if grep -Eq '\{ *BarStatus' config.h; then
+  err "config.h uses raw { BarStatus, ... }; use ST(Name)"
+fi
 
 # 3. writer side, when present
 wdir="${DWM_STATUS_DIR:-$HOME/.dwm}"

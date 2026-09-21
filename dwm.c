@@ -232,14 +232,20 @@ typedef struct {
 } Layout;
 
 /* bar layout: items are grouped into three zones (config.h) and each zone
-   is filled in array order. BarStatus carries the block ids to draw as
-   pills; other modules ignore ids. A BarLayout right after BarTags shares
-   the tags pill, which is why the two are one pill by default. */
-typedef enum { BarNone, BarTags, BarLayout, BarTabs, BarStatus } BarModule;
+   is filled in array order. Every status block is its own item,
+   { BarStatus, StCpu }, and consecutive BarTags/BarLayout/BarStatus items
+   share one pill; { BarPillBreak, 0 } starts a new pill. BarTabs always
+   starts its own pill and never joins. A status block the writer left out
+   (empty panel, portrait cut) draws nothing, and a pill whose items all
+   draw nothing emits no pill and no gap. */
+typedef enum { BarNone, BarTags, BarLayout, BarTabs, BarStatus, BarPillBreak } BarModule;
 typedef struct {
   BarModule mod;
-  const int *ids;
+  int id; /* BarStatus only: the StatusBlockId drawn; other modules ignore it */
 } BarItem;
+/* config shorthand: ST(Cpu) is { BarStatus, StCpu }, so zones list bare
+   block names once instead of repeating the St prefix per item */
+#define ST(x) { BarStatus, St##x }
 
 /* one drawn bar element, recorded as the bar is painted so clicks and hover
    resolve against exactly what is on screen instead of re-deriving it */
@@ -336,7 +342,9 @@ static Monitor *dirtomon(int dir);
 static void drawbar(Monitor *m);
 static void drawbars(void);
 static void drawtabborder(int x, int w, Clr *s);
-static int drawstatuspills(Monitor *m, int x, const int *ids);
+static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
+                         size_t n, int first, int last);
+static int tagswidth(Monitor *m, int occ);
 static int tablayout(Monitor *m, int avail, TabCell *cells, int max, int *ncells);
 static int drawbarpill(Monitor *m, const BarItem *items, size_t nitems, size_t k,
                        int x, int occ, int urg);
@@ -436,10 +444,14 @@ static void sigchld(int unused);
 static void sighup(int unused);
 static void sigterm(int unused);
 static void spawn(const Arg *arg);
-static int statuswidth(const int *ids);
+static int statusblock_idx(int id);
+static void statuspills_buildrun(const BarItem *items, size_t k, size_t n);
+static int runstatuswidth(const BarItem *items, size_t k, size_t n);
+static int barpillwidth(Monitor *m, const BarItem *items, size_t k, size_t run,
+                        int occ);
+static int segdrawn(Monitor *m, BarModule mod, int id, int occ);
 static void statusparse(const char *text);
 static int status_block_width(int i);
-static void statuspills_build(const int *ids);
 static int barzonewidth(Monitor *m, const BarItem *items, size_t nitems, int occ,
                         int n, int avail);
 static void addslot(Monitor *m, int x, int w, unsigned int click, Arg arg);
@@ -1305,14 +1317,55 @@ static const BarSlot *barslotat(Monitor *m, int x) {
   return NULL;
 }
 
-/* tags and the layout symbol share one pill whenever they are adjacent, in
-   either order; returns how many items starting at k form that pill */
+/* BarTags, BarLayout and single status blocks are joinable: consecutive
+   ones share one pill. BarPillBreak, BarTabs and BarNone all end the run.
+   Returns how many items starting at k form that pill (1 for a lone item). */
+static int barjoinable(BarModule mod) {
+  return mod == BarTags || mod == BarLayout || mod == BarStatus;
+}
+
 static size_t pillrun(const BarItem *items, size_t nitems, size_t k) {
-  if (k + 1 < nitems &&
-      ((items[k].mod == BarTags && items[k + 1].mod == BarLayout) ||
-       (items[k].mod == BarLayout && items[k + 1].mod == BarTags)))
-    return 2;
-  return 1;
+  size_t run = 0;
+
+  while (k + run < nitems && barjoinable(items[k + run].mod))
+    run++;
+  return run ? run : 1;
+}
+
+/* index of the first parsed status block tagged with id, -1 when the writer
+   left it out (empty panel, portrait cut). statusparse() must have run. */
+static int statusblock_idx(int id) {
+  int i;
+
+  for (i = 0; i < nstblocks; i++)
+    if (stblocks[i].id == (unsigned int)id)
+      return i;
+  return -1;
+}
+
+/* 1 if the bar item draws anything: layout always does, tags only with a
+   visible tag, a status block only when the writer emitted it. statusparse()
+   must have run before asking about BarStatus. */
+static int segdrawn(Monitor *m, BarModule mod, int id, int occ) {
+  if (mod == BarLayout)
+    return 1;
+  if (mod == BarTags)
+    return tagswidth(m, occ) > 0;
+  if (mod == BarStatus)
+    return statusblock_idx(id) >= 0;
+  return 0;
+}
+
+/* 1 if any item from `from` on draws anything; landing first/last on drawn
+   segments so absent blocks never steal a cap */
+static int hasdrawnafter(Monitor *m, const BarItem *items, size_t k, size_t run,
+                         size_t from, int occ) {
+  size_t o;
+
+  for (o = from; o < run; o++)
+    if (segdrawn(m, items[k + o].mod, items[k + o].id, occ))
+      return 1;
+  return 0;
 }
 
 /* width of the visible tags */
@@ -1372,61 +1425,107 @@ static int drawlayout(Monitor *m, int x, int first, int last) {
                   m->ltsymbol, 0, skip);
 }
 
-/* draw the pill formed by the items [k, k + pillrun(k)): the tags pill and the
-   layout symbol join, everything else is its own pill. Records the slots and
-   closes the pill with a right cap plus its outline. Returns the new x. */
+/* draw the pill formed by the items [k, k + pillrun(k)): tags, layout and
+   status blocks join into one pill with shared outer caps and one outline.
+   Consecutive BarStatus items draw as one joined segment; first/last land on
+   the drawn segments so absent blocks never steal a cap. Records the slots
+   and closes the pill with a right cap plus its outline. Returns the new x. */
 static int drawbarpill(Monitor *m, const BarItem *items, size_t nitems, size_t k,
                        int x, int occ, int urg) {
-  int gx = x, first = 1;
+  int gx = x, first = 1, appendcap = 0;
   size_t run = pillrun(items, nitems, k), j;
 
+  statusparse(stext);
   for (j = 0; j < run; j++) {
-    int before = x;
+    /* the last drawn segment of the run leaves room for the shared cap */
+    int before = x, last = !hasdrawnafter(m, items, k, run, j + 1, occ);
 
-    if (items[k + j].mod == BarTags)
-      x = drawtags(m, x, occ, urg, first, j + 1 == run);
-    else
-      x = drawlayout(m, x, first, j + 1 == run);
+    if (items[k + j].mod == BarTags) {
+      if (!segdrawn(m, BarTags, 0, occ))
+        continue; /* no visible tag: no segment, no cap */
+      x = drawtags(m, x, occ, urg, first, last);
+      if (last)
+        appendcap = 1;
+    } else if (items[k + j].mod == BarLayout) {
+      x = drawlayout(m, x, first, last);
+      if (last)
+        appendcap = 1;
+    } else {
+      /* consecutive status blocks draw as one joined segment, so their
+         writer colours flow across blocks like one pill's panes */
+      size_t g = 1;
+
+      while (j + g < run && items[k + j + g].mod == BarStatus)
+        g++;
+      last = !hasdrawnafter(m, items, k, run, j + g, occ);
+      x = drawstatusseg(m, x, items, k + j, g, first, last);
+      j += g - 1;
+    }
     if (x > before)
       first = 0;
   }
 
   if (x > gx) {
-    x += drw_rounded(drw, x, 0, bh, tabr, RoundedRight);
+    /* tags/layout shorten their last run for the cap; a trailing status
+       segment already painted its own cap over its last runs */
+    if (appendcap)
+      x += drw_rounded(drw, x, 0, bh, tabr, RoundedRight);
     drawtabborder(gx, x - gx, scheme[SchemeStatus]);
   }
   return x;
+}
+
+/* width of one pill run: tags, layout and the present status blocks. A run
+   that draws nothing has width 0, so the caller drops it with its gap. */
+static int barpillwidth(Monitor *m, const BarItem *items, size_t k, size_t run,
+                        int occ) {
+  size_t j;
+  int w = 0;
+
+  for (j = 0; j < run; j++) {
+    if (items[k + j].mod == BarTags)
+      w += tagswidth(m, occ);
+    else if (items[k + j].mod == BarLayout)
+      w += TEXTW(m->ltsymbol);
+    else if (items[k + j].mod == BarStatus && m == selmon)
+      w += runstatuswidth(items, k + j, 1);
+  }
+  return w;
 }
 
 /* width a zone takes, counting the gaps between its pills; avail is the
    room elastic tabs may stretch into (0 outside the center zone) */
 static int barzonewidth(Monitor *m, const BarItem *items, size_t nitems,
                         int occ, int n, int avail) {
-  size_t k, run, j;
-  int w = 0;
+  size_t k, run;
+  int w = 0, first = 1;
 
   for (k = 0; k < nitems; k += run) {
+    if (items[k].mod == BarPillBreak) {
+      run = 1;
+      continue; /* separator: no pill, no gap (consecutive breaks collapse) */
+    }
     run = pillrun(items, nitems, k);
-    if (k)
-      w += (int)tabgap;
-    for (j = 0; j < run; j++) {
-      switch (items[k + j].mod) {
-      case BarTags:
-        w += tagswidth(m, occ);
-        break;
-      case BarLayout:
-        w += TEXTW(m->ltsymbol);
-        break;
-      case BarTabs:
-        w += tablayout(m, avail, NULL, 0, NULL);
-        break;
-      case BarStatus:
-        if (m == selmon)
-          w += statuswidth(items[k + j].ids);
-        break;
-      default: /* BarNone: an intentionally empty slot */
-        break;
-      }
+    if (barjoinable(items[k].mod)) {
+      int rw = barpillwidth(m, items, k, run, occ);
+
+      /* a run that draws nothing (absent blocks, vacant tags) emits no
+         pill and no gap, like a status pill of absent blocks used to */
+      if (rw == 0)
+        continue;
+      if (!first)
+        w += (int)tabgap;
+      first = 0;
+      w += rw;
+    } else if (items[k].mod == BarTabs) {
+      if (!first)
+        w += (int)tabgap;
+      first = 0;
+      w += tablayout(m, avail, NULL, 0, NULL);
+    } else { /* BarNone: an intentionally empty slot */
+      if (!first)
+        w += (int)tabgap;
+      first = 0;
     }
   }
   return w;
@@ -1464,16 +1563,29 @@ static BarZones barzones(Monitor *m) {
 static int drawzone(Monitor *m, const BarItem *items, size_t nitems, int x,
                     int w, int occ, int urg, int n) {
   size_t k;
+  int first = 1;
 
   for (k = 0; k < nitems; k++) {
-    if (k)
-      x += (int)tabgap;
-    switch (items[k].mod) {
-    case BarTags:
-    case BarLayout:
+    if (items[k].mod == BarPillBreak)
+      continue; /* separator: no pill, no gap */
+    if (barjoinable(items[k].mod)) {
+      size_t run = pillrun(items, nitems, k);
+
+      if (barpillwidth(m, items, k, run, occ) == 0) {
+        k += run - 1;
+        continue; /* nothing drawn: no pill, no gap */
+      }
+      if (!first)
+        x += (int)tabgap;
+      first = 0;
       x = drawbarpill(m, items, nitems, k, x, occ, urg);
-      k += pillrun(items, nitems, k) - 1;
-      break;
+      k += run - 1;
+      continue;
+    }
+    if (!first)
+      x += (int)tabgap;
+    first = 0;
+    switch (items[k].mod) {
     case BarTabs: {
       /* the zone was sized to this row, so laying it out again gives the
          same geometry the measurement used */
@@ -1485,10 +1597,8 @@ static int drawzone(Monitor *m, const BarItem *items, size_t nitems, int x,
       x += roww;
       break;
     }
-    case BarStatus:
-      x = drawstatuspills(m, x, items[k].ids);
-      break;
-    default: /* BarNone: an intentionally empty slot */
+    default: /* BarNone: an intentionally empty slot (BarStatus is joinable
+              and always drawn by drawbarpill above, never reaches here) */
       break;
     }
   }
@@ -1809,11 +1919,17 @@ static void drawpillcap(Clr *work, int capx, int pillw) {
   drw_rounded(drw, capx, 0, bh, tabr, RoundedLeft);
 }
 
-/* draw the configured status pills at x and record a slot per drawn block so
-   a click resolves to that block's INDEX; returns the x after the pills.
-   Only the selected monitor carries status. */
-static int drawstatuspills(Monitor *m, int x, const int *ids) {
-  int i, w, roww, origin, tabstart;
+/* draw consecutive status items [k, k + n) as one joined segment of the
+   open pill and record a slot per drawn block so a click resolves to that
+   block's INDEX; returns the x after the segment. Only the selected monitor
+   carries status. first draws the pill's left cap (with the segment's own
+   leading colours, like a lone status pill); last paints the right cap over
+   the last runs. The run outline is always the caller's: a middle segment
+   draws neither cap, so tags, layout and status flow across blocks in one
+   shared pill. A segment whose blocks are all absent draws nothing. */
+static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
+                         size_t n, int first, int last) {
+  int i, w, roww, origin;
   short iscode = 0;
   /* 1 = the next text run draws right after a '(' cap, so its left
      padding must be skipped to keep the rounded corner visible */
@@ -1830,15 +1946,16 @@ static int drawstatuspills(Monitor *m, int x, const int *ids) {
 
   /* one shared parse for drawing and click resolution: stbuf holds the
      visible text (control characters dropped), stblocks the block ids, and
-     pbuf the configured pills with their cap markers injected */
+     pbuf the segment's blocks with cap markers injected */
   statusparse(stext);
-  statuspills_build(ids);
+  statuspills_buildrun(items, k, n);
+  if (pbuf[0] == '\0')
+    return x; /* every block absent: no segment, no gap */
   text = pbuf;
 
-  /* width of the pills; kept apart from `w`, which the interpreter reuses */
+  /* width of the segment; kept apart from `w`, which the interpreter reuses */
   roww = stpills_w;
   origin = x;
-  tabstart = x;
 
   /* draw on the working scheme, reset to the configured status colours so
      ^c/^b from an earlier pill or the previous frame cannot leak */
@@ -1909,8 +2026,16 @@ static int drawstatuspills(Monitor *m, int x, const int *ids) {
         else if (text[i] == '(' && tabradius > 0) {
           /* remember the cap and draw it with the pill's first run instead:
              the pill's own ^b must apply first so cap, body and text agree,
-             and the body width is known from the layout pass */
-          tabstart = x;
+             and the body width is known from the layout pass. Mid-pill the
+             cap is skipped and the text just continues (the base-colour
+             tracking still applies for ^d). */
+          if (!first) {
+            pillbase[ColFg] = scheme[SchemeStatus][ColFg];
+            pillbase[ColBg] = scheme[SchemeStatus][ColBg];
+            pillbase[ColBorder] = scheme[SchemeStatus][ColBorder];
+            pillprologue = 1;
+            continue;
+          }
           capx = x;
           pillw = (spillidx < nspills) ? spills[spillidx].w : 0;
           spillidx++;
@@ -1922,17 +2047,19 @@ static int drawstatuspills(Monitor *m, int x, const int *ids) {
           pillprologue = 1;
           skip_pad = 1;
         } else if (text[i] == ')' && tabradius > 0) {
+          if (!last)
+            continue; /* a following segment continues the pill */
           if (capx >= 0) { /* a pill with no drawn text at all */
             drawpillcap(work, capx, pillw);
             pillprologue = 0;
             capx = -1;
           }
+          /* the right cap overlaps the last runs; the caller draws the one
+             outline around the whole pill, so no border and no gap here */
           drw_setscheme(drw, scheme[SchemeEmpty]);
-          drw_rect(drw, x-tabr, 0, tabr + tabgap, bh, 1, 0);
+          drw_rect(drw, x-tabr, 0, tabr, bh, 1, 0);
           drw_setscheme(drw, work);
           drw_rounded(drw, x-tabr, 0, bh, tabr, RoundedRight);
-          drawtabborder(tabstart, x - tabstart, scheme[SchemeStatus]);
-          x += tabgap;
         }
       }
 
@@ -4737,29 +4864,35 @@ static int status_block_width(int i) {
   return w;
 }
 
-/* Build the drawn status from the configured pills (see bar_pills): the
-   writer only emits content plus colours and separates blocks with control
-   characters, while grouping and rounded caps are injected here. Fills
-   scells with each drawn block's offset and width so a click maps back to
-   its id; the pill gap the old inline ^) used to produce is folded into the
-   cell that ends the pill, so click ranges tile the drawn width. */
-static void statuspills_build(const int *ids) {
+/* Build the drawn status for one run of consecutive BarStatus items (see
+   bar_pills): the writer only emits content plus colours and separates
+   blocks with control characters, while grouping and rounded caps are
+   injected here. One run is one pill: the items' ids, in order, with no
+   break between them. Fills scells with each drawn block's offset and width
+   so a click maps back to its id; unlike the old per-array pills there is no
+   trailing gap, the bar-level gap between pills covers separation. */
+static void statuspills_buildrun(const BarItem *items, size_t k, size_t n) {
   BarPillCell cells[MAX_STBLOCKS];
-  int i, n;
+  int tmp[MAX_STBLOCKS + 1], t = 0, i, m;
+  size_t j;
 
   pbuf[0] = '\0';
   nscells = 0;
   nspills = 0;
   spillidx = 0;
   stpills_w = 0;
-  if (!ids)
-    return;
+  for (j = 0; j < n && t < MAX_STBLOCKS; j++)
+    if (items[k + j].mod == BarStatus)
+      tmp[t++] = items[k + j].id;
+  if (t == 0)
+    return; /* no status items: nothing to build */
+  tmp[t] = StPillEnd;
 
-  n = bar_pills(stbuf, stblocks, nstblocks, ids, pbuf, sizeof pbuf, cells,
+  m = bar_pills(stbuf, stblocks, nstblocks, tmp, pbuf, sizeof pbuf, cells,
                 MAX_STBLOCKS);
-  for (i = 0; i < n; i++) {
+  for (i = 0; i < m; i++) {
     int bw = status_block_width(cells[i].block);
-    int gap = cells[i].gap ? (int)tabgap : 0;
+    int gap = (cells[i].gap && i + 1 < m) ? (int)tabgap : 0;
 
     /* a cell that follows a pill's last one opens the next pill */
     if (nspills < MAX_STBLOCKS && (i == 0 || cells[i - 1].gap)) {
@@ -4776,6 +4909,14 @@ static void statuspills_build(const int *ids) {
     }
     stpills_w += bw + gap;
   }
+}
+
+/* drawn width of one run's status items; measuring builds, so it always
+   agrees with what drawstatusseg will draw */
+static int runstatuswidth(const BarItem *items, size_t k, size_t n) {
+  statusparse(stext);
+  statuspills_buildrun(items, k, n);
+  return stpills_w;
 }
 
 /* drawn width of one NUL-terminated status2d run (a single block): text
@@ -4810,13 +4951,6 @@ static int status2d_runwidth(char *s) {
   if (!isCode && strlen(text) > 0)
     w += TEXTW(text);
   return w;
-}
-
-/* total drawn width of the pills selected by ids */
-static int statuswidth(const int *ids) {
-  statusparse(stext);
-  statuspills_build(ids);
-  return stpills_w;
 }
 
 /* hot-restart: re-dock former systray icons. When dwm restarts via

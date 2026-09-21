@@ -15,8 +15,9 @@ three-zone bar, tab pills, per-client titlebars, vanitygaps layouts, and a
 - **Modular bar**: `bar_left / bar_center / bar_right` zones in `config.h`, each a list
   of `{BarTags, BarLayout, BarTabs, BarStatus}` items. Separate portrait configs
   (`bar_*_portrait[]`) apply when `wh > ww`.
-- **Status pills**: `BarStatus` items select blocks by id and group them into rounded
-  pills (`StPillBreak` / `StPillEnd`). Shell emits content+color, dwm owns layout.
+- **Status pills**: every status block is its own `ST(*)` item; consecutive
+  items share one rounded pill, `{BarPillBreak, 0}` starts a new one.
+  Shell emits content+color, dwm owns layout.
 - **Tab modes**: `TabModeIcons` (single shared pill, default) vs `TabModeIconTitle`
   (one pill per client), toggled at runtime with `Mod+Shift+b`. Sizing via
   `TabFit / TabFill / TabFixed`.
@@ -96,8 +97,9 @@ is acceptable.
 All user configuration lives in `config.h` (edit, then rebuild):
 
 - **Bar**: `bar_left / bar_center / bar_right` (+ `*_portrait` when `wh > ww`).
-  `BarTabs` stretches — keep it last. `lst_pills[]` / `rst_pills[]` group `St*`
-  ids (`status-ids.def`) into pills via `StPillBreak` / `StPillEnd`.
+  Every status block is an `ST(*)` item (`status-ids.def`); consecutive
+  `BarTags`/`BarLayout`/`BarStatus` items share one pill, `{BarPillBreak, 0}`
+  starts a new one. `BarTabs` stretches — keep it last.
 - **Tabs/titlebar**: `tabwidth`, `tabgap`, `tabmode` (`TabModeIcons` default),
   `tabsize`, titlebar icon/alignment/buttons.
 - **Tags/rules/layouts**: `tags[]` (count only), `tagtext`, per-class `rules[]`,
