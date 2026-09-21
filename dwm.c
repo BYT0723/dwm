@@ -1302,22 +1302,6 @@ static void drawtabborder(int x, int w, Clr *s) {
   drw_setscheme(drw, prev);
 }
 
-/* square outline around the bar window's visible span [0, w): the flat
-   bar's frame, in the systray border color. Painted last so it sits on top
-   of every segment; geometry is untouched. */
-static void drawbarborder(int w) {
-  Clr *prev = drw->scheme;
-
-  if (tabborderpx <= 0 || tabborderpx >= bh || w <= 0)
-    return;
-  drw_setscheme(drw, scheme[SchemeSystray]);
-  drw_rect_border(drw, 0, 0, (unsigned int)w, tabborderpx);
-  drw_rect_border(drw, 0, bh - tabborderpx, (unsigned int)w, tabborderpx);
-  drw_rect_border(drw, 0, 0, tabborderpx, bh);
-  drw_rect_border(drw, w - tabborderpx, 0, tabborderpx, bh);
-  drw_setscheme(drw, prev);
-}
-
 /* append a drawn bar element; this table is what clicks and hover consult */
 static void addslot(Monitor *m, int x, int w, unsigned int click, Arg arg) {
   if (!w || m->nslots >= BAR_SLOTS)
@@ -1680,8 +1664,6 @@ void drawbar(Monitor *m) {
   drawzone(m, zones.left, zones.nleft, 0, 0, occ, urg, n);
   drawzone(m, zones.center, zones.ncenter, centerx, centerw, occ, urg, n);
   drawzone(m, zones.right, zones.nright, barw - rightw, 0, occ, urg, n);
-  if (flatbar)
-    drawbarborder(m->ww - 2 * sp);
 
   drw_map(drw, m->barwin, 0, 0, m->ww - stw, bh);
 }
@@ -5401,8 +5383,13 @@ void updatebars(void) {
     XMoveResizeWindow(dpy, m->tagwin, m->wx + sp, m->by + vp + bh,
                       dw + hoverpad * 2, dh + hoverpad * 2);
     if (!m->barwin) {
+      /* flat mode takes a real X border (picom can round it); like the old
+         systray window the border lives outside the inner geometry, so bh
+         and every bar-local coordinate stay untouched */
+      unsigned int bwb = flatbar ? tabborderpx : 0;
+      wa.border_pixel = flatbar ? scheme[SchemeSystray][ColBorder].pixel : 0;
       m->barwin = XCreateWindow(dpy, root, m->wx + sp, m->by + vp, m->ww, bh,
-                        0, depth, InputOutput, visual,
+                        bwb, depth, InputOutput, visual,
                         CWOverrideRedirect | CWBackPixel | CWBorderPixel |
                             CWColormap | CWEventMask,
                         &wa);
@@ -5421,14 +5408,17 @@ void updatebars(void) {
 }
 
 void updatebarpos(Monitor *m) {
+  /* flat mode adds a real X border outside the inner geometry: reserve its
+     width like systray->win did, and park it fully offscreen when hidden */
+  int bb = flatbar ? (int)tabborderpx : 0;
   m->wy = m->my;
   m->wh = m->mh;
   if (m->showbar) {
-    m->wh = m->wh - vertpad - bh;
+    m->wh = m->wh - vertpad - bh - bb;
     m->by = m->topbar ? m->wy : m->wy + m->wh + vertpad;
-    m->wy = m->topbar ? m->wy + bh + vp : m->wy;
+    m->wy = m->topbar ? m->wy + bh + vp + bb : m->wy;
   } else
-    m->by = -bh - vp;
+    m->by = -bh - vp - bb;
 }
 
 /* Primary tag index for EWMH desktop mapping (DESKTOP <-> tag).
