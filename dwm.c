@@ -1302,6 +1302,22 @@ static void drawtabborder(int x, int w, Clr *s) {
   drw_setscheme(drw, prev);
 }
 
+/* square outline around the bar window's visible span [0, w): the flat
+   bar's frame, in the systray border color. Painted last so it sits on top
+   of every segment; geometry is untouched. */
+static void drawbarborder(int w) {
+  Clr *prev = drw->scheme;
+
+  if (tabborderpx <= 0 || tabborderpx >= bh || w <= 0)
+    return;
+  drw_setscheme(drw, scheme[SchemeSystray]);
+  drw_rect_border(drw, 0, 0, (unsigned int)w, tabborderpx);
+  drw_rect_border(drw, 0, bh - tabborderpx, (unsigned int)w, tabborderpx);
+  drw_rect_border(drw, 0, 0, tabborderpx, bh);
+  drw_rect_border(drw, w - tabborderpx, 0, tabborderpx, bh);
+  drw_setscheme(drw, prev);
+}
+
 /* append a drawn bar element; this table is what clicks and hover consult */
 static void addslot(Monitor *m, int x, int w, unsigned int click, Arg arg) {
   if (!w || m->nslots >= BAR_SLOTS)
@@ -1664,6 +1680,8 @@ void drawbar(Monitor *m) {
   drawzone(m, zones.left, zones.nleft, 0, 0, occ, urg, n);
   drawzone(m, zones.center, zones.ncenter, centerx, centerw, occ, urg, n);
   drawzone(m, zones.right, zones.nright, barw - rightw, 0, occ, urg, n);
+  if (flatbar)
+    drawbarborder(m->ww - 2 * sp);
 
   drw_map(drw, m->barwin, 0, 0, m->ww - stw, bh);
 }
@@ -5350,8 +5368,11 @@ void unmapnotify(XEvent *e) {
 
 void updatebars(void) {
   Monitor *m;
+  /* flat mode gives the barwin a solid background so tray icons resolving
+     ParentRelative land on the unified bar color; 32-bit mode keeps 0 for
+     real translucency. SchemeSystray bg IS the flat bar base. */
   XSetWindowAttributes wa = {.override_redirect = True,
-                             .background_pixel = 0,
+                             .background_pixel = flatbar ? scheme[SchemeSystray][ColBg].pixel : 0,
                              .border_pixel = 0,
                              .colormap = cmap,
                              .event_mask = ButtonPressMask | ExposureMask |
