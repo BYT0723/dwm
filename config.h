@@ -60,12 +60,12 @@ static const BarItem bar_right_portrait[] = {
   ST(Screencast), ST(Singbox), ST(Mpd), ST(Battery)
 };
 
+static const unsigned int barborderpx = 1; /* bar and pill outline width in px; 0 = no outline */
 static const unsigned int tabwidth    = 16;   /* TabModeIconTitle: pill width in characters */
 static const char         tabtext[]   = "{title}";  /* TabModeIconTitle only; {title}, {class} */
 static const unsigned int tabradius   = 8;
 static const unsigned int tabgap      = 4; /* gaps between pills/zones, and between TabModeIconTitle pills */
 static const unsigned int tabicongap  = 8; /* TabModeIcons only: space in px between icons in the shared pill */
-static const unsigned int tabborderpx = 1; /* tab outline width in px; 0 = no outline */
 
 /* tab rendering mode:
  * TabModeIconTitle: one pill per client, icon + title (tabtext), tabwidth wide
@@ -132,7 +132,7 @@ static const unsigned int attachtop        = 0; /* new window is attached to the
 static const          int focusonmove      = 1; /* switch view and focus follow the client moved by tag/tagmon */
 static const          int jump_on_activate = 1; /* 1 = _NET_ACTIVE_WINDOW (e.g. rofi -show window) jumps to the window's tag/monitor; 0 = only mark it urgent */
 
-#define ICONSIZE (bh - 2 * tabborderpx - 4) /* or adaptively preserve 2 pixels each side */
+#define ICONSIZE (bh - 2 * barborderpx - 4) /* or adaptively preserve 2 pixels each side */
 #define ICONSPACING 4 /* space between icon and title */
 static const char *fonts[] = {
     "CaskaydiaCove Nerd Font:pixelsize=14:antialias=true;autohint=true",

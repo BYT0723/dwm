@@ -1284,20 +1284,20 @@ Monitor *dirtomon(int dir) {
 static void drawtabborder(int x, int w, Clr *s) {
   Clr *prev = drw->scheme;
 
-  if (tabborderpx <= 0 || tabborderpx >= bh || w <= 0)
+  if (barborderpx <= 0 || barborderpx >= bh || w <= 0)
     return;
   if (s && s != prev)
     drw_setscheme(drw, s);
   if (tabr > 0 && w > 2 * tabr) {
-    drw_rounded_border(drw, x, 0, bh, tabr, RoundedLeft, tabborderpx);
-    drw_rounded_border(drw, x + w - tabr, 0, bh, tabr, RoundedRight, tabborderpx);
-    drw_rect_border(drw, x + tabr, 0, w - 2 * tabr, tabborderpx);
-    drw_rect_border(drw, x + tabr, bh - tabborderpx, w - 2 * tabr, tabborderpx);
+    drw_rounded_border(drw, x, 0, bh, tabr, RoundedLeft, barborderpx);
+    drw_rounded_border(drw, x + w - tabr, 0, bh, tabr, RoundedRight, barborderpx);
+    drw_rect_border(drw, x + tabr, 0, w - 2 * tabr, barborderpx);
+    drw_rect_border(drw, x + tabr, bh - barborderpx, w - 2 * tabr, barborderpx);
   } else {
-    drw_rect_border(drw, x, 0, w, tabborderpx);
-    drw_rect_border(drw, x, bh - tabborderpx, w, tabborderpx);
-    drw_rect_border(drw, x, 0, tabborderpx, bh);
-    drw_rect_border(drw, x + w - tabborderpx, 0, tabborderpx, bh);
+    drw_rect_border(drw, x, 0, w, barborderpx);
+    drw_rect_border(drw, x, bh - barborderpx, w, barborderpx);
+    drw_rect_border(drw, x, 0, barborderpx, bh);
+    drw_rect_border(drw, x + w - barborderpx, 0, barborderpx, bh);
   }
   drw_setscheme(drw, prev);
 }
@@ -5386,7 +5386,7 @@ void updatebars(void) {
       /* flat mode takes a real X border (picom can round it); like the old
          systray window the border lives outside the inner geometry, so bh
          and every bar-local coordinate stay untouched */
-      unsigned int bwb = flatbar ? tabborderpx : 0;
+      unsigned int bwb = flatbar ? barborderpx : 0;
       wa.border_pixel = flatbar ? scheme[SchemeSystray][ColBorder].pixel : 0;
       m->barwin = XCreateWindow(dpy, root, m->wx + sp, m->by + vp, m->ww, bh,
                         bwb, depth, InputOutput, visual,
@@ -5410,7 +5410,7 @@ void updatebars(void) {
 void updatebarpos(Monitor *m) {
   /* flat mode adds a real X border outside the inner geometry: reserve its
      width like systray->win did, and park it fully offscreen when hidden */
-  int bb = flatbar ? (int)tabborderpx : 0;
+  int bb = flatbar ? (int)barborderpx : 0;
   m->wy = m->my;
   m->wh = m->mh;
   if (m->showbar) {
@@ -5835,9 +5835,9 @@ void updatesystray(int flag) {
     if (!(systray = (Systray *)calloc(1, sizeof(Systray))))
       die("fatal: could not malloc() %u bytes\n", sizeof(Systray));
     systray->win = XCreateSimpleWindow(dpy, root, x - sp, m->by + vp,
-                             w > 2 * tabborderpx ? w - 2 * tabborderpx : 1,
-                             bh > 2 * tabborderpx ? bh - 2 * tabborderpx : 1,
-                             tabborderpx, scheme[SchemeSystray][ColBorder].pixel,
+                             w > 2 * barborderpx ? w - 2 * barborderpx : 1,
+                             bh > 2 * barborderpx ? bh - 2 * barborderpx : 1,
+                             barborderpx, scheme[SchemeSystray][ColBorder].pixel,
                              scheme[SchemeSystray][ColBg].pixel);
     wa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
     wa.event_mask        = ButtonPressMask | ExposureMask;
@@ -5879,12 +5879,12 @@ void updatesystray(int flag) {
   x -= w;
   XSetWindowBackground(dpy, systray->win, scheme[SchemeSystray][ColBg].pixel);
   XMoveResizeWindow(dpy, systray->win, x - xpad, m->by + ypad,
-                    w > 2 * tabborderpx ? w - 2 * tabborderpx : 1,
-                    bh > 2 * tabborderpx ? bh - 2 * tabborderpx : 1);
+                    w > 2 * barborderpx ? w - 2 * barborderpx : 1,
+                    bh > 2 * barborderpx ? bh - 2 * barborderpx : 1);
   wc.x = x - xpad;
   wc.y = m->by + ypad;
-  wc.width = w > 2 * tabborderpx ? w - 2 * tabborderpx : 1;
-  wc.height = bh > 2 * tabborderpx ? bh - 2 * tabborderpx : 1;
+  wc.width = w > 2 * barborderpx ? w - 2 * barborderpx : 1;
+  wc.height = bh > 2 * barborderpx ? bh - 2 * barborderpx : 1;
   wc.stack_mode = Above;
   wc.sibling = m->barwin;
   XConfigureWindow(dpy, systray->win, CWX | CWY | CWWidth | CWHeight | CWSibling | CWStackMode, &wc);
@@ -5907,7 +5907,7 @@ void updatesystrayicongeom(Client *i, int w, int h) {
       i->w = (int)((float)i->w * (float)newh / (float)i->h);
       i->h = newh;
     }
-    i->y = (bh - 2 * tabborderpx - newh) / 2;
+    i->y = (bh - 2 * barborderpx - newh) / 2;
   }
 }
 
