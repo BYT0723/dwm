@@ -610,6 +610,8 @@ static Window root, wmcheckwin;
 static Systray *systray = NULL;
 
 static int useargb = 0;
+static int flatbar = 0; /* 1 = 24-bit opaque flat bar (bar24bit with a 24-bit
+                           visual): unified background, no pill shapes */
 static Visual *visual;
 static int depth;
 static Colormap cmap;
@@ -4595,6 +4597,9 @@ void setup(void) {
   sh = DisplayHeight(dpy, screen);
   root = RootWindow(dpy, screen);
   xinitvisual();
+  /* flat bar only on a real 24-bit visual; anything else keeps the
+     separate-systray path even with the switch on */
+  flatbar = bar24bit && depth == 24;
   drw = drw_create(dpy, screen, root, sw, sh, visual, depth, cmap);
   if (!(fonts_set = drw_fontset_create(drw, fonts, LENGTH(fonts))))
     die("no fonts could be loaded.");
@@ -6088,19 +6093,23 @@ void xinitvisual() {
   XRenderPictFormat *fmt;
   int nitems;
   int i;
+  /* 24-bit mode takes a plain TrueColor visual so tray icons accept the
+     barwin as parent; the default 32-bit mode wants an alpha visual */
+  int want = bar24bit ? 24 : 32;
 
-  XVisualInfo tpl = {.screen = screen, .depth = 32, .class = TrueColor};
+  XVisualInfo tpl = {.screen = screen, .depth = want, .class = TrueColor};
   long masks = VisualScreenMask | VisualDepthMask | VisualClassMask;
 
   infos = XGetVisualInfo(dpy, masks, &tpl, &nitems);
   visual = NULL;
   for (i = 0; i < nitems; i++) {
     fmt = XRenderFindVisualFormat(dpy, infos[i].visual);
-    if (fmt && fmt->type == PictTypeDirect && fmt->direct.alphaMask) {
+    if (fmt && fmt->type == PictTypeDirect &&
+        (bar24bit ? !fmt->direct.alphaMask : fmt->direct.alphaMask)) {
       visual = infos[i].visual;
       depth = infos[i].depth;
       cmap = XCreateColormap(dpy, root, visual, AllocNone);
-      useargb = 1;
+      useargb = !bar24bit;
       break;
     }
   }
@@ -6111,6 +6120,7 @@ void xinitvisual() {
     visual = DefaultVisual(dpy, screen);
     depth = DefaultDepth(dpy, screen);
     cmap = DefaultColormap(dpy, screen);
+    useargb = 0;
   }
 }
 
