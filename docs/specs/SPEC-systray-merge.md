@@ -40,7 +40,7 @@ Manual: host run with real tray apps (e.g. pasystray, nm-applet)
 dwm.c            → everything: xinitvisual, barwin creation, updatesystray*,
                    dock/redock, togglebar, cleanup, drawbar stw reservation
 drw.c / drw.h    → drawing primitives (visual/depth flow through, no API change)
-config.h         → showsystray/pinning/spacing/order/pad unchanged
+config.h         → tray_show/pinning/spacing/order/pad unchanged
 tests/           → make test + make smoke (no new harness; tray icons need
                    real X clients, covered by manual checklist below)
 docs/specs/SPEC-systray-merge.md → this file
@@ -52,9 +52,11 @@ Match the file: terse `static` functions, one-line `/* */` intent comments,
 no new patterns. Example of the target shape:
 
 ```c
-/* config.h: 0 = 32-bit ARGB bar + separate systray window (default, current
-   behavior); 1 = 24-bit opaque flat bar, systray merged into the barwin */
-static const int bar24bit = 0;
+/* config.h: BarModeArgb = 32-bit ARGB bar + separate systray window (the
+   current behavior); BarModeFlat = 24-bit opaque flat bar, systray merged
+   into the barwin */
+typedef enum { BarModeArgb, BarModeFlat } BarMode;
+static const BarMode bar_mode = BarModeArgb;
 ```
 
 ```c
@@ -72,12 +74,12 @@ systray->mon = systraytomon(NULL);
   smoke variant (build with the switch on, or a second run) proving the flat
   bar renders.
 - Manual tray checklist (host, real apps, 24-bit mode on):
-  1. icons visible in the bar, correct order (`systrayorder`), correct spacing;
+  1. icons visible in the bar, correct order (`tray_order`), correct spacing;
   2. icon menus open on click (events reach the icon clients);
   3. kill + restart a tray app → re-docks without restart of dwm;
   4. `togglebar` hides icons with the bar and restores them;
   5. pinned mode: icons stay on the pinned monitor;
-  6. sloppy mode (`systraypinning = 0`): icons follow `selmon`;
+  6. sloppy mode (`tray_pinning = 0`): icons follow `selmon`;
   7. `xprop -root _NET_SYSTEM_TRAY_S0` owner == owner barwin;
   8. bar renders fully opaque with one unified background, no pill shapes,
      zones/gaps/positions identical to 32-bit mode.
@@ -103,14 +105,14 @@ systray->mon = systraytomon(NULL);
    TrueColor, else DefaultVisual); `useargb` reflects reality.
 4. 24-bit bar is flat: unified `SchemeSystray` background, no rounded caps
    or outlines on tags/layout/status/tabs pills; zones, items, gaps,
-   positions unchanged. The bar itself gets a real X border (`barborderpx`,
+   positions unchanged. The bar itself gets a real X border (`bar_borderpx`,
    systray border color, inside the bar rect like the 32-bit systray
    window's: the inner geometry is one border smaller per side, so the outer
    footprint stays `ww - 2 * sp` wide and `bh` tall) which picom can round.
 5. Tray selection owner + `_NET_SYSTEM_TRAY_ORIENTATION` live on the owner
    barwin (24-bit mode); XEMBED notify/activate messages reference it.
 6. Icons reparent directly to the owner barwin at `barw - stw` offsets,
-   `ParentRelative` background, vertically centered per `systraypad`.
+   `ParentRelative` background, vertically centered per `tray_pad`.
 7. Sloppy mode reparents icons + migrates selection on `selmon` change;
    `togglebar` needs no tray-specific code (children hide with the bar).
 8. All 8 manual checklist items pass on host in 24-bit mode.

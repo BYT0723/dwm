@@ -166,7 +166,7 @@ if [ -s "$ROOT/tests/.smoke-bar.png" ] && [ -s "$ROOT/tests/.smoke-bar-icons.png
   else
     # baseline is whatever config.h defaults to; the icon-only strip must be
     # the shorter one.
-    if grep -q 'tabmode = TabModeIcons' "$ROOT/config.h" 2>/dev/null; then
+    if grep -qE 'tab_mode[[:space:]]*=[[:space:]]*TabModeIcons' "$ROOT/config.h" 2>/dev/null; then
       icons_h=$hA
       titled_h=$hB
     else
@@ -210,7 +210,7 @@ hover_sweep() {
   base=$3
   while [ "$x" -le "$hi" ]; do
     xdotool mousemove "$x" 12 2>/dev/null || true
-    sleep 0.7 # hoverdelay is 500 ms
+    sleep 0.7 # hover_delay is 500 ms
     snap "$WORK/hover.png" 1280x64+0+0
     n=$(ae "$base" "$WORK/hover.png")
     if [ -n "$n" ] && [ "$n" != 0 ]; then
@@ -243,7 +243,7 @@ if [ -s "$WORK/nopreview-t.png" ] &&
 fi
 
 want=0
-if grep -qE 'previews[[:space:]]*=[[:space:]]*1' "$ROOT/config.h" 2>/dev/null; then
+if grep -qE 'hover_previews[[:space:]]*=[[:space:]]*1' "$ROOT/config.h" 2>/dev/null; then
   want=1
 fi
 if [ "$client_shown" = "$want" ] && [ "$tag_shown" = "$want" ]; then

@@ -94,18 +94,20 @@ is acceptable.
 
 ## Configuration
 
-All user configuration lives in `config.h` (edit, then rebuild):
+All user configuration lives in `config.h`, grouped by area and named
+`<area>_<what>` (theme / window / layout / bar / keys / policy):
 
 - **Bar**: `bar_left / bar_center / bar_right` (+ `*_portrait` when `wh > ww`).
   Every status block is an `ST(*)` item (`status-ids.def`); consecutive
   `BarTags`/`BarLayout`/`BarStatus` items share one pill, `{BarPillBreak, 0}`
-  starts a new one. `BarTabs` stretches — keep it last. `bar24bit` switches
-  to a 24-bit opaque flat bar (unified `SchemeSystray` background, no pill
-  shapes, same layout, real X border for picom rounding) with the systray
-  merged into the bar window.
-- **Tabs/titlebar**: `tabwidth`, `tabgap`, `tabmode` (`TabModeIcons` default),
-  `tabsize`, titlebar icon/alignment/buttons.
-- **Tags/rules/layouts**: `tags[]` (count only), `tagtext`, per-class `rules[]`,
+  starts a new one. `BarTabs` stretches — keep it last. `bar_mode = BarModeFlat`
+  switches to a 24-bit opaque flat bar (unified `SchemeSystray` background, no
+  pill shapes, same layout, real X border for picom rounding) with the systray
+  merged into the bar window; `BarModeArgb` is the 32-bit ARGB bar plus a
+  separate systray window.
+- **Tabs/titlebar**: `tab_width`, `tab_gap`, `tab_mode` (`TabModeIcons`
+  default), `tab_size`, `title_*` (show/icon/align/text/buttons).
+- **Tags/rules/layouts**: `tags[]` (count only), `tag_text`, per-class `rules[]`,
   `mfact`/`cfact` presets, gaps, `smartgaps`.
 - **Keys/buttons/status**: `keys[]` (`MODKEY = Mod4`), `buttons[]`,
   `statuscmd[]` (`$HOME/.dwm/dwm-statuscmd.sh $INDEX $BUTTON`).

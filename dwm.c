@@ -560,7 +560,7 @@ static char lastbutton[] = "-";
 static int screen;
 static int sw, sh;      /* X display screen geometry width, height */
 static int bh; /* bar geometry */
-static int th = 0;        /* titlebar height (font height + 2 * titlebarpad when enabled, 0 when disabled) */
+static int th = 0;        /* titlebar height (font height + 2 * title_pad when enabled, 0 when disabled) */
 static int lrpad;       /* sum of left and right padding for text */
 static int lpad;        /* left padding for text, equal lrpad/2  */
 static int vp;          /* vertical padding for bar */
@@ -620,8 +620,9 @@ static void traymanagerarm(void);
 static void traymanagerfire(void);
 
 static int useargb = 0;
-static int flatbar = 0; /* 1 = 24-bit opaque flat bar (bar24bit with a 24-bit
-                           visual): unified background, no pill shapes */
+static int flatbar = 0; /* 1 = 24-bit opaque flat bar (bar_mode == BarModeFlat
+                           with a 24-bit visual): unified background, no pill
+                           shapes */
 static int flatborder = 0; /* flat barwin's real X border width (0 otherwise);
                               it lives inside the bar rect */
 static Visual *visual;
@@ -914,7 +915,7 @@ void cleanup(void) {
   while (mons)
     cleanupmon(mons);
 
-  if (showsystray && systray) {
+  if (tray_show && systray) {
     while (systray->icons)
       removesystrayicon(systray->icons);
     if (!flatbar) {
@@ -991,7 +992,7 @@ void clientmessage(XEvent *e) {
   XClientMessageEvent *cme = &e->xclient;
   Client *c = wintoclient(cme->window);
 
-  if (showsystray && cme->window == traywin() &&
+  if (tray_show && cme->window == traywin() &&
       cme->message_type == netatom[NetSystemTrayOP]) {
     /* add systray icons */
     if (cme->data.l[1] == SYSTEM_TRAY_REQUEST_DOCK)
@@ -1004,7 +1005,7 @@ void clientmessage(XEvent *e) {
        Rules and self-decoration hints cannot be resolved before manage, so
        answer with the config defaults; the spec allows imperfect estimates. */
     if (cme->message_type == netatom[NetRequestFrameExtents])
-      setframeextentswin(cme->window, borderpx, showtitlebar ? th : 0);
+      setframeextentswin(cme->window, borderpx, title_show ? th : 0);
     return;
   }
   if (cme->message_type == netatom[NetWMState]) {
@@ -1073,7 +1074,7 @@ void clientmessage(XEvent *e) {
     else
       resizemouse(NULL);
   } else if (cme->message_type == netatom[NetActiveWindow]) {
-    if (jump_on_activate) {
+    if (policy_jump_on_activate) {
       if (c != selmon->sel) {
         unsigned int tag;
 
@@ -1247,7 +1248,7 @@ void destroynotify(XEvent *e) {
     if (c == hoverc)
       hoverhide();
     unmanage(c, 1);
-  } else if (showsystray && (c = wintosystrayicon(ev->window))) {
+  } else if (tray_show && (c = wintosystrayicon(ev->window))) {
     removesystrayicon(c);
     updatesystray(1);
   }
@@ -1306,20 +1307,20 @@ Monitor *dirtomon(int dir) {
 static void drawtabborder(int x, int w, Clr *s) {
   Clr *prev = drw->scheme;
 
-  if (barborderpx <= 0 || barborderpx >= bh || w <= 0)
+  if (bar_borderpx <= 0 || bar_borderpx >= bh || w <= 0)
     return;
   if (s && s != prev)
     drw_setscheme(drw, s);
   if (tabr > 0 && w > 2 * tabr) {
-    drw_rounded_border(drw, x, 0, bh, tabr, RoundedLeft, barborderpx);
-    drw_rounded_border(drw, x + w - tabr, 0, bh, tabr, RoundedRight, barborderpx);
-    drw_rect_border(drw, x + tabr, 0, w - 2 * tabr, barborderpx);
-    drw_rect_border(drw, x + tabr, bh - barborderpx, w - 2 * tabr, barborderpx);
+    drw_rounded_border(drw, x, 0, bh, tabr, RoundedLeft, bar_borderpx);
+    drw_rounded_border(drw, x + w - tabr, 0, bh, tabr, RoundedRight, bar_borderpx);
+    drw_rect_border(drw, x + tabr, 0, w - 2 * tabr, bar_borderpx);
+    drw_rect_border(drw, x + tabr, bh - bar_borderpx, w - 2 * tabr, bar_borderpx);
   } else {
-    drw_rect_border(drw, x, 0, w, barborderpx);
-    drw_rect_border(drw, x, bh - barborderpx, w, barborderpx);
-    drw_rect_border(drw, x, 0, barborderpx, bh);
-    drw_rect_border(drw, x + w - barborderpx, 0, barborderpx, bh);
+    drw_rect_border(drw, x, 0, w, bar_borderpx);
+    drw_rect_border(drw, x, bh - bar_borderpx, w, bar_borderpx);
+    drw_rect_border(drw, x, 0, bar_borderpx, bh);
+    drw_rect_border(drw, x + w - bar_borderpx, 0, bar_borderpx, bh);
   }
   drw_setscheme(drw, prev);
 }
@@ -1424,7 +1425,7 @@ static int drawtags(Monitor *m, int x, int occ, int urg, int first, int last) {
     /* Do not draw vacant tags */
     if (!(occ & 1 << i || m->tagset[m->seltags] & 1 << i))
       continue;
-    template_expand(tagtext, tag_placeholder, &i, text, sizeof(text));
+    template_expand(tag_text, tag_placeholder, &i, text, sizeof(text));
     tw = TEXTW(text);
     w = tw - (i == lastvis ? tabr : 0);
     drw_setscheme(drw, scheme[m->tagset[m->seltags] & 1 << i ? SchemeTagSel : SchemeTagNorm]);
@@ -1543,17 +1544,17 @@ static int barzonewidth(Monitor *m, const BarItem *items, size_t nitems,
       if (rw == 0)
         continue;
       if (!first)
-        w += (int)tabgap;
+        w += (int)tab_gap;
       first = 0;
       w += rw;
     } else if (items[k].mod == BarTabs) {
       if (!first)
-        w += (int)tabgap;
+        w += (int)tab_gap;
       first = 0;
       w += tablayout(m, avail, NULL, 0, NULL);
     } else { /* BarNone: an intentionally empty slot */
       if (!first)
-        w += (int)tabgap;
+        w += (int)tab_gap;
       first = 0;
     }
   }
@@ -1605,14 +1606,14 @@ static int drawzone(Monitor *m, const BarItem *items, size_t nitems, int x,
         continue; /* nothing drawn: no pill, no gap */
       }
       if (!first)
-        x += (int)tabgap;
+        x += (int)tab_gap;
       first = 0;
       x = drawbarpill(m, items, nitems, k, x, occ, urg);
       k += run - 1;
       continue;
     }
     if (!first)
-      x += (int)tabgap;
+      x += (int)tab_gap;
     first = 0;
     switch (items[k].mod) {
     case BarTabs: {
@@ -1643,7 +1644,7 @@ void drawbar(Monitor *m) {
   if (!m->showbar)
     return;
 
-  if (showsystray && m == systraytomon(m)) {
+  if (tray_show && m == systraytomon(m)) {
     stw = getsystraywidth();
   }
 
@@ -1696,7 +1697,7 @@ void drawbars(void) {
   for (m = mons; m; m = m->next)
     drawbar(m);
 
-  if (showsystray && !systraypinning)
+  if (tray_show && !tray_pinning)
     updatesystray(0);
 }
 
@@ -1705,7 +1706,7 @@ void drawbars(void) {
 int
 titleh(Client *c)
 {
-  if (!showtitlebar || !c || c->isfullscreen || c->notitle)
+  if (!title_show || !c || c->isfullscreen || c->notitle)
     return 0;
   return th;
 }
@@ -1829,8 +1830,8 @@ setframeextents(Client *c)
   setframeextentswin(c->win, c->bw, titleh(c));
 }
 
-/* titlebtns is configured in config.h; index 0 = minimize, 1 = maximize, 2 = close */
-#define NTITLEBTNS (LENGTH(titlebtns))
+/* title_btns is configured in config.h; index 0 = minimize, 1 = maximize, 2 = close */
+#define NTITLEBTNS (LENGTH(title_btns))
 
 /* index of the titlebar button at frame-relative x, -1 for none */
 int
@@ -1848,7 +1849,7 @@ titlebtnsat(Client *c, int x)
 
 /* draw the title + buttons onto c->frame's top strip.
    The icon (if shown) stays at the left; title layout follows
-   titlebaralign (0 = left, 1 = true center of the full strip width,
+   title_align (0 = left, 1 = true center of the full strip width,
    2 = right against the button area). */
 void drawtitle(Client *c) {
   int scm, i, btnw, titlew, bx, lp, tx, txtw, hasicon, iconw, highlight;
@@ -1863,14 +1864,14 @@ void drawtitle(Client *c) {
   drw_setscheme(drw, scheme[scm]);
   btnw = (c->w >= (int)(NTITLEBTNS * th + lrpad)) ? NTITLEBTNS * th : 0;
   titlew = c->w - btnw;
-  template_expand(titlebartext, tab_placeholder, c, text, sizeof(text));
+  template_expand(title_text, tab_placeholder, c, text, sizeof(text));
   txtw = TEXTW(text) - lrpad;
-  hasicon = showtitleicon && c->icon && titlew >= (int)(c->icw + ICONSPACING + lrpad);
+  hasicon = title_show_icon && c->icon && titlew >= (int)(c->icw + ICONSPACING + lrpad);
   iconw = hasicon ? (int)(c->icw + ICONSPACING) : 0;
   /* the icon stays at the left; alignment positions the text only */
-  if (titlebaralign == 2) /* right: text ends at the button area */
+  if (title_align == 2) /* right: text ends at the button area */
     tx = MAX((int)lpad + iconw, titlew - txtw);
-  else if (titlebaralign == 1) /* center: true center of the full titlebar width */
+  else if (title_align == 1) /* center: true center of the full titlebar width */
     tx = MAX((int)lpad + iconw, (c->w - txtw) / 2);
   else /* left (0 and anything unexpected) */
     tx = lpad + iconw;
@@ -1883,8 +1884,8 @@ void drawtitle(Client *c) {
     drw_pic(drw, lpad, (th - c->ich) / 2, c->icw, c->ich, c->icon);
   for (i = 0; i < (int)NTITLEBTNS && btnw; i++) {
     bx = titlew + i * th;
-    lp = MAX((th - (int)drw_fontset_getwidth(drw, titlebtns[i])) / 2, 0);
-    drw_text(drw, bx, 0, th, th, lp, titlebtns[i], 0, 0);
+    lp = MAX((th - (int)drw_fontset_getwidth(drw, title_btns[i])) / 2, 0);
+    drw_text(drw, bx, 0, th, th, lp, title_btns[i], 0, 0);
   }
   if (highlight)
     drw_setfontset(drw, fonts_set);
@@ -2052,7 +2053,7 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
           drw_rect(drw, rx + x, ry, rw, rh, 1, 0);
         } else if (text[i] == 'f')
           x += atoi(text + ++i);
-        else if (text[i] == '(' && tabradius > 0) {
+        else if (text[i] == '(' && tab_radius > 0) {
           /* remember the cap and draw it with the pill's first run instead:
              the pill's own ^b must apply first so cap, body and text agree,
              and the body width is known from the layout pass. Mid-pill the
@@ -2075,7 +2076,7 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
           pillbase[ColBorder] = scheme[SchemeStatus][ColBorder];
           pillprologue = 1;
           skip_pad = 1;
-        } else if (text[i] == ')' && tabradius > 0) {
+        } else if (text[i] == ')' && tab_radius > 0) {
           if (!last)
             continue; /* a following segment continues the pill */
           if (capx >= 0) { /* a pill with no drawn text at all */
@@ -2186,7 +2187,7 @@ static const char *tag_placeholder(const char *f, size_t *plen, void *ctx) {
 /* rendered width of tag i, shared by drawtags and tagswidth */
 static int tagtextw(unsigned int i) {
   char text[64];
-  template_expand(tagtext, tag_placeholder, &i, text, sizeof(text));
+  template_expand(tag_text, tag_placeholder, &i, text, sizeof(text));
   return TEXTW(text);
 }
 
@@ -2216,10 +2217,10 @@ static int tablayout(Monitor *m, int avail, TabCell *cells, int max,
   if (ncells)
     *ncells = 0;
 
-  if (tabmode == TabModeIcons) {
+  if (tab_mode == TabModeIcons) {
     int end[TAB_CELLS];
 
-    for (g = (int)tabicongap;; g--) {
+    for (g = (int)tab_icon_gap;; g--) {
       x = (int)tabr;
       i = 0;
       for (c = m->clients; c && i < TAB_CELLS; c = c->next) {
@@ -2261,11 +2262,11 @@ static int tablayout(Monitor *m, int avail, TabCell *cells, int max,
     return 0;
 
   /* the nominal width is a character count so it tracks the font */
-  want = tabwidth * drw_fontset_getwidth(drw, " ") + lrpad;
-  mode = tabsize == TabFill    ? BarCellsFill
-         : tabsize == TabFixed ? BarCellsFixed
+  want = tab_width * drw_fontset_getwidth(drw, " ") + lrpad;
+  mode = tab_size == TabFill    ? BarCellsFill
+         : tab_size == TabFixed ? BarCellsFixed
                                : BarCellsFit;
-  total = bar_cells(want, n, avail, (int)tabgap, mode, widths, TAB_CELLS);
+  total = bar_cells(want, n, avail, (int)tab_gap, mode, widths, TAB_CELLS);
 
   x = 0;
   i = 0;
@@ -2279,7 +2280,7 @@ static int tablayout(Monitor *m, int avail, TabCell *cells, int max,
       cells[i].w = widths[i];
       cells[i].c = c;
     }
-    x += widths[i] + (int)tabgap;
+    x += widths[i] + (int)tab_gap;
     i++;
   }
   if (i < n)
@@ -2291,7 +2292,7 @@ static int tablayout(Monitor *m, int avail, TabCell *cells, int max,
 
 /* ---- tab icon ----------------------------------------------------------
  * Clients without _NET_WM_ICON have no picture to show. The PNG named by
- * tabiconpath is loaded once as a coverage mask and tinted with the scheme's
+ * tab_icon_path is loaded once as a coverage mask and tinted with the scheme's
  * foreground, then modulated by that scheme's alpha exactly like a real icon
  * (both end up going through prealpha()). A missing file simply means
  * "no icon", never an error.
@@ -2302,14 +2303,14 @@ static int tablayout(Monitor *m, int avail, TabCell *cells, int max,
 /* icon size the tab row uses; TabModeIcons reserves the dot's room, sharing
    the same arithmetic bar_tabdotroom() the painter uses */
 static int tabiconsize(void) {
-  return bar_tabiconsize(ICONSIZE, tabmode == TabModeIcons ? (int)tabseldot : 0);
+  return bar_tabiconsize(ICONSIZE, tab_mode == TabModeIcons ? (int)tab_sel_dot : 0);
 }
 
-/* tabiconpath with "$HOME/" or "~/" expanded */
+/* tab_icon_path with "$HOME/" or "~/" expanded */
 static const char *tabiconfile(void) {
   static char path[512];
   const char *home = getenv("HOME");
-  const char *rel = tabiconpath;
+  const char *rel = tab_icon_path;
 
   if (!home)
     home = "";
@@ -2535,7 +2536,7 @@ static void tabpaint(Monitor *m, int x, int w, Client *c) {
   if (highlight)
     drw_setfontset(drw, fonts_highlight_set);
 
-  template_expand(tabtext, tab_placeholder, c, text, sizeof(text));
+  template_expand(tab_text, tab_placeholder, c, text, sizeof(text));
   tw = TEXTW(text) - lrpad;
 
   /* content area: the rounded-cap branch insets it by the cap radius;
@@ -2583,7 +2584,7 @@ static void tabdraw(Monitor *m, int x0, const TabCell *cells, int ncells) {
   if (ncells <= 0)
     return;
 
-  if (tabmode != TabModeIcons) { /* one pill per client */
+  if (tab_mode != TabModeIcons) { /* one pill per client */
     for (i = 0; i < ncells; i++)
       tabpaint(m, x0 + cells[i].x, cells[i].w, cells[i].c);
     return;
@@ -2613,7 +2614,7 @@ static void tabdraw(Monitor *m, int x0, const TabCell *cells, int ncells) {
     unsigned int iw = 0, ih = 0;
     int scm = (m->sel == c) ? SchemeSel : (HIDDEN(c) ? SchemeHid : SchemeNorm);
     int cx = x0 + cells[i].x;
-    int r = (int)tabseldot;
+    int r = (int)tab_sel_dot;
     int gap = r > 0 ? 1 : 0;
     int total, top;
 
@@ -2637,7 +2638,7 @@ static void tabdraw(Monitor *m, int x0, const TabCell *cells, int ncells) {
     if (ic)
       drw_pic(drw, cx + ((int)cells[i].w - (int)iw) / 2, top, iw, ih, ic);
     /* the gap after a cell belongs to it, so clicks tile the pill */
-    addslot(m, cx, cells[i].w + (int)tabicongap, ClkWinTitle, (Arg){.v = c});
+    addslot(m, cx, cells[i].w + (int)tab_icon_gap, ClkWinTitle, (Arg){.v = c});
   }
 }
 
@@ -2648,7 +2649,7 @@ static void hoverupdate(Monitor *m, int x) {
   Client *tc;
   int ti;
 
-  if (!previews)
+  if (!hover_previews)
     return;
   s = barslotat(m, x);
   if (s && s->click == ClkTagBar && (ti = tagindex(s->arg.ui)) >= 0 &&
@@ -2759,10 +2760,10 @@ static void hoverellipsize(const char *src, char *buf, size_t bufsz, int maxw) {
 }
 
 /* scale factor fitting a sw x sh region into the preview area: at most
-   previewh tall, at most the monitor width minus hoverpad wide */
+   hover_preview_h tall, at most the monitor width minus hover_pad wide */
 static double previewscale(Monitor *m, int sw, int sh) {
-  double scale = MIN((double)previewh / MAX(sh, 1), 1.0);
-  return MIN(scale, (double)(m->mw - (int)hoverpad * 2) / MAX(sw, 1));
+  double scale = MIN((double)hover_preview_h / MAX(sh, 1), 1.0);
+  return MIN(scale, (double)(m->mw - (int)hover_pad * 2) / MAX(sw, 1));
 }
 
 /* preview area size for a sw x sh source, using the live-tooltip scale */
@@ -2786,7 +2787,7 @@ static void hovershow(Client *c, int tx) {
                              .colormap = cmap,
                              .event_mask = NoEventMask};
 
-  if (!m->showbar || !previews)
+  if (!m->showbar || !hover_previews)
     return;
   lh = drw->fonts->h;
   title = c->name;
@@ -2798,8 +2799,8 @@ static void hovershow(Client *c, int tx) {
   previewsize(m, c->w, c->h, &pw, &ph);
 
   /* width follows the preview; a long title is ellipsized to fit */
-  tw = pw + hoverpad * 2;
-  th = hoverpad * 2 + ph + hovergap + lh;
+  tw = pw + hover_pad * 2;
+  th = hover_pad * 2 + ph + hover_gap + lh;
 
   gx = m->wx + sp + tx + hoverw / 2 - (int)tw / 2;
   if (gx < m->mx) /* left overflow: anchor to the tab's right edge instead */
@@ -2825,16 +2826,16 @@ static void hovershow(Client *c, int tx) {
   drw_setscheme(tooldrw, scheme[SchemeTooltip]);
   drw_rect(tooldrw, 0, 0, tw, th, 1, 1); /* solid background */
 
-  iw = tw - hoverpad * 2;
+  iw = tw - hover_pad * 2;
   hoverellipsize(title, titlebuf, sizeof(titlebuf), iw);
-  y = hoverpad;
+  y = hover_pad;
   if (fonts_highlight_set)
     drw_setfontset(tooldrw, fonts_highlight_set);
-  drw_text(tooldrw, hoverpad, y, iw, lh, 0, titlebuf, 0, 0);
+  drw_text(tooldrw, hover_pad, y, iw, lh, 0, titlebuf, 0, 0);
   drw_setfontset(tooldrw, fonts_set);
 
-  prevpx = hoverpad;
-  prevpy = hoverpad + lh + hovergap;
+  prevpx = hover_pad;
+  prevpy = hover_pad + lh + hover_gap;
   prevw = pw;
   prevh = ph;
   hoverpreview(c, prevpx, prevpy, prevw, prevh);
@@ -2952,9 +2953,9 @@ static void hoverpreview(Client *c, int x, int y, int w, int h) {
 
   /* inset the snapshot by previewborder so the highlight border drawn
      around the preview area sits on the background, not over the image */
-  int ix = x + (int)previewborderpx, iy = y + (int)previewborderpx,
-      iw2 = MAX(1, w - (int)previewborderpx * 2),
-      ih2 = MAX(1, h - (int)previewborderpx * 2), i;
+  int ix = x + (int)hover_preview_borderpx, iy = y + (int)hover_preview_borderpx,
+      iw2 = MAX(1, w - (int)hover_preview_borderpx * 2),
+      ih2 = MAX(1, h - (int)hover_preview_borderpx * 2), i;
   XWindowAttributes wa;
   XRenderPictFormat *fmt;
   Picture pic;
@@ -2992,7 +2993,7 @@ static void hoverpreview(Client *c, int x, int y, int w, int h) {
   /* highlight border in colors[x][2]; drw_rect has no border channel
      (filled=0 draws with the fg color), so draw it directly */
   XSetForeground(dpy, tooldrw->gc, scheme[SchemeSel][ColBorder].pixel);
-  for (i = 0; i < (int)previewborderpx && w - i * 2 > 0 && h - i * 2 > 0; i++)
+  for (i = 0; i < (int)hover_preview_borderpx && w - i * 2 > 0 && h - i * 2 > 0; i++)
     XDrawRectangle(dpy, tooldrw->drawable, tooldrw->gc, x + i, y + i,
                    w - 1 - i * 2, h - 1 - i * 2);
 }
@@ -3009,14 +3010,14 @@ static void hoverrefresh(void) {
 
 /* show the scaled snapshot of tag i in the tagwin below the bar, laid
    out like the hover tooltip: snapshot inset by previewborder, padding
-   hoverpad, highlight border on the padding edge */
+   hover_pad, highlight border on the padding edge */
 void showtagpreview(unsigned int i) {
   unsigned int tw, th, bw, dep, ww, wh;
   Window r;
   int x, y, n, iw2, ih2;
   XWindowAttributes wa;
 
-  if (!previews || selmon->tagwin == None)
+  if (!hover_previews || selmon->tagwin == None)
     return;
   if (!selmon->previewshow || !selmon->tagmap[i]) {
     XUnmapWindow(dpy, selmon->tagwin);
@@ -3024,8 +3025,8 @@ void showtagpreview(unsigned int i) {
   }
   if (!XGetGeometry(dpy, selmon->tagmap[i], &r, &x, &y, &tw, &th, &bw, &dep))
     return;
-  ww = tw + (unsigned int)hoverpad * 2;
-  wh = th + (unsigned int)hoverpad * 2;
+  ww = tw + (unsigned int)hover_pad * 2;
+  wh = th + (unsigned int)hover_pad * 2;
   /* plain background so a resize fills exposed pixels with the tooltip
      color, never a snapshot tile */
   XSetWindowBackground(dpy, selmon->tagwin,
@@ -3040,16 +3041,16 @@ void showtagpreview(unsigned int i) {
   XMapRaised(dpy, selmon->tagwin);
   /* inset the snapshot by previewborder, like hoverpreview, so the
      highlight border below wraps it on all four sides */
-  iw2 = MAX(1, (int)tw - (int)previewborderpx * 2);
-  ih2 = MAX(1, (int)th - (int)previewborderpx * 2);
+  iw2 = MAX(1, (int)tw - (int)hover_preview_borderpx * 2);
+  ih2 = MAX(1, (int)th - (int)hover_preview_borderpx * 2);
   XCopyArea(dpy, selmon->tagmap[i], selmon->tagwin, drw->gc, 0, 0, iw2, ih2,
-            (int)hoverpad + (int)previewborderpx,
-            (int)hoverpad + (int)previewborderpx);
+            (int)hover_pad + (int)hover_preview_borderpx,
+            (int)hover_pad + (int)hover_preview_borderpx);
   /* XDrawRectangle's w/h span to x+w inclusive; use the snapshot area
      (tw x th) so the border exactly wraps the inset image */
   XSetForeground(dpy, drw->gc, scheme[SchemeSel][ColBorder].pixel);
-  for (n = 0; n < (int)previewborderpx && tw - n * 2 > 0 && th - n * 2 > 0; n++)
-    XDrawRectangle(dpy, selmon->tagwin, drw->gc, hoverpad + n, hoverpad + n,
+  for (n = 0; n < (int)hover_preview_borderpx && tw - n * 2 > 0 && th - n * 2 > 0; n++)
+    XDrawRectangle(dpy, selmon->tagwin, drw->gc, hover_pad + n, hover_pad + n,
                    tw - 1 - n * 2, th - 1 - n * 2);
   XSync(dpy, False);
 }
@@ -3094,8 +3095,8 @@ void takepreview(void) {
   Picture src = None;
   XTransform tr;
 
-  /* previews off (default): never read the monitor back for a snapshot */
-  if (!previews)
+  /* hover_previews off (default): never read the monitor back for a snapshot */
+  if (!hover_previews)
     return;
 
   hoverhide(); /* keep the tooltip and tag preview out of the shot */
@@ -3197,7 +3198,7 @@ void expose(XEvent *e) {
   if (ev->count == 0 && (m = wintomon(ev->window))) {
     drawbar(m);
 
-    if (showsystray && m == systraytomon(m))
+    if (tray_show && m == systraytomon(m))
       updatesystray(0);
   }
 }
@@ -3330,7 +3331,7 @@ void focusstack(int inc, int hid) {
 
     if (HIDDEN(c)) {
       showwin(c);
-      if (!autoshowhid)
+      if (!policy_show_hidden)
         c->mon->hidsel = 1;
     }
   }
@@ -3511,20 +3512,20 @@ cleanup:
 unsigned int getsystraywidth() {
   unsigned int w = 0;
   Client *i;
-  if (showsystray)
-    for (i = systray->icons; i; w += i->w + systrayspacing, i = i->next)
+  if (tray_show)
+    for (i = systray->icons; i; w += i->w + tray_spacing, i = i->next)
       ;
-  return w ? w + systrayspacing : 0;
+  return w ? w + tray_spacing : 0;
 }
 
 static int trayrank(const char *class) {
   unsigned int i;
-  for (i = 0; systrayorder[i]; i++)
-    if (strcasecmp(class, systrayorder[i]) == 0)
+  for (i = 0; tray_order[i]; i++)
+    if (strcasecmp(class, tray_order[i]) == 0)
       return i;
   /* unlisted: find "..." slot, otherwise end */
-  for (i = 0; systrayorder[i]; i++)
-    if (strcmp(systrayorder[i], "...") == 0)
+  for (i = 0; tray_order[i]; i++)
+    if (strcmp(tray_order[i], "...") == 0)
       return i;
   return i;
 }
@@ -3881,7 +3882,7 @@ void manage(Window w, XWindowAttributes *wa, int mapped) {
     }
   }
   configure(c); /* propagates border_width, if size doesn't change */
-  attachtop ? attach(c) : attachbottom(c);
+  policy_attach_top ? attach(c) : attachbottom(c);
   attachstack(c);
   updatewmdesktop(c);
   updateclientlist();
@@ -3912,7 +3913,7 @@ void maprequest(XEvent *e) {
   XMapRequestEvent *ev = &e->xmaprequest;
 
   Client *i, *c;
-  if (showsystray && (i = wintosystrayicon(ev->window))) {
+  if (tray_show && (i = wintosystrayicon(ev->window))) {
     sendevent(i->win, netatom[Xembed], StructureNotifyMask, CurrentTime,
               XEMBED_WINDOW_ACTIVATE, 0, traywin(), XEMBED_EMBEDDED_VERSION);
     updatesystray(1);
@@ -4071,7 +4072,7 @@ void propertynotify(XEvent *e) {
   Window trans;
   XPropertyEvent *ev = &e->xproperty;
 
-  if (showsystray && (c = wintosystrayicon(ev->window))) {
+  if (tray_show && (c = wintosystrayicon(ev->window))) {
     int dirty = 0;
     if (ev->atom == XA_WM_NORMAL_HINTS) {
       updatesizehints(c);
@@ -4122,7 +4123,7 @@ void propertynotify(XEvent *e) {
     }
     if (ev->atom == XA_WM_NAME || ev->atom == netatom[NetWMName]) {
       updatetitle(c);
-      if (c == c->mon->sel && !c->isfullscreen && strstr(tabtext, "{title}"))
+      if (c == c->mon->sel && !c->isfullscreen && strstr(tab_text, "{title}"))
         drawbar(c->mon);
     } else if (ev->atom == netatom[NetWMIcon]) {
       c->icon_alpha = 0;
@@ -4174,7 +4175,7 @@ Monitor *recttomon(int x, int y, int w, int h) {
 void removesystrayicon(Client *i) {
   Client **ii;
 
-  if (!showsystray || !i)
+  if (!tray_show || !i)
     return;
   for (ii = &systray->icons; *ii && *ii != i; ii = &(*ii)->next)
     ;
@@ -4202,7 +4203,7 @@ static void barwininnersize(Monitor *m, unsigned int *w, unsigned int *h) {
     else
       *w = 1;
     *h = bh > 2 * flatborder ? bh - 2 * flatborder : 1;
-  } else if (showsystray && m == systraytomon(m))
+  } else if (tray_show && m == systraytomon(m))
     *w -= getsystraywidth();
 }
 
@@ -4337,9 +4338,9 @@ void run(void) {
     struct pollfd pfd = {.fd = ConnectionNumber(dpy), .events = POLLIN};
     int timeout = -1;
     if (hoverarm)
-      timeout = MAX((int)(hoverstart + hoverdelay - hovernow()), 0);
-    else if (hoverc && !HIDDEN(hoverc) && previewrefresh)
-      timeout = previewrefresh;
+      timeout = MAX((int)(hoverstart + hover_delay - hovernow()), 0);
+    else if (hoverc && !HIDDEN(hoverc) && hover_preview_refresh)
+      timeout = hover_preview_refresh;
     if (traytimer) {
       int64_t rem = (int64_t)(traytimer - hovernow());
       int t = rem > 0 ? (int)rem : 0;
@@ -4473,7 +4474,7 @@ void scan(void) {
           (wa.map_state == IsViewable || getstate(wins[i]) == IconicState))
         manage(wins[i], &wa, 0);
     }
-    if (showsystray && systray)
+    if (tray_show && systray)
       updatesystray(1);
     if (wins)
       XFree(wins);
@@ -4660,8 +4661,8 @@ void setup(void) {
   xinitvisual();
   /* flat bar only on a real 24-bit visual; anything else keeps the
      separate-systray path even with the switch on */
-  flatbar = bar24bit && depth == 24;
-  flatborder = flatbar ? (int)barborderpx : 0;
+  flatbar = bar_mode == BarModeFlat && depth == 24;
+  flatborder = flatbar ? (int)bar_borderpx : 0;
   drw = drw_create(dpy, screen, root, sw, sh, visual, depth, cmap);
   if (!(fonts_set = drw_fontset_create(drw, fonts, LENGTH(fonts))))
     die("no fonts could be loaded.");
@@ -4673,12 +4674,12 @@ void setup(void) {
   /* lpad = lrpad/2; */
   lpad = drw->fonts->h/2;
   lrpad = lpad * 2;
-  tabr = MIN(tabradius, lpad);
+  tabr = MIN(tab_radius, lpad);
 
-  bh = drw->fonts->h + barfontpad * 2;
-  th = showtitlebar ? drw->fonts->h + 2 * titlebarpad : 0;
-  sp = sidepad;
-  vp = (topbar == 1) ? vertpad : -vertpad;
+  bh = drw->fonts->h + bar_fontpad * 2;
+  th = title_show ? drw->fonts->h + 2 * title_pad : 0;
+  sp = bar_pad_h;
+  vp = (topbar == 1) ? bar_pad_v : -bar_pad_v;
   updategeom();
   {
     Monitor *m;
@@ -4793,7 +4794,7 @@ void setup(void) {
   for (i = 0; i < LENGTH(colors); i++)
     scheme[i] = drw_scm_create(drw, colors[i], alphas[i], 3);
   /* init system tray */
-  if (showsystray)
+  if (tray_show)
     updatesystray(0);
   /* init bars */
   updatebars();
@@ -4848,7 +4849,7 @@ void showhide(Client *c) {
     showhide(c->snext);
   } else {
     /* hide clients bottom up: park the frame offscreen but keep it mapped
-       so composite snapshots (tag previews) keep working */
+       so composite snapshots (tag hover_previews) keep working */
     showhide(c->snext);
 
     static XWindowAttributes ra;
@@ -4897,7 +4898,7 @@ void spawn(const Arg *arg) {
 }
 
 /* advance past the status2d code at *s and return its horizontal
-   advance ('f' digits, ')' tabgap); other codes advance 0 */
+   advance ('f' digits, ')' tab_gap); other codes advance 0 */
 static int status2d_advance(char **s) {
   int adv = 0;
   char *p = *s;
@@ -4907,8 +4908,8 @@ static int status2d_advance(char **s) {
     while (p[1] && p[1] != '^')
       p++;
     *s = p;
-  } else if (*p == ')' && tabradius > 0)
-    adv = (int)tabgap;
+  } else if (*p == ')' && tab_radius > 0)
+    adv = (int)tab_gap;
   return adv;
 }
 
@@ -4962,7 +4963,7 @@ static void statuspills_buildrun(const BarItem *items, size_t k, size_t n) {
                 MAX_STBLOCKS);
   for (i = 0; i < m; i++) {
     int bw = status_block_width(cells[i].block);
-    int gap = (cells[i].gap && i + 1 < m) ? (int)tabgap : 0;
+    int gap = (cells[i].gap && i + 1 < m) ? (int)tab_gap : 0;
 
     /* a cell that follows a pill's last one opens the next pill */
     if (nspills < MAX_STBLOCKS && (i == 0 || cells[i - 1].gap)) {
@@ -5032,7 +5033,7 @@ int systrayredock(Window w) {
   XClassHint ch = {NULL, NULL};
   int issystray;
 
-  if (!showsystray || !systray)
+  if (!tray_show || !systray)
     return 0;
   if (!XGetClassHint(dpy, w, &ch))
     return 0;
@@ -5047,16 +5048,16 @@ int systrayredock(Window w) {
 Monitor *systraytomon(Monitor *m) {
   Monitor *t;
   int i, n;
-  if (!systraypinning) {
+  if (!tray_pinning) {
     if (!m)
       return selmon;
     return m == selmon ? m : NULL;
   }
   for (n = 1, t = mons; t && t->next; n++, t = t->next)
     ;
-  for (i = 1, t = mons; t && t->next && i < systraypinning; i++, t = t->next)
+  for (i = 1, t = mons; t && t->next && i < tray_pinning; i++, t = t->next)
     ;
-  if (systraypinningfailfirst && n < systraypinning)
+  if (tray_pinning_fail_first && n < tray_pinning)
     return mons;
   return t;
 }
@@ -5080,7 +5081,7 @@ void tag(const Arg *arg) {
     updateclientlist();
     focus(NULL);
     arrange(selmon);
-    if (focusonmove) {
+    if (policy_focus_on_move) {
       view(arg);
       if (t && !(t & (t - 1)) && !HIDDEN(c))
         focus(c);
@@ -5095,7 +5096,7 @@ void tagmon(const Arg *arg) {
     return;
   m = dirtomon(arg->i);
   sendmon(c, m);
-  if (focusonmove && !HIDDEN(c)) {
+  if (policy_focus_on_move && !HIDDEN(c)) {
     setcurrentmon(m);
     focus(c);
   }
@@ -5106,7 +5107,7 @@ void togglebar(const Arg *arg) {
       !selmon->showbar;
   updatebarpos(selmon);
   resizebarwin(selmon);
-  if (showsystray && !flatbar) {
+  if (tray_show && !flatbar) {
     XWindowChanges wc;
     if (!selmon->showbar)
       wc.y = -bh;
@@ -5129,7 +5130,7 @@ static void toggletabmode(const Arg *arg) {
   Monitor *m;
   Client *c;
 
-  tabmode = tabmode == TabModeIconTitle ? TabModeIcons : TabModeIconTitle;
+  tab_mode = tab_mode == TabModeIconTitle ? TabModeIcons : TabModeIconTitle;
   for (m = mons; m; m = m->next)
     for (c = m->clients; c; c = c->next)
       updateicon(c);
@@ -5428,7 +5429,7 @@ void updatebars(void) {
           .colormap = cmap,
           .event_mask = PointerMotionMask};
       m->tagwin = XCreateWindow(dpy, root, m->wx + sp, m->by + vp + bh,
-                                dw + hoverpad * 2, dh + hoverpad * 2, 0, depth,
+                                dw + hover_pad * 2, dh + hover_pad * 2, 0, depth,
                                 InputOutput, visual,
                                 CWOverrideRedirect | CWBackPixel |
                                     CWBorderPixel | CWColormap | CWEventMask,
@@ -5436,21 +5437,21 @@ void updatebars(void) {
       XUnmapWindow(dpy, m->tagwin);
     }
     XMoveResizeWindow(dpy, m->tagwin, m->wx + sp, m->by + vp + bh,
-                      dw + hoverpad * 2, dh + hoverpad * 2);
+                      dw + hover_pad * 2, dh + hover_pad * 2);
     if (!m->barwin) {
       /* flat mode takes a real X border (picom can round it); it lives inside
          the bar rect like the 32-bit systray window's, so the inner size is
          the bar rect minus one border per side (see barwininnersize) */
-      unsigned int bwb = flatbar ? barborderpx : 0, bw, bhh;
+      unsigned int bw, bhh;
       barwininnersize(m, &bw, &bhh);
       wa.border_pixel = flatbar ? scheme[SchemeSystray][ColBorder].pixel : 0;
       m->barwin = XCreateWindow(dpy, root, m->wx + sp, m->by + vp, bw, bhh,
-                        bwb, depth, InputOutput, visual,
+                        flatborder, depth, InputOutput, visual,
                         CWOverrideRedirect | CWBackPixel | CWBorderPixel |
                             CWColormap | CWEventMask,
                         &wa);
       XDefineCursor(dpy, m->barwin, cursor[CurNormal]->cursor);
-      if (showsystray && !flatbar && m == systraytomon(m))
+      if (tray_show && !flatbar && m == systraytomon(m))
         XMapRaised(dpy, systray->win);
       XMapRaised(dpy, m->barwin);
       XSetClassHint(dpy, m->barwin, &ch);
@@ -5459,7 +5460,7 @@ void updatebars(void) {
   /* flat mode owns the tray on a barwin, so adoption must follow barwin
      creation (randr re-init recreates them too); the 32-bit window needs
      no such hook */
-  if (showsystray && flatbar)
+  if (tray_show && flatbar)
     updatesystray(0);
 }
 
@@ -5470,8 +5471,8 @@ void updatebarpos(Monitor *m) {
   m->wy = m->my;
   m->wh = m->mh;
   if (m->showbar) {
-    m->wh = m->wh - vertpad - bh;
-    m->by = m->topbar ? m->wy : m->wy + m->wh + vertpad;
+    m->wh = m->wh - bar_pad_v - bh;
+    m->by = m->topbar ? m->wy : m->wy + m->wh + bar_pad_v;
     m->wy = m->topbar ? m->wy + bh + vp : m->wy;
   } else
     m->by = -bh - vp;
@@ -5513,7 +5514,7 @@ updatedesktopnames(void) {
     char text[64];
     size_t len;
 
-    template_expand(tagtext, tag_placeholder, &i, text, sizeof(text));
+    template_expand(tag_text, tag_placeholder, &i, text, sizeof(text));
     len = strlen(text) + 1;
     if (off + len > sizeof(buf))
       break;
@@ -5650,7 +5651,7 @@ int updategeom(void) {
         m->clients = c->next;
         detachstack(c);
         c->mon = mons;
-        attachtop ? attach(c) : attachbottom(c);
+        policy_attach_top ? attach(c) : attachbottom(c);
         attachstack(c);
       }
       if (m == selmon)
@@ -5751,7 +5752,7 @@ void systraydock(Window w) {
   XClassHint ch = {"Systray", "systray"};
   Client *c;
 
-  if (!showsystray || !systray || !w)
+  if (!tray_show || !systray || !w)
     return;
   /* prevent double-dock: if the same window is already in the systray
    * (e.g. scan() re-docked it before the client's own dock request),
@@ -5767,7 +5768,7 @@ void systraydock(Window w) {
   {
     XClassHint hint = {NULL, NULL};
     /* a redock after a hot restart finds WM_CLASS already stamped "Systray";
-       the app's own class survives in our property, so systrayorder keeps
+       the app's own class survives in our property, so tray_order keeps
        working and a fresh dock can spot the leftover it replaces */
     if (gettextprop(c->win, xatom[SystrayClass], c->class, sizeof c->class))
       c->fromredock = 1;
@@ -5849,7 +5850,7 @@ static void traymanagerfire(void) {
   Window w = traywin();
 
   traytimer = 0;
-  if (!showsystray || !w)
+  if (!tray_show || !w)
     return;
   if (XGetSelectionOwner(dpy, netatom[NetSystemTray]) != w)
     return;
@@ -5897,7 +5898,7 @@ static void updatesystraymerged(int flag) {
     XChangeWindowAttributes(dpy, i->win, CWBackPixel, &wa);
     XSetWindowBackgroundPixmap(dpy, i->win, ParentRelative);
     XMapRaised(dpy, i->win);
-    w += systrayspacing;
+    w += tray_spacing;
     i->x = (int)(base + w);
     XMoveResizeWindow(dpy, i->win, i->x, i->y, i->w, i->h);
     if (refresh)
@@ -5925,7 +5926,7 @@ void updatesystray(int flag) {
   int updatebar = flag&1;
   int refresh_icon = flag&2;
 
-  if (!showsystray)
+  if (!tray_show)
     return;
   if (flatbar) {
     /* the struct is allocated eagerly so icon tracking never sees NULL,
@@ -5940,9 +5941,9 @@ void updatesystray(int flag) {
     if (!(systray = (Systray *)calloc(1, sizeof(Systray))))
       die("fatal: could not malloc() %u bytes\n", sizeof(Systray));
     systray->win = XCreateSimpleWindow(dpy, root, x - sp, m->by + vp,
-                             w > 2 * barborderpx ? w - 2 * barborderpx : 1,
-                             bh > 2 * barborderpx ? bh - 2 * barborderpx : 1,
-                             barborderpx, scheme[SchemeSystray][ColBorder].pixel,
+                             w > 2 * bar_borderpx ? w - 2 * bar_borderpx : 1,
+                             bh > 2 * bar_borderpx ? bh - 2 * bar_borderpx : 1,
+                             bar_borderpx, scheme[SchemeSystray][ColBorder].pixel,
                              scheme[SchemeSystray][ColBg].pixel);
     wa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
     wa.event_mask        = ButtonPressMask | ExposureMask;
@@ -5972,7 +5973,7 @@ void updatesystray(int flag) {
     XChangeWindowAttributes(dpy, i->win, CWBackPixel, &wa);
     XSetWindowBackgroundPixmap(dpy, i->win, ParentRelative);
     XMapRaised(dpy, i->win);
-    w += systrayspacing;
+    w += tray_spacing;
     i->x = w;
     XMoveResizeWindow(dpy, i->win, i->x, i->y, i->w, i->h);
     if (refresh_icon)
@@ -5981,16 +5982,16 @@ void updatesystray(int flag) {
     if (i->mon != m)
       i->mon = m;
   }
-  w = w ? w + systrayspacing : 1;
+  w = w ? w + tray_spacing : 1;
   x -= w;
   XSetWindowBackground(dpy, systray->win, scheme[SchemeSystray][ColBg].pixel);
   XMoveResizeWindow(dpy, systray->win, x - xpad, m->by + ypad,
-                    w > 2 * barborderpx ? w - 2 * barborderpx : 1,
-                    bh > 2 * barborderpx ? bh - 2 * barborderpx : 1);
+                    w > 2 * bar_borderpx ? w - 2 * bar_borderpx : 1,
+                    bh > 2 * bar_borderpx ? bh - 2 * bar_borderpx : 1);
   wc.x = x - xpad;
   wc.y = m->by + ypad;
-  wc.width = w > 2 * barborderpx ? w - 2 * barborderpx : 1;
-  wc.height = bh > 2 * barborderpx ? bh - 2 * barborderpx : 1;
+  wc.width = w > 2 * bar_borderpx ? w - 2 * bar_borderpx : 1;
+  wc.height = bh > 2 * bar_borderpx ? bh - 2 * bar_borderpx : 1;
   wc.stack_mode = Above;
   wc.sibling = m->barwin;
   XConfigureWindow(dpy, systray->win, CWX | CWY | CWWidth | CWHeight | CWSibling | CWStackMode, &wc);
@@ -6003,7 +6004,7 @@ void updatesystray(int flag) {
 }
 
 void updatesystrayicongeom(Client *i, int w, int h) {
-  int newh = bh - systraypad * 2;
+  int newh = bh - tray_pad * 2;
   if (i) {
     i->h = newh;
     i->w = (int)((float)w * (float)i->h / (float)h);
@@ -6013,7 +6014,7 @@ void updatesystrayicongeom(Client *i, int w, int h) {
       i->w = (int)((float)i->w * (float)newh / (float)i->h);
       i->h = newh;
     }
-    i->y = (bh - 2 * barborderpx - newh) / 2;
+    i->y = (bh - 2 * bar_borderpx - newh) / 2;
   }
 }
 
@@ -6021,7 +6022,7 @@ void updatesystrayiconstate(Client *i, XPropertyEvent *ev) {
   long flags;
   int code = 0;
 
-  if (!showsystray || !i || ev->atom != xatom[XembedInfo] ||
+  if (!tray_show || !i || ev->atom != xatom[XembedInfo] ||
       !(flags = getatomprop(i, xatom[XembedInfo])))
     return;
 
@@ -6255,7 +6256,7 @@ Monitor *wintomon(Window w) {
 Client *wintosystrayicon(Window w) {
   Client *i = NULL;
 
-  if (!showsystray || !w)
+  if (!tray_show || !w)
     return i;
   for (i = systray->icons; i && i->win != w; i = i->next)
     ;
@@ -6298,7 +6299,7 @@ void xinitvisual() {
   int i;
   /* 24-bit mode takes a plain TrueColor visual so tray icons accept the
      barwin as parent; the default 32-bit mode wants an alpha visual */
-  int want = bar24bit ? 24 : 32;
+  int want = bar_mode == BarModeFlat ? 24 : 32;
 
   XVisualInfo tpl = {.screen = screen, .depth = want, .class = TrueColor};
   long masks = VisualScreenMask | VisualDepthMask | VisualClassMask;
@@ -6308,11 +6309,12 @@ void xinitvisual() {
   for (i = 0; i < nitems; i++) {
     fmt = XRenderFindVisualFormat(dpy, infos[i].visual);
     if (fmt && fmt->type == PictTypeDirect &&
-        (bar24bit ? !fmt->direct.alphaMask : fmt->direct.alphaMask)) {
+        (bar_mode == BarModeFlat ? !fmt->direct.alphaMask
+                                 : fmt->direct.alphaMask)) {
       visual = infos[i].visual;
       depth = infos[i].depth;
       cmap = XCreateColormap(dpy, root, visual, AllocNone);
-      useargb = !bar24bit;
+      useargb = bar_mode == BarModeArgb;
       break;
     }
   }
@@ -6395,7 +6397,7 @@ void restorestacking(void) {
         wc.sibling = bottomfs->frame;
         wc.stack_mode = Below;
         XConfigureWindow(dpy, m2->barwin, CWSibling | CWStackMode, &wc);
-        if (showsystray && !flatbar && systray && systraytomon(m2) == m2)
+        if (tray_show && !flatbar && systray && systraytomon(m2) == m2)
           XConfigureWindow(dpy, systray->win, CWSibling | CWStackMode, &wc);
       }
     }
