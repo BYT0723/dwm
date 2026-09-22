@@ -103,9 +103,10 @@ systray->mon = systraytomon(NULL);
    TrueColor, else DefaultVisual); `useargb` reflects reality.
 4. 24-bit bar is flat: unified `SchemeSystray` background, no rounded caps
    or outlines on tags/layout/status/tabs pills; zones, items, gaps,
-   positions unchanged. The bar itself gets a real X border (`tabborderpx`,
-   systray border color, outside the inner geometry so `bh` and every
-   bar-local coordinate stay untouched) which picom can round.
+   positions unchanged. The bar itself gets a real X border (`barborderpx`,
+   systray border color, inside the bar rect like the 32-bit systray
+   window's: the inner geometry is one border smaller per side, so the outer
+   footprint stays `ww - 2 * sp` wide and `bh` tall) which picom can round.
 5. Tray selection owner + `_NET_SYSTEM_TRAY_ORIENTATION` live on the owner
    barwin (24-bit mode); XEMBED notify/activate messages reference it.
 6. Icons reparent directly to the owner barwin at `barw - stw` offsets,

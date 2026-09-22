@@ -622,6 +622,8 @@ static void traymanagerfire(void);
 static int useargb = 0;
 static int flatbar = 0; /* 1 = 24-bit opaque flat bar (bar24bit with a 24-bit
                            visual): unified background, no pill shapes */
+static int flatborder = 0; /* flat barwin's real X border width (0 otherwise);
+                              it lives inside the bar rect */
 static Visual *visual;
 static int depth;
 static Colormap cmap;
@@ -1663,7 +1665,7 @@ void drawbar(Monitor *m) {
      window's: the window stops at the systray, so window centring would sit
      half a systray left of the monitor's middle. */
   zones = barzones(m);
-  barw = m->ww - 2 * sp - stw;
+  barw = m->ww - 2 * sp - 2 * flatborder - stw;
   leftw = barzonewidth(m, zones.left, zones.nleft, occ, n, 0);
   rightw = barzonewidth(m, zones.right, zones.nright, occ, n, 0);
   if (leftw > barw)
@@ -4186,12 +4188,29 @@ void resize(Client *c, int x, int y, int w, int h, int interact) {
     resizeclient(c, x, y, w, h);
 }
 
+/* Inner geometry of a bar window. Flat mode's barwin carries a real X border
+   (picom can round it) that lives inside the bar rect, like the 32-bit
+   systray window's, so one border is taken off each side and the outer
+   footprint stays ww - 2 * sp wide and bh tall. 32-bit mode instead keeps
+   the pinned monitor's right end free for its separate systray window. */
+static void barwininnersize(Monitor *m, unsigned int *w, unsigned int *h) {
+  *w = m->ww > 2 * sp ? m->ww - 2 * sp : 1;
+  *h = bh;
+  if (flatbar) {
+    if (*w > 2 * flatborder)
+      *w -= 2 * flatborder;
+    else
+      *w = 1;
+    *h = bh > 2 * flatborder ? bh - 2 * flatborder : 1;
+  } else if (showsystray && m == systraytomon(m))
+    *w -= getsystraywidth();
+}
+
 void resizebarwin(Monitor *m) {
-  unsigned int w = m->ww - 2 * sp;
-  /* flat mode keeps the full width: icons are barwin children past barw */
-  if (showsystray && !flatbar && m == systraytomon(m))
-    w -= getsystraywidth();
-  XMoveResizeWindow(dpy, m->barwin, m->wx + sp, m->by + vp, w, bh);
+  unsigned int w, h;
+
+  barwininnersize(m, &w, &h);
+  XMoveResizeWindow(dpy, m->barwin, m->wx + sp, m->by + vp, w, h);
 }
 
 void resizeclient(Client *c, int x, int y, int w, int h) {
@@ -4642,6 +4661,7 @@ void setup(void) {
   /* flat bar only on a real 24-bit visual; anything else keeps the
      separate-systray path even with the switch on */
   flatbar = bar24bit && depth == 24;
+  flatborder = flatbar ? (int)barborderpx : 0;
   drw = drw_create(dpy, screen, root, sw, sh, visual, depth, cmap);
   if (!(fonts_set = drw_fontset_create(drw, fonts, LENGTH(fonts))))
     die("no fonts could be loaded.");
@@ -5418,12 +5438,13 @@ void updatebars(void) {
     XMoveResizeWindow(dpy, m->tagwin, m->wx + sp, m->by + vp + bh,
                       dw + hoverpad * 2, dh + hoverpad * 2);
     if (!m->barwin) {
-      /* flat mode takes a real X border (picom can round it); like the old
-         systray window the border lives outside the inner geometry, so bh
-         and every bar-local coordinate stay untouched */
-      unsigned int bwb = flatbar ? barborderpx : 0;
+      /* flat mode takes a real X border (picom can round it); it lives inside
+         the bar rect like the 32-bit systray window's, so the inner size is
+         the bar rect minus one border per side (see barwininnersize) */
+      unsigned int bwb = flatbar ? barborderpx : 0, bw, bhh;
+      barwininnersize(m, &bw, &bhh);
       wa.border_pixel = flatbar ? scheme[SchemeSystray][ColBorder].pixel : 0;
-      m->barwin = XCreateWindow(dpy, root, m->wx + sp, m->by + vp, m->ww, bh,
+      m->barwin = XCreateWindow(dpy, root, m->wx + sp, m->by + vp, bw, bhh,
                         bwb, depth, InputOutput, visual,
                         CWOverrideRedirect | CWBackPixel | CWBorderPixel |
                             CWColormap | CWEventMask,
@@ -5443,17 +5464,17 @@ void updatebars(void) {
 }
 
 void updatebarpos(Monitor *m) {
-  /* flat mode adds a real X border outside the inner geometry: reserve its
-     width like systray->win did, and park it fully offscreen when hidden */
-  int bb = flatbar ? (int)barborderpx : 0;
+  /* the flat barwin's X border is part of the bar rect (see
+     barwininnersize), so the reserved space is the plain bar height in both
+     modes */
   m->wy = m->my;
   m->wh = m->mh;
   if (m->showbar) {
-    m->wh = m->wh - vertpad - bh - bb;
+    m->wh = m->wh - vertpad - bh;
     m->by = m->topbar ? m->wy : m->wy + m->wh + vertpad;
-    m->wy = m->topbar ? m->wy + bh + vp + bb : m->wy;
+    m->wy = m->topbar ? m->wy + bh + vp : m->wy;
   } else
-    m->by = -bh - vp - bb;
+    m->by = -bh - vp;
 }
 
 /* Primary tag index for EWMH desktop mapping (DESKTOP <-> tag).
@@ -5870,7 +5891,7 @@ static void updatesystraymerged(int flag) {
     systray->mon = m;
   }
 
-  base = (unsigned int)(m->ww - 2 * sp) - getsystraywidth();
+  base = (unsigned int)(m->ww - 2 * sp - 2 * flatborder) - getsystraywidth();
   for (i = systray->icons; i; i = i->next) {
     wa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
     XChangeWindowAttributes(dpy, i->win, CWBackPixel, &wa);
