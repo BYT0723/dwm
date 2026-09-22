@@ -147,7 +147,7 @@ enum {
   NetLast
 };
 /* EWMH atoms */
-enum { Manager, Xembed, XembedInfo, XLast }; /* Xembed atoms */
+enum { Manager, Xembed, XembedInfo, SystrayClass, XLast }; /* Xembed atoms */
 enum {
   WMProtocols,
   WMDelete,
@@ -217,6 +217,7 @@ struct Client {
   int ignoreunmap; /* expected UnmapNotifies to swallow (reparent/hide) */
   int rule_notitle; /* Rule override: 1 = never show a titlebar for this client */
   int notitle;  /* resolved: rule override OR motif/gtk self-decoration hints */
+  int fromredock; /* tray icon: 1 = re-docked leftover of a previous dwm session */
 };
 
 typedef struct {
@@ -611,6 +612,13 @@ static Window root, wmcheckwin;
 
 static Systray *systray = NULL;
 
+/* A client that is still tearing down its old icon during a hot restart can
+   miss the MANAGER broadcast announcing the new tray owner, so it is
+   repeated once after a short delay. */
+static uint64_t traytimer = 0; /* monotonic ms deadline for the repeat, 0 = idle */
+static void traymanagerarm(void);
+static void traymanagerfire(void);
+
 static int useargb = 0;
 static int flatbar = 0; /* 1 = 24-bit opaque flat bar (bar24bit with a 24-bit
                            visual): unified background, no pill shapes */
@@ -941,6 +949,7 @@ void cleanup(void) {
 
 void cleanupmon(Monitor *mon) {
   Monitor *m;
+  Client *ci;
   size_t i;
 
   if (mon == mons)
@@ -958,6 +967,17 @@ void cleanupmon(Monitor *mon) {
   if (mon->tagwin != None) {
     XUnmapWindow(dpy, mon->tagwin);
     XDestroyWindow(dpy, mon->tagwin);
+  }
+  /* flat mode: this barwin is the tray selection owner and the parent of
+     every icon, and an explicit destroy takes those child windows down with
+     it (the save set only protects on connection close, not on a parent
+     destroy). Hand the icons back to root and drop ownership first, so the
+     next updatesystray() re-adopts them on a surviving barwin instead of
+     leaving dead icon windows and a dangling systray->mon behind. */
+  if (flatbar && systray && systray->mon == mon) {
+    for (ci = systray->icons; ci; ci = ci->next)
+      XReparentWindow(dpy, ci->win, root, ci->x, ci->y);
+    systray->mon = NULL;
   }
   XUnmapWindow(dpy, mon->barwin);
   XDestroyWindow(dpy, mon->barwin);
@@ -4301,7 +4321,17 @@ void run(void) {
       timeout = MAX((int)(hoverstart + hoverdelay - hovernow()), 0);
     else if (hoverc && !HIDDEN(hoverc) && previewrefresh)
       timeout = previewrefresh;
+    if (traytimer) {
+      int64_t rem = (int64_t)(traytimer - hovernow());
+      int t = rem > 0 ? (int)rem : 0;
+      timeout = (timeout < 0) ? t : MIN(timeout, t);
+    }
     int r = poll(&pfd, 1, timeout);
+    /* service the tray re-broadcast on every wakeup, not only on a poll
+       timeout: a busy X connection (status updates, exposes) would otherwise
+       keep poll returning events and the deadline would never be reached */
+    if (traytimer && (int64_t)(traytimer - hovernow()) <= 0)
+      traymanagerfire();
     if (r == 0) {
       if (hoverarm)
         hoverfire();
@@ -4410,10 +4440,12 @@ void scan(void) {
       if (!XGetWindowAttributes(dpy, wins[i], &wa) || wa.override_redirect ||
           XGetTransientForHint(dpy, wins[i], &d1))
         continue;
-      if (wa.map_state == IsViewable || getstate(wins[i]) == IconicState) {
-        if (!systrayredock(wins[i]))
-          manage(wins[i], &wa, 0);
-      }
+      /* tray icons are re-docked in any map state; anything else is only
+         adopted while it is on screen */
+      if (systrayredock(wins[i]))
+        continue;
+      if (wa.map_state == IsViewable || getstate(wins[i]) == IconicState)
+        manage(wins[i], &wa, 0);
     }
     for (i = 0; i < num; i++) { /* now the transients */
       if (!XGetWindowAttributes(dpy, wins[i], &wa))
@@ -4722,6 +4754,9 @@ void setup(void) {
   xatom[Manager] = XInternAtom(dpy, "MANAGER", False);
   xatom[Xembed] = XInternAtom(dpy, "_XEMBED", False);
   xatom[XembedInfo] = XInternAtom(dpy, "_XEMBED_INFO", False);
+  /* dwm's own: an icon's original WM_CLASS, kept because XSetClassHint
+     overwrites it with "Systray" and a hot restart must still find the icon */
+  xatom[SystrayClass] = XInternAtom(dpy, "_DWM_SYSTRAY_CLASS", False);
   motifwmhints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
   gtkframeextents = XInternAtom(dpy, "_GTK_FRAME_EXTENTS", False);
   /* init cursors */
@@ -5710,7 +5745,12 @@ void systraydock(Window w) {
 
   {
     XClassHint hint = {NULL, NULL};
-    if (XGetClassHint(dpy, c->win, &hint)) {
+    /* a redock after a hot restart finds WM_CLASS already stamped "Systray";
+       the app's own class survives in our property, so systrayorder keeps
+       working and a fresh dock can spot the leftover it replaces */
+    if (gettextprop(c->win, xatom[SystrayClass], c->class, sizeof c->class))
+      c->fromredock = 1;
+    else if (XGetClassHint(dpy, c->win, &hint)) {
       const char *name = hint.res_name ? hint.res_name : hint.res_class;
       if (name) {
         strncpy(c->class, name, sizeof(c->class) - 1);
@@ -5718,6 +5758,27 @@ void systraydock(Window w) {
       }
       if (hint.res_name) XFree(hint.res_name);
       if (hint.res_class) XFree(hint.res_class);
+    }
+    XChangeProperty(dpy, c->win, xatom[SystrayClass], XA_STRING, 8,
+                    PropModeReplace, (unsigned char *)c->class, strlen(c->class));
+  }
+
+  /* a fresh dock from the app replaces the leftover scan() re-docked, so the
+     old window is dropped instead of showing two icons */
+  if (!c->fromredock) {
+    Client **cur = &systray->icons;
+    while (*cur) {
+      Client *o = *cur;
+      if (o->fromredock && strcmp(o->class, c->class) == 0) {
+        *cur = o->next;
+        /* detach the leftover: unmap it now and drop it from the save set
+           so a later dwm restart cannot re-dock it as a second icon */
+        XUnmapWindow(dpy, o->win);
+        XRemoveFromSaveSet(dpy, o->win);
+        free(o);
+        continue;
+      }
+      cur = &(*cur)->next;
     }
   }
 
@@ -5754,6 +5815,28 @@ void systraydock(Window w) {
   updatesystray(1);
 }
 
+#define TRAY_MANAGER_DELAY 800 /* ms before repeating the MANAGER broadcast */
+
+/* re-broadcast MANAGER once, a moment after taking the selection: a client
+   that is recreating its icon right after a hot restart may have missed the
+   first one */
+static void traymanagerarm(void) {
+  traytimer = hovernow() + TRAY_MANAGER_DELAY;
+}
+
+static void traymanagerfire(void) {
+  Window w = traywin();
+
+  traytimer = 0;
+  if (!showsystray || !w)
+    return;
+  if (XGetSelectionOwner(dpy, netatom[NetSystemTray]) != w)
+    return;
+  sendevent(root, xatom[Manager], StructureNotifyMask, CurrentTime,
+            netatom[NetSystemTray], w, 0, 0);
+  XSync(dpy, False);
+}
+
 /* flat-mode tray: the owner monitor's barwin is the tray window. Icons live
    as its children in bar-local coords from barw (the bar layout already
    reserves their width via stw), on the unified background. */
@@ -5778,6 +5861,7 @@ static void updatesystraymerged(int flag) {
       return; /* lost the race; retry on the next call */
     sendevent(root, xatom[Manager], StructureNotifyMask, CurrentTime,
               netatom[NetSystemTray], m->barwin, 0, 0);
+    traymanagerarm();
     XSync(dpy, False);
     for (i = systray->icons; i; i = i->next) {
       XReparentWindow(dpy, i->win, m->barwin, i->x, i->y);
@@ -5852,6 +5936,7 @@ void updatesystray(int flag) {
     XSetSelectionOwner(dpy, netatom[NetSystemTray], systray->win, CurrentTime);
     if (XGetSelectionOwner(dpy, netatom[NetSystemTray]) == systray->win) {
       sendevent(root, xatom[Manager], StructureNotifyMask, CurrentTime, netatom[NetSystemTray], systray->win, 0, 0);
+      traymanagerarm();
       XSync(dpy, False);
     } else {
       fprintf(stderr, "dwm: unable to obtain system tray.\n");
@@ -6289,7 +6374,7 @@ void restorestacking(void) {
         wc.sibling = bottomfs->frame;
         wc.stack_mode = Below;
         XConfigureWindow(dpy, m2->barwin, CWSibling | CWStackMode, &wc);
-        if (showsystray && systray && systraytomon(m2) == m2)
+        if (showsystray && !flatbar && systray && systraytomon(m2) == m2)
           XConfigureWindow(dpy, systray->win, CWSibling | CWStackMode, &wc);
       }
     }
