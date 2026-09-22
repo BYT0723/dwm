@@ -183,7 +183,7 @@ static const Layout layouts[] = {
     { ">M>",      centeredfloatingmaster },
 };
 
-/*--- bar: geometry, zones, tags, tabs, titlebar, tray, hover previews -------*/
+/*--- bar: geometry, tray, zones, tags, tabs, titlebar, hover previews -------*/
 
 static const int showbar = 1;  /* 0 means no bar */
 static const int topbar  = 1;  /* 0 means bottom bar */
@@ -199,6 +199,14 @@ static const unsigned int bar_borderpx = 1;  /* bar and pill outline width in px
 
 #define ICONSIZE (bh - 2 * bar_borderpx - 4) /* or adaptively preserve 2 pixels each side */
 #define ICONSPACING 4 /* space between icon and title */
+
+/* systray: XEMBED tray, merged into the bar or a separate window */
+static const          int tray_show               = 1;  /* 0 means no systray */
+static const unsigned int tray_pinning            = 2;  /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
+static const unsigned int tray_spacing            = 4;  /* systray spacing */
+static const          int tray_pinning_fail_first = 1;  /* 1: if pinning fails, display systray on the first monitor, False: display systray on the last monitor*/
+static const          int tray_pad                = 4;
+static const         char *tray_order[]           = { "fcitx", "...", "easyeffects", "blueman", "nm-applet", "pasystray", "udiskie", NULL };
 
 /* bar modules: items are grouped into three zones and each zone is filled
  * in array order. left starts at the bar's left edge, right ends at its
@@ -288,14 +296,6 @@ static const          int title_show_icon = 1;          /* 1 = draw the client i
 static const          int title_align     = 1;          /* text alignment, icon stays left: 0 = left, 1 = center (true center of full width), 2 = right */
 static const         char title_text[]    = "{title}";  /* titlebar text template; placeholders: {title}, {class} (same as tab_text) */
 static const         char *title_btns[]   = { "", "", "" }; /* titlebar buttons, left to right: minimize, maximize, close. The order is fixed (0 = hide, 1 = togglefloating, 2 = killclient); only the labels are configurable. */
-
-/* systray: XEMBED tray, merged into the bar or a separate window */
-static const          int tray_show               = 1;  /* 0 means no systray */
-static const unsigned int tray_pinning            = 2;  /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
-static const unsigned int tray_spacing            = 4;  /* systray spacing */
-static const          int tray_pinning_fail_first = 1;  /* 1: if pinning fails, display systray on the first monitor, False: display systray on the last monitor*/
-static const          int tray_pad                = 4;
-static const         char *tray_order[]           = { "fcitx", "...", "easyeffects", "blueman", "nm-applet", "pasystray", "udiskie", NULL };
 
 // tag and client preview, off by default: enabling it makes every tag switch
 // snapshot the whole monitor (for the tag hover preview) and the client-tab
