@@ -414,6 +414,7 @@ static Monitor *recttomon(int x, int y, int w, int h);
 static void removesystrayicon(Client *i);
 static void resize(Client *c, int x, int y, int w, int h, int interact);
 static void resizebarwin(Monitor *m);
+static unsigned int barwininnerw(Monitor *m);
 static void resizeclient(Client *c, int x, int y, int w, int h);
 static void resizemouse(const Arg *arg);
 static void resizerequest(XEvent *e);
@@ -1666,7 +1667,7 @@ void drawbar(Monitor *m) {
      window's: the window stops at the systray, so window centring would sit
      half a systray left of the monitor's middle. */
   zones = barzones(m);
-  barw = m->ww - 2 * sp - 2 * flatborder - stw;
+  barw = barwininnerw(m) - stw;
   leftw = barzonewidth(m, zones.left, zones.nleft, occ, n, 0);
   rightw = barzonewidth(m, zones.right, zones.nright, occ, n, 0);
   if (leftw > barw)
@@ -4189,21 +4190,25 @@ void resize(Client *c, int x, int y, int w, int h, int interact) {
     resizeclient(c, x, y, w, h);
 }
 
-/* Inner geometry of a bar window. Flat mode's barwin carries a real X border
+/* Inner width of a bar window: the bar rect minus its side padding and the
+   flat-mode X border on both sides (flatborder is 0 in 32-bit mode, so that
+   term drops out there). The systray is reserved inside this width. */
+static unsigned int barwininnerw(Monitor *m) {
+  unsigned int w = m->ww > 2 * sp ? m->ww - 2 * sp : 1;
+
+  return w > 2 * flatborder ? w - 2 * flatborder : 1;
+}
+
+/* Inner size of a bar window. Flat mode's barwin carries a real X border
    (picom can round it) that lives inside the bar rect, like the 32-bit
-   systray window's, so one border is taken off each side and the outer
-   footprint stays ww - 2 * sp wide and bh tall. 32-bit mode instead keeps
-   the pinned monitor's right end free for its separate systray window. */
+   systray window's, so one border comes off the inner height as well; the
+   outer footprint stays ww - 2 * sp wide and bh tall. 32-bit mode instead
+   keeps the pinned monitor's right end free for its separate systray
+   window. */
 static void barwininnersize(Monitor *m, unsigned int *w, unsigned int *h) {
-  *w = m->ww > 2 * sp ? m->ww - 2 * sp : 1;
-  *h = bh;
-  if (flatbar) {
-    if (*w > 2 * flatborder)
-      *w -= 2 * flatborder;
-    else
-      *w = 1;
-    *h = bh > 2 * flatborder ? bh - 2 * flatborder : 1;
-  } else if (tray_show && m == systraytomon(m))
+  *w = barwininnerw(m);
+  *h = bh > 2 * flatborder ? bh - 2 * flatborder : 1;
+  if (!flatbar && tray_show && m == systraytomon(m))
     *w -= getsystraywidth();
 }
 
@@ -5892,7 +5897,7 @@ static void updatesystraymerged(int flag) {
     systray->mon = m;
   }
 
-  base = (unsigned int)(m->ww - 2 * sp - 2 * flatborder) - getsystraywidth();
+  base = barwininnerw(m) - getsystraywidth();
   for (i = systray->icons; i; i = i->next) {
     wa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
     XChangeWindowAttributes(dpy, i->win, CWBackPixel, &wa);
