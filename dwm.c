@@ -1637,7 +1637,7 @@ static int drawzone(Monitor *m, const BarItem *items, size_t nitems, int x,
 }
 
 void drawbar(Monitor *m) {
-  int leftw, centerw, centerx, rightw, barw, stw = 0, n = 0;
+  int leftw, centerw, centerx, rightw, barw, stw = 0, n = 0, rgap = 0;
   BarZones zones;
   unsigned int occ = 0, urg = 0;
   Client *c;
@@ -1669,25 +1669,34 @@ void drawbar(Monitor *m) {
   zones = barzones(m);
   barw = barwininnerw(m) - stw;
   leftw = barzonewidth(m, zones.left, zones.nleft, occ, n, 0);
-  rightw = barzonewidth(m, zones.right, zones.nright, occ, n, 0);
   if (leftw > barw)
     leftw = barw;
-  if (rightw > barw - leftw)
-    rightw = barw - leftw;
+  /* Argb separate systray window: keep one tab_gap of empty bar background
+     between the right zone and the tray, the same gap pills keep between
+     each other (the tray's own X border then reads as the next pill's
+     outline). Flat mode needs none: its icons already start tab_gap past
+     the bar content inside the same window. */
+  if (!flatbar && stw)
+    rgap = (int)tab_gap;
+  if (rgap > barw - leftw)
+    rgap = barw - leftw;
+  rightw = barzonewidth(m, zones.right, zones.nright, occ, n, 0);
+  if (rightw > barw - leftw - rgap)
+    rightw = barw - leftw - rgap;
   centerw = barzonewidth(m, zones.center, zones.ncenter, occ, n,
-                         barw - leftw - rightw);
-  if (centerw > barw - leftw - rightw)
-    centerw = barw - leftw - rightw;
+                         barw - leftw - rightw - rgap);
+  if (centerw > barw - leftw - rightw - rgap)
+    centerw = barw - leftw - rightw - rgap;
   if (centerw < 0)
     centerw = 0;
   /* centred on the monitor while there is slack, but never over a side zone:
      a middle that is as wide as the gap can only fill that gap */
-  centerx = bar_centerx(barw, stw, leftw, rightw, centerw);
+  centerx = bar_centerx(barw, stw, leftw, rightw + rgap, centerw);
 
   m->nslots = 0;
   drawzone(m, zones.left, zones.nleft, 0, 0, occ, urg, n);
   drawzone(m, zones.center, zones.ncenter, centerx, centerw, occ, urg, n);
-  drawzone(m, zones.right, zones.nright, barw - rightw, 0, occ, urg, n);
+  drawzone(m, zones.right, zones.nright, barw - rightw - rgap, 0, occ, urg, n);
 
   drw_map(drw, m->barwin, 0, 0, m->ww - stw, bh);
 }
@@ -3513,10 +3522,13 @@ cleanup:
 unsigned int getsystraywidth() {
   unsigned int w = 0;
   Client *i;
-  if (tray_show)
-    for (i = systray->icons; i; w += i->w + tray_spacing, i = i->next)
-      ;
-  return w ? w + tray_spacing : 0;
+  if (!tray_show || !systray)
+    return 0;
+  for (i = systray->icons; i; w += i->w + tray_spacing, i = i->next)
+    ;
+  /* the bar-facing edge is tab_gap wide, the rest keeps tray_spacing, so
+     with equal knobs this is exactly the old width */
+  return w ? w + tab_gap : 0;
 }
 
 static int trayrank(const char *class) {
@@ -5898,19 +5910,25 @@ static void updatesystraymerged(int flag) {
   }
 
   base = barwininnerw(m) - getsystraywidth();
-  for (i = systray->icons; i; i = i->next) {
-    wa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
-    XChangeWindowAttributes(dpy, i->win, CWBackPixel, &wa);
-    XSetWindowBackgroundPixmap(dpy, i->win, ParentRelative);
-    XMapRaised(dpy, i->win);
-    w += tray_spacing;
-    i->x = (int)(base + w);
-    XMoveResizeWindow(dpy, i->win, i->x, i->y, i->w, i->h);
-    if (refresh)
-      XClearArea(dpy, i->win, 0, 0, 0, 0, True);
-    w += i->w;
-    if (i->mon != m)
-      i->mon = m;
+  {
+    int first = 1;
+    for (i = systray->icons; i; i = i->next) {
+      wa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
+      XChangeWindowAttributes(dpy, i->win, CWBackPixel, &wa);
+      XSetWindowBackgroundPixmap(dpy, i->win, ParentRelative);
+      XMapRaised(dpy, i->win);
+      /* the bar-facing edge is tab_gap wide; the other gaps keep
+         tray_spacing */
+      w += first ? tab_gap : tray_spacing;
+      first = 0;
+      i->x = (int)(base + w);
+      XMoveResizeWindow(dpy, i->win, i->x, i->y, i->w, i->h);
+      if (refresh)
+        XClearArea(dpy, i->win, 0, 0, 0, 0, True);
+      w += i->w;
+      if (i->mon != m)
+        i->mon = m;
+    }
   }
   XSync(dpy, False);
 
@@ -5973,21 +5991,27 @@ void updatesystray(int flag) {
     }
   }
 
-  for (w = 0, i = systray->icons; i; i = i->next) {
-    wa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
-    XChangeWindowAttributes(dpy, i->win, CWBackPixel, &wa);
-    XSetWindowBackgroundPixmap(dpy, i->win, ParentRelative);
-    XMapRaised(dpy, i->win);
-    w += tray_spacing;
-    i->x = w;
-    XMoveResizeWindow(dpy, i->win, i->x, i->y, i->w, i->h);
-    if (refresh_icon)
-      XClearArea(dpy, i->win, 0, 0, 0, 0, True);
-    w += i->w;
-    if (i->mon != m)
-      i->mon = m;
+  {
+    /* the bar-facing edge is tab_gap wide (drawbar leaves the matching
+       empty gap in the bar); the other gaps keep tray_spacing */
+    int first = 1;
+    for (w = 0, i = systray->icons; i; i = i->next) {
+      wa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
+      XChangeWindowAttributes(dpy, i->win, CWBackPixel, &wa);
+      XSetWindowBackgroundPixmap(dpy, i->win, ParentRelative);
+      XMapRaised(dpy, i->win);
+      w += first ? tab_gap : tray_spacing;
+      first = 0;
+      i->x = w;
+      XMoveResizeWindow(dpy, i->win, i->x, i->y, i->w, i->h);
+      if (refresh_icon)
+        XClearArea(dpy, i->win, 0, 0, 0, 0, True);
+      w += i->w;
+      if (i->mon != m)
+        i->mon = m;
+    }
+    w = w ? w + tray_spacing : 1;
   }
-  w = w ? w + tray_spacing : 1;
   x -= w;
   XSetWindowBackground(dpy, systray->win, scheme[SchemeSystray][ColBg].pixel);
   XMoveResizeWindow(dpy, systray->win, x - xpad, m->by + ypad,
