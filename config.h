@@ -158,8 +158,8 @@ static const float cfact_presets[] = { 0.5, 1.0, 2.0 };         /* Mod+Shift+R: 
 /* gaps: inner/outer spacing around tiled clients (vanitygaps) */
 static const unsigned int gappih    = 6;
 static const unsigned int gappiv    = 6;
-static const unsigned int gappoh    = 6;
-static const unsigned int gappov    = 8;
+static const unsigned int gappoh    = 14;
+static const unsigned int gappov    = 12;
 static                int smartgaps = 0;  /* 1 means no outer gap when there is only one window */
 
 #define FORCE_VSPLIT 1 /* nrowgrid layout: force two clients to always split vertically */
@@ -202,7 +202,7 @@ static const unsigned int bar_borderpx = 1;  /* bar and pill outline width in px
 
 /* systray: XEMBED tray, merged into the bar or a separate window */
 static const          int tray_show               = 1;  /* 0 means no systray */
-static const unsigned int tray_pinning            = 2;  /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
+static const unsigned int tray_pinning            = 1;  /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
 static const unsigned int tray_spacing            = 4;  /* systray spacing */
 static const          int tray_pinning_fail_first = 1;  /* 1: if pinning fails, display systray on the first monitor, False: display systray on the last monitor*/
 static const          int tray_pad                = 4;
@@ -265,7 +265,7 @@ static const char *tag_names[] = {"dev", "web", "chat", "util", "misc", "dl", "v
 static const unsigned int tab_width    = 16;         /* TabModeIconTitle: pill width in characters */
 static const         char tab_text[]   = "{title}";  /* TabModeIconTitle only; {title}, {class} */
 static const unsigned int tab_radius   = 8;
-static const unsigned int tab_gap      = 4;          /* gaps between pills/zones, and between TabModeIconTitle pills */
+static const unsigned int tab_gap      = 6;          /* gaps between pills/zones, and between TabModeIconTitle pills */
 static const unsigned int tab_icon_gap = 8;          /* TabModeIcons only: space in px between icons in the shared pill */
 
 /* tab rendering mode:
