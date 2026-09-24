@@ -291,6 +291,7 @@ static const char tab_icon_path[] = "$HOME/.dwm/tab-fallback.png";  /* for clien
 
 /* titlebar: per-client decorations */
 static const          int title_show      = 1;          /* 0 means no titlebar, 1 shows a per-client titlebar (height = font height + 2 * title_pad) */
+static const          int title_hide_fullscreen = 1;   /* 1 = hide the titlebar in fullscreen (Mod+Shift+f: monocle layout with the bar hidden); [M] and maximize (Mod+f) keep theirs; floating windows keep theirs */
 static const unsigned int title_pad       = 6;          /* per-side padding; titlebar height = font height + 2 * title_pad */
 static const          int title_show_icon = 1;          /* 1 = draw the client icon at the left of the titlebar, 0 = text only */
 static const          int title_align     = 1;          /* text alignment, icon stays left: 0 = left, 1 = center (true center of full width), 2 = right */

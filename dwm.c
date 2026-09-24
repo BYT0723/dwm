@@ -780,13 +780,21 @@ void arrange(Monitor *m) {
       arrangemon(m);
 }
 
+/* fake fullscreen (Mod+Shift+f): monocle layout with the bar hidden.
+   Plain [M] and the maximize host (focusmaster == 2) are not fullscreen.
+   This is distinct from c->isfullscreen (EWMH _NET_WM_STATE_FULLSCREEN). */
+static int
+isfakefullscreen(Monitor *m)
+{
+  return m->lt[m->sellt]->arrange == monocle &&
+      m->pertag->focusmaster[m->pertag->curtag] != 2 && !m->showbar;
+}
+
 void arrangemon(Monitor *m) {
   Client *c;
-  /* only fullscreen() (monocle + bar hidden) is borderless; plain [M]
+  /* only fullscreen() is borderless; plain [M]
      and the maximize host (focusmaster == 2, tiled with gaps) keep borders */
-  int borderless =
-      m->lt[m->sellt]->arrange == monocle &&
-      m->pertag->focusmaster[m->pertag->curtag] != 2 && !m->showbar;
+  int borderless = isfakefullscreen(m);
   for (c = m->clients; c; c = c->next) {
     int target = c->basebw;
     if (c->isfullscreen)
@@ -1717,6 +1725,8 @@ int
 titleh(Client *c)
 {
   if (!title_show || !c || c->isfullscreen || c->notitle)
+    return 0;
+  if (title_hide_fullscreen && !c->isfloating && isfakefullscreen(c->mon))
     return 0;
   return th;
 }
