@@ -537,7 +537,7 @@ static int nstblocks;
    instead of once per zone measurement and again per zone draw */
 static int statusgen;
 static int statusparsed_gen = -1;
-static char pbuf[2048];                   /* pills built from stbuf, ^( .. ^) wrapped */
+static char pbuf[2048];                   /* pills built from stbuf, ^PILL_OPEN .. ^PILL_CLOSE wrapped */
 /* one drawn status block: where it sits and how wide, so a click maps back
    to the control-character id the writer tagged it with */
 typedef struct {
@@ -566,7 +566,7 @@ static int lrpad;       /* sum of left and right padding for text */
 static int lpad;        /* left padding for text, equal lrpad/2  */
 static int vp;          /* vertical padding for bar */
 static int sp;          /* side padding for bar */
-static int tabr;        /* bar tab corner radius */
+static int pillr;        /* bar pill corner radius, MIN(pill_radius, lpad) */
 static int (*xerrorxlib)(Display *, XErrorEvent *);
 static unsigned int numlockmask = 0;
 static void (*handler[LASTEvent])(XEvent *) = {
@@ -1320,11 +1320,11 @@ static void drawtabborder(int x, int w, Clr *s) {
     return;
   if (s && s != prev)
     drw_setscheme(drw, s);
-  if (tabr > 0 && w > 2 * tabr) {
-    drw_rounded_border(drw, x, 0, bh, tabr, RoundedLeft, bar_borderpx);
-    drw_rounded_border(drw, x + w - tabr, 0, bh, tabr, RoundedRight, bar_borderpx);
-    drw_rect_border(drw, x + tabr, 0, w - 2 * tabr, bar_borderpx);
-    drw_rect_border(drw, x + tabr, bh - bar_borderpx, w - 2 * tabr, bar_borderpx);
+  if (pillr > 0 && w > 2 * pillr) {
+    drw_rounded_border(drw, x, 0, bh, pillr, RoundedLeft, bar_borderpx);
+    drw_rounded_border(drw, x + w - pillr, 0, bh, pillr, RoundedRight, bar_borderpx);
+    drw_rect_border(drw, x + pillr, 0, w - 2 * pillr, bar_borderpx);
+    drw_rect_border(drw, x + pillr, bh - bar_borderpx, w - 2 * pillr, bar_borderpx);
   } else {
     drw_rect_border(drw, x, 0, w, bar_borderpx);
     drw_rect_border(drw, x, bh - bar_borderpx, w, bar_borderpx);
@@ -1416,6 +1416,18 @@ static int tagswidth(Monitor *m, int occ) {
   return w;
 }
 
+/* Paint the pill's left cap at x. pillr <= lpad by construction (setup
+   clamps it), so the text inset is always lpad: the rounded cap covers the
+   first pillr pixels and a square fill extends it to lpad, keeping the fill
+   clear of the corner. Call with the pill's text scheme already set; the
+   strip uses its background. Unlike drawpillcap, this paints no body
+   (tags/layout runs fill their own background). */
+static void drawleftcap(int x) {
+  drw_rounded(drw, x, 0, bh, pillr, RoundedLeft);
+  if (lpad > pillr)
+    drw_rect(drw, x + pillr, 0, (unsigned int)(lpad - pillr), bh, 1, 1);
+}
+
 /* the visible tags from x on. first draws the pill's left cap and keeps the
    first run clear of it; last shortens the final run so the right cap fits
    inside its padding, the way drawlayout() does. Returns the new x. */
@@ -1436,14 +1448,14 @@ static int drawtags(Monitor *m, int x, int occ, int urg, int first, int last) {
       continue;
     template_expand(tag_text, tag_placeholder, &i, text, sizeof(text));
     tw = TEXTW(text);
-    w = tw - (i == lastvis ? tabr : 0);
+    w = tw - (i == lastvis ? pillr : 0);
     drw_setscheme(drw, scheme[m->tagset[m->seltags] & 1 << i ? SchemeTagSel : SchemeTagNorm]);
-    cap = first && x == gx && tabr > 0;
+    cap = first && x == gx && pillr > 0;
     skip = cap;
     if (cap)
-      drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
+      drawleftcap(x);
     tx = x;
-    x = drw_text(drw, x, 0, w, bh, skip ? tabr : lpad, text, urg & 1 << i, skip);
+    x = drw_text(drw, x, 0, w, bh, lpad, text, urg & 1 << i, skip);
     addslot(m, tx, tw, ClkTagBar, (Arg){.ui = 1 << i});
   }
   return x;
@@ -1453,13 +1465,13 @@ static int drawtags(Monitor *m, int x, int occ, int urg, int first, int last) {
    the right one. Returns the new x. */
 static int drawlayout(Monitor *m, int x, int first, int last) {
   int w = TEXTW(m->ltsymbol);
-  int skip = first && tabr > 0;
+  int skip = first && pillr > 0;
 
   drw_setscheme(drw, scheme[SchemeLayout]);
   if (skip)
-    drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
+    drawleftcap(x);
   addslot(m, x, w, ClkLtSymbol, (Arg){0});
-  return drw_text(drw, x, 0, w - (last ? tabr : 0), bh, skip ? tabr : lpad,
+  return drw_text(drw, x, 0, w - (last ? pillr : 0), bh, lpad,
                   m->ltsymbol, 0, skip);
 }
 
@@ -1508,7 +1520,7 @@ static int drawbarpill(Monitor *m, const BarItem *items, size_t nitems, size_t k
     /* tags/layout shorten their last run for the cap; a trailing status
        segment already painted its own cap over its last runs */
     if (appendcap)
-      x += drw_rounded(drw, x, 0, bh, tabr, RoundedRight);
+      x += drw_rounded(drw, x, 0, bh, pillr, RoundedRight);
     drawtabborder(gx, x - gx, scheme[SchemeStatus]);
   }
   return x;
@@ -1553,17 +1565,17 @@ static int barzonewidth(Monitor *m, const BarItem *items, size_t nitems,
       if (rw == 0)
         continue;
       if (!first)
-        w += (int)tab_gap;
+        w += (int)pill_gap;
       first = 0;
       w += rw;
     } else if (items[k].mod == BarTabs) {
       if (!first)
-        w += (int)tab_gap;
+        w += (int)pill_gap;
       first = 0;
       w += tablayout(m, avail, NULL, 0, NULL);
     } else { /* BarNone: an intentionally empty slot */
       if (!first)
-        w += (int)tab_gap;
+        w += (int)pill_gap;
       first = 0;
     }
   }
@@ -1615,14 +1627,14 @@ static int drawzone(Monitor *m, const BarItem *items, size_t nitems, int x,
         continue; /* nothing drawn: no pill, no gap */
       }
       if (!first)
-        x += (int)tab_gap;
+        x += (int)pill_gap;
       first = 0;
       x = drawbarpill(m, items, nitems, k, x, occ, urg);
       k += run - 1;
       continue;
     }
     if (!first)
-      x += (int)tab_gap;
+      x += (int)pill_gap;
     first = 0;
     switch (items[k].mod) {
     case BarTabs: {
@@ -1679,13 +1691,13 @@ void drawbar(Monitor *m) {
   leftw = barzonewidth(m, zones.left, zones.nleft, occ, n, 0);
   if (leftw > barw)
     leftw = barw;
-  /* Argb separate systray window: keep one tab_gap of empty bar background
+  /* Argb separate systray window: keep one pill_gap of empty bar background
      between the right zone and the tray, the same gap pills keep between
      each other (the tray's own X border then reads as the next pill's
-     outline). Flat mode needs none: its icons already start tab_gap past
+     outline). Flat mode needs none: its icons already start pill_gap past
      the bar content inside the same window. */
   if (!flatbar && stw)
-    rgap = (int)tab_gap;
+    rgap = (int)pill_gap;
   if (rgap > barw - leftw)
     rgap = barw - leftw;
   rightw = barzonewidth(m, zones.right, zones.nright, occ, n, 0);
@@ -1964,9 +1976,9 @@ static void drawpillcap(Clr *work, int capx, int pillw) {
   if (pillw > 0)
     drw_rect(drw, capx, 0, (unsigned int)pillw, bh, 1, 1);
   drw_setscheme(drw, scheme[SchemeEmpty]);
-  drw_rect(drw, capx, 0, tabr, bh, 1, 0);
+  drw_rect(drw, capx, 0, pillr, bh, 1, 0);
   drw_setscheme(drw, work);
-  drw_rounded(drw, capx, 0, bh, tabr, RoundedLeft);
+  drw_rounded(drw, capx, 0, bh, pillr, RoundedLeft);
 }
 
 /* draw consecutive status items [k, k + n) as one joined segment of the
@@ -1981,7 +1993,7 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
                          size_t n, int first, int last) {
   int i, w, roww, origin;
   short iscode = 0;
-  /* 1 = the next text run draws right after a '(' cap, so its left
+  /* 1 = the next text run draws right after a PILL_OPEN cap, so its left
      padding must be skipped to keep the rounded corner visible */
   int skip_pad = 0;
   char *text;
@@ -2073,12 +2085,16 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
           drw_rect(drw, rx + x, ry, rw, rh, 1, 0);
         } else if (text[i] == 'f')
           x += atoi(text + ++i);
-        else if (text[i] == '(' && tab_radius > 0) {
+        else if (text[i] == PILL_OPEN) {
           /* remember the cap and draw it with the pill's first run instead:
              the pill's own ^b must apply first so cap, body and text agree,
              and the body width is known from the layout pass. Mid-pill the
              cap is skipped and the text just continues (the base-colour
-             tracking still applies for ^d). */
+             tracking still applies for ^d). The body fill matters even when
+             pillr == 0: graphics-only blocks (battery ^r/^f icon, no text)
+             never call drw_text, so without it their ^f spacing shows the
+             bare bar background instead of the pane colour. Only the rounded
+             corner itself is gated on pillr. */
           if (!first) {
             pillbase[ColFg] = scheme[SchemeStatus][ColFg];
             pillbase[ColBg] = scheme[SchemeStatus][ColBg];
@@ -2095,8 +2111,8 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
           pillbase[ColBg] = scheme[SchemeStatus][ColBg];
           pillbase[ColBorder] = scheme[SchemeStatus][ColBorder];
           pillprologue = 1;
-          skip_pad = 1;
-        } else if (text[i] == ')' && tab_radius > 0) {
+          skip_pad = (pillr > 0);
+        } else if (text[i] == PILL_CLOSE) {
           if (!last)
             continue; /* a following segment continues the pill */
           if (capx >= 0) { /* a pill with no drawn text at all */
@@ -2104,12 +2120,14 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
             pillprologue = 0;
             capx = -1;
           }
+          if (pillr <= 0)
+            continue; /* square pill: no right cap to paint */
           /* the right cap overlaps the last runs; the caller draws the one
              outline around the whole pill, so no border and no gap here */
           drw_setscheme(drw, scheme[SchemeEmpty]);
-          drw_rect(drw, x-tabr, 0, tabr, bh, 1, 0);
+          drw_rect(drw, x-pillr, 0, pillr, bh, 1, 0);
           drw_setscheme(drw, work);
-          drw_rounded(drw, x-tabr, 0, bh, tabr, RoundedRight);
+          drw_rounded(drw, x-pillr, 0, bh, pillr, RoundedRight);
         }
       }
 
@@ -2241,7 +2259,7 @@ static int tablayout(Monitor *m, int avail, TabCell *cells, int max,
     int end[TAB_CELLS];
 
     for (g = (int)tab_icon_gap;; g--) {
-      x = (int)tabr;
+      x = lpad;
       i = 0;
       for (c = m->clients; c && i < TAB_CELLS; c = c->next) {
         int iw, ih;
@@ -2261,13 +2279,13 @@ static int tablayout(Monitor *m, int avail, TabCell *cells, int max,
         x += g;
         i++;
       }
-      total = i ? end[i - 1] + (int)tabr : 0;
+      total = i ? end[i - 1] + lpad : 0;
       if (total <= avail || g <= 0)
         break;
     }
-    while (i > 0 && end[i - 1] + (int)tabr > avail) /* drop trailing cells */
+    while (i > 0 && end[i - 1] + lpad > avail) /* drop trailing cells */
       i--;
-    total = i ? end[i - 1] + (int)tabr : 0;
+    total = i ? end[i - 1] + lpad : 0;
     if (ncells)
       *ncells = i;
     return total;
@@ -2286,7 +2304,7 @@ static int tablayout(Monitor *m, int avail, TabCell *cells, int max,
   mode = tab_size == TabFill    ? BarCellsFill
          : tab_size == TabFixed ? BarCellsFixed
                                : BarCellsFit;
-  total = bar_cells(want, n, avail, (int)tab_gap, mode, widths, TAB_CELLS);
+  total = bar_cells(want, n, avail, (int)pill_gap, mode, widths, TAB_CELLS);
 
   x = 0;
   i = 0;
@@ -2300,7 +2318,7 @@ static int tablayout(Monitor *m, int avail, TabCell *cells, int max,
       cells[i].w = widths[i];
       cells[i].c = c;
     }
-    x += widths[i] + (int)tab_gap;
+    x += widths[i] + (int)pill_gap;
     i++;
   }
   if (i < n)
@@ -2562,14 +2580,14 @@ static void tabpaint(Monitor *m, int x, int w, Client *c) {
   /* content area: the rounded-cap branch insets it by the cap radius;
      icon+text are centred inside it, minpad is the left stop. Flat draws
      full-bleed with no caps or outline. */
-  int cap = tabr > 0 && !flatbar;
+  int cap = pillr > 0 && !flatbar;
   {
-    int cxx = x + (cap ? tabr : 0);
-    int contentw = MAX(w - (cap ? tabr * 2 : 0), 0);
+    int cxx = x + (cap ? pillr : 0);
+    int contentw = MAX(w - (cap ? pillr * 2 : 0), 0);
     int minpad = cap ? 0 : (int)lpad;
 
     if (cap)
-      drw_rounded(drw, x, 0, bh, tabr, RoundedLeft);
+      drw_rounded(drw, x, 0, bh, pillr, RoundedLeft);
     Picture ic = None;
     unsigned int iw = 0, ih = 0;
 
@@ -2583,14 +2601,14 @@ static void tabpaint(Monitor *m, int x, int w, Client *c) {
       drw_text(drw, cxx, 0, contentw, bh, cx, text, 0, 0);
     }
     if (cap)
-      drw_rounded(drw, x + w - tabr, 0, bh, tabr, RoundedRight);
+      drw_rounded(drw, x + w - pillr, 0, bh, pillr, RoundedRight);
   }
   if (!flatbar && drw->scheme == scheme[SchemeSel])
     drawtabborder(x, w, NULL);
 
   // floating marker
   if (c->isfloating)
-    drw_rect(drw, x + w - (cap ? tabr : 0) - boxw, (bh - boxw) / 2, boxw, boxw, c->isfixed, 0);
+    drw_rect(drw, x + w - (cap ? pillr : 0) - boxw, (bh - boxw) / 2, boxw, boxw, c->isfixed, 0);
   if (highlight)
     drw_setfontset(drw, fonts_set);
 
@@ -2611,19 +2629,23 @@ static void tabdraw(Monitor *m, int x0, const TabCell *cells, int ncells) {
   }
 
   /* one pill shared by every icon, painted in SchemeTabIcons: the icons'
-     own tint and the dot under the selected one carry the per-client state */
+     own tint and the dot under the selected one carry the per-client state.
+     Edge pads are lpad like the text pills; the border is drawn for square
+     pills too, only the rounded caps are gated on pillr. */
   {
-    int pillw = cells[ncells - 1].x + cells[ncells - 1].w + (int)tabr;
+    int pillw = cells[ncells - 1].x + cells[ncells - 1].w + lpad;
 
     drw_setscheme(drw, scheme[SchemeTabIcons]);
     drw_rect(drw, x0, 0, (unsigned int)pillw, bh, 1, 1);
-    if (tabr > 0 && !flatbar) {
-      drw_setscheme(drw, scheme[SchemeEmpty]);
-      drw_rect(drw, x0, 0, tabr, bh, 1, 0);
-      drw_rect(drw, x0 + pillw - tabr, 0, tabr, bh, 1, 0);
-      drw_setscheme(drw, scheme[SchemeTabIcons]);
-      drw_rounded(drw, x0, 0, bh, tabr, RoundedLeft);
-      drw_rounded(drw, x0 + pillw - tabr, 0, bh, tabr, RoundedRight);
+    if (!flatbar) {
+      if (pillr > 0) {
+        drw_setscheme(drw, scheme[SchemeEmpty]);
+        drw_rect(drw, x0, 0, pillr, bh, 1, 0);
+        drw_rect(drw, x0 + pillw - pillr, 0, pillr, bh, 1, 0);
+        drw_setscheme(drw, scheme[SchemeTabIcons]);
+        drw_rounded(drw, x0, 0, bh, pillr, RoundedLeft);
+        drw_rounded(drw, x0 + pillw - pillr, 0, bh, pillr, RoundedRight);
+      }
       drawtabborder(x0, pillw, NULL);
     }
   }
@@ -3536,9 +3558,9 @@ unsigned int getsystraywidth() {
     return 0;
   for (i = systray->icons; i; w += i->w + tray_spacing, i = i->next)
     ;
-  /* the bar-facing edge is tab_gap wide, the rest keeps tray_spacing, so
+  /* the bar-facing edge is pill_gap wide, the rest keeps tray_spacing, so
      with equal knobs this is exactly the old width */
-  return w ? w + tab_gap : 0;
+  return w ? w + pill_gap : 0;
 }
 
 static int trayrank(const char *class) {
@@ -4701,7 +4723,7 @@ void setup(void) {
   /* lpad = lrpad/2; */
   lpad = drw->fonts->h/2;
   lrpad = lpad * 2;
-  tabr = MIN(tab_radius, lpad);
+  pillr = MIN(pill_radius, lpad);
 
   bh = drw->fonts->h + bar_fontpad * 2;
   th = title_show ? drw->fonts->h + 2 * title_pad : 0;
@@ -4925,7 +4947,7 @@ void spawn(const Arg *arg) {
 }
 
 /* advance past the status2d code at *s and return its horizontal
-   advance ('f' digits, ')' tab_gap); other codes advance 0 */
+   advance ('f' digits, PILL_CLOSE pill_gap); other codes advance 0 */
 static int status2d_advance(char **s) {
   int adv = 0;
   char *p = *s;
@@ -4935,8 +4957,8 @@ static int status2d_advance(char **s) {
     while (p[1] && p[1] != '^')
       p++;
     *s = p;
-  } else if (*p == ')' && tab_radius > 0)
-    adv = (int)tab_gap;
+  } else if (*p == PILL_CLOSE && pill_radius > 0)
+    adv = (int)pill_gap;
   return adv;
 }
 
@@ -4990,7 +5012,7 @@ static void statuspills_buildrun(const BarItem *items, size_t k, size_t n) {
                 MAX_STBLOCKS);
   for (i = 0; i < m; i++) {
     int bw = status_block_width(cells[i].block);
-    int gap = (cells[i].gap && i + 1 < m) ? (int)tab_gap : 0;
+    int gap = (cells[i].gap && i + 1 < m) ? (int)pill_gap : 0;
 
     /* a cell that follows a pill's last one opens the next pill */
     if (nspills < MAX_STBLOCKS && (i == 0 || cells[i - 1].gap)) {
@@ -5018,7 +5040,7 @@ static int runstatuswidth(const BarItem *items, size_t k, size_t n) {
 }
 
 /* drawn width of one NUL-terminated status2d run (a single block): text
-   widths plus the 'f' and ')' advances, colours and rects advance nothing */
+   widths plus the 'f' and PILL_CLOSE advances, colours and rects advance nothing */
 static int status2d_runwidth(char *s) {
   char *text = s, ch;
   int isCode = 0, w = 0;
@@ -5041,7 +5063,7 @@ static int status2d_runwidth(char *s) {
     }
     if (isCode) {
       /* only the first char after '^' is the code identifier */
-      if (s == text && (*s == 'f' || *s == '(' || *s == ')'))
+      if (s == text && (*s == 'f' || *s == PILL_OPEN || *s == PILL_CLOSE))
         w += status2d_advance(&s);
       continue;
     }
@@ -5927,9 +5949,9 @@ static void updatesystraymerged(int flag) {
       XChangeWindowAttributes(dpy, i->win, CWBackPixel, &wa);
       XSetWindowBackgroundPixmap(dpy, i->win, ParentRelative);
       XMapRaised(dpy, i->win);
-      /* the bar-facing edge is tab_gap wide; the other gaps keep
+      /* the bar-facing edge is pill_gap wide; the other gaps keep
          tray_spacing */
-      w += first ? tab_gap : tray_spacing;
+      w += first ? pill_gap : tray_spacing;
       first = 0;
       i->x = (int)(base + w);
       XMoveResizeWindow(dpy, i->win, i->x, i->y, i->w, i->h);
@@ -6002,7 +6024,7 @@ void updatesystray(int flag) {
   }
 
   {
-    /* the bar-facing edge is tab_gap wide (drawbar leaves the matching
+    /* the bar-facing edge is pill_gap wide (drawbar leaves the matching
        empty gap in the bar); the other gaps keep tray_spacing */
     int first = 1;
     for (w = 0, i = systray->icons; i; i = i->next) {
@@ -6010,7 +6032,7 @@ void updatesystray(int flag) {
       XChangeWindowAttributes(dpy, i->win, CWBackPixel, &wa);
       XSetWindowBackgroundPixmap(dpy, i->win, ParentRelative);
       XMapRaised(dpy, i->win);
-      w += first ? tab_gap : tray_spacing;
+      w += first ? pill_gap : tray_spacing;
       first = 0;
       i->x = w;
       XMoveResizeWindow(dpy, i->win, i->x, i->y, i->w, i->h);

@@ -262,10 +262,14 @@ static const char tag_text[]   = "{icon} {name}";  /* tag text template; placeho
 static const char *tags[]      = {"", "", "󰭹", "", "", "", "", "", ""};
 static const char *tag_names[] = {"dev", "web", "chat", "util", "misc", "dl", "vid", "mus", "game"};
 
+/* pill: shared geometry for every bar pill (tags, layout, status, tabs).
+   pill_radius is clamped to lpad at startup (pillr); pill_gap separates
+   pills, zones and TabModeIconTitle pills. */
+static const unsigned int pill_radius = 8;
+static const unsigned int pill_gap    = 6;
+
 static const unsigned int tab_width    = 16;         /* TabModeIconTitle: pill width in characters */
 static const         char tab_text[]   = "{title}";  /* TabModeIconTitle only; {title}, {class} */
-static const unsigned int tab_radius   = 8;
-static const unsigned int tab_gap      = 6;          /* gaps between pills/zones, and between TabModeIconTitle pills */
 static const unsigned int tab_icon_gap = 8;          /* TabModeIcons only: space in px between icons in the shared pill */
 
 /* tab rendering mode:

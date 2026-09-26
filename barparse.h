@@ -37,6 +37,17 @@ typedef struct {
   int gap;
 } BarPillCell;
 
+/* Pill wrap markers: bar_pills wraps each pill in ^PILL_OPEN .. ^PILL_CLOSE
+   codes, which the status renderer (drawstatusseg) turns into the pill body
+   fill plus its rounded caps. They are dwm-internal: the writer protocol
+   (root WM_NAME) never carries them, writers only emit block ids (control
+   bytes) and the classic status2d colour/graphic codes (^c/^b/^d/^r/^f), so
+   writers must not emit these two. Named here so the builder and the
+   interpreter share one spelling instead of scattering '(' / ')' literals
+   across the status2d namespace. */
+#define PILL_OPEN '('   /* ^( : open a pill body */
+#define PILL_CLOSE ')'  /* ^) : close it */
+
 /* Filter src into dst (NUL-terminated, at most dstlen bytes), dropping
    control characters. A character below 0x20 starts a new block tagged with
    its value. 0x7f is dropped too: it used to be the portrait cut marker, and
@@ -46,10 +57,11 @@ int bar_blocks(const char *src, char *dst, int dstlen, BarBlock *out, int max);
 
 /* Build the drawn pill string for the status block ids. src/blocks are the
    output of bar_blocks. ids lists block ids in draw order; 0 starts a new
-   pill and -1 ends the list. Each pill is wrapped in the ^( .. ^) markers the
-   renderer turns into rounded caps, and ids with no matching block are
-   skipped, so a pill whose blocks are all absent emits nothing. Records at
-   most maxcells drawn blocks in cells and returns their count.
+   pill and -1 ends the list. Each pill is wrapped in the ^PILL_OPEN ..
+   ^PILL_CLOSE markers the renderer turns into body fill plus rounded caps,
+   and ids with no matching block are skipped, so a pill whose blocks are
+   all absent emits nothing. Records at most maxcells drawn blocks in cells
+   and returns their count.
    Ids are matched by value, so if the source holds two blocks with the same
    control-character id only the first is reachable: ids must be unique. */
 int bar_pills(const char *src, const BarBlock *blocks, int nblocks,

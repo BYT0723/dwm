@@ -55,12 +55,12 @@ static int block_by_id(const BarBlock *blocks, int nblocks, unsigned int id) {
   return -1;
 }
 
-/* append the ^)^ pill terminator and mark the gap after the last cell */
+/* append the ^PILL_CLOSE pill terminator and mark the gap after the last cell */
 static int close_pill(char *dst, int dstlen, int len, BarPillCell *cells,
                       int ncells) {
   if (len + 3 < dstlen) {
     dst[len++] = '^';
-    dst[len++] = ')';
+    dst[len++] = PILL_CLOSE;
     dst[len++] = '^';
     dst[len] = '\0';
   }
@@ -97,7 +97,7 @@ int bar_pills(const char *src, const BarBlock *blocks, int nblocks,
       break;
     if (!open) {
       dst[len++] = '^';
-      dst[len++] = '(';
+      dst[len++] = PILL_OPEN;
       dst[len++] = '^';
       open = 1;
     }

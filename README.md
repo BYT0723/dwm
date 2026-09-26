@@ -105,7 +105,7 @@ All user configuration lives in `config.h`, grouped by area and named
   pill shapes, same layout, real X border for picom rounding) with the systray
   merged into the bar window; `BarModeArgb` is the 32-bit ARGB bar plus a
   separate systray window.
-- **Tabs/titlebar**: `tab_width`, `tab_gap`, `tab_mode` (`TabModeIcons`
+- **Pills/tabs/titlebar**: `pill_radius`, `pill_gap`, `tab_width`, `tab_mode` (`TabModeIcons`
   default), `tab_size`, `title_*` (show/icon/align/text/buttons).
 - **Tags/rules/layouts**: `tags[]` (count only), `tag_text`, per-class `rules[]`,
   `mfact`/`cfact` presets, gaps, `smartgaps`.

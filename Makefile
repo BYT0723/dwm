@@ -29,6 +29,7 @@ tests/barparse_test: tests/barparse_test.c barparse.c barparse.h status-ids.h
 test: tests/barparse_test
 	./tests/barparse_test
 	./tests/check-status-ids.sh
+	./tests/check-pill-radius.sh
 
 # end-to-end bar test on a private Xvfb display; needs Xvfb, xterm, xdotool,
 # xwd and ImageMagick (convert/compare)
