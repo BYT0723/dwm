@@ -158,8 +158,8 @@ static const float cfact_presets[] = { 0.5, 1.0, 2.0 };         /* Mod+Shift+R: 
 /* gaps: inner/outer spacing around tiled clients (vanitygaps) */
 static const unsigned int gappih    = 6;
 static const unsigned int gappiv    = 6;
-static const unsigned int gappoh    = 14;
-static const unsigned int gappov    = 12;
+static const unsigned int gappoh    = 10;
+static const unsigned int gappov    = 13;
 static                int smartgaps = 0;  /* 1 means no outer gap when there is only one window */
 
 #define FORCE_VSPLIT 1 /* nrowgrid layout: force two clients to always split vertically */
@@ -265,7 +265,7 @@ static const char *tag_names[] = {"dev", "web", "chat", "util", "misc", "dl", "v
 /* pill: shared geometry for every bar pill (tags, layout, status, tabs).
    pill_radius is clamped to lpad at startup (pillr); pill_gap separates
    pills, zones and TabModeIconTitle pills. */
-static const unsigned int pill_radius = 8;
+static const unsigned int pill_radius = 6;
 static const unsigned int pill_gap    = 6;
 
 static const unsigned int tab_width    = 16;         /* TabModeIconTitle: pill width in characters */
@@ -354,7 +354,7 @@ static Key keys[] = {
     // layout
     // {MODKEY,                       XK_t,                     setlayout,      {.v = &layouts[0]}},
     // {MODKEY,                       XK_f,                     setlayout,      {.v = &layouts[1]}},
-    {MODKEY|ShiftMask,             XK_t,                     layoutmenu,     {0}},
+    {MODKEY|ShiftMask,             XK_l,                     layoutmenu,     {0}},
     // focus follows master: focused window holds sole master slot in tile
     {MODKEY,                       XK_z,                     focusmaster,    {0}},
     {MODKEY,                       XK_f,                     maximize,       {0}},
@@ -374,7 +374,7 @@ static Key keys[] = {
     {MODKEY|ShiftMask,             XK_j,                     focusstackhid,  {.i = +1}},
     {MODKEY|ShiftMask,             XK_k,                     focusstackhid,  {.i = -1}},
     {MODKEY,                       XK_s,                     show,           {0}},
-    {MODKEY,                       XK_h,                     hide,           {0}},
+    {MODKEY|ShiftMask,             XK_h,                     hide,           {0}},
     {MODKEY|ShiftMask,             XK_s,                     showall,        {0}},
     {MODKEY|ControlMask,           XK_space,                 togglefloating, {0}},
     {MODKEY,                       XK_Return,                zoom,           {0}},
