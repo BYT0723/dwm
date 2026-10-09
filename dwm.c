@@ -206,6 +206,13 @@ struct Client {
   unsigned int tabicw, tabich;
   Picture tabicon;
   int tabicon_size;
+  /* the same icon at the titlebar's own size, for strips thinner than the
+     bar-sized picture (small title_pad); None when c->icon fits.
+     titleicon_size is the target size that picture was built for (0 = reuse
+     c->icon, <0 = hide), so a titlebar height change can tell it went stale */
+  unsigned int titleicw, titleich;
+  Picture titleicon;
+  int titleicon_size;
   Pixmap hspm;   /* hidden snapshot pixmap, None when absent */
   Picture hspic; /* hidden snapshot picture, None when absent */
   unsigned int hspw, hsph; /* hidden snapshot size, fits the hidden box */
@@ -360,6 +367,8 @@ static void tabdraw(Monitor *m, int x, const TabCell *cells, int ncells);
 static int titleh(Client *c);
 static void updatenodecor(Client *c);
 static int tabiconsize(void);
+static int titleiconsize(void);
+static Picture titleicon_get(Client *c, int *w, int *h);
 static void createframe(Client *c);
 static void placeclient(Client *c);
 static void drawtitle(Client *c);
@@ -485,6 +494,7 @@ static const char *tab_placeholder(const char *f, size_t *plen, void *ctx);
 static const char *tag_placeholder(const char *f, size_t *plen, void *ctx);
 static void toggletabmode(const Arg *arg);
 static void toggletag(const Arg *arg);
+static void toggletitle(const Arg *arg);
 static void toggleview(const Arg *arg);
 static void togglewin(const Arg *arg);
 static void fitmonitor(Client *c);
@@ -1885,6 +1895,8 @@ titlebtnsat(Client *c, int x)
    2 = right against the button area). */
 void drawtitle(Client *c) {
   int scm, i, btnw, titlew, bx, lp, tx, txtw, hasicon, iconw, highlight;
+  int iiw, iih;
+  Picture ipic;
   char text[256];
 
   if (!c || c->frame == None || titleh(c) <= 0)
@@ -1898,8 +1910,9 @@ void drawtitle(Client *c) {
   titlew = c->w - btnw;
   template_expand(title_text, tab_placeholder, c, text, sizeof(text));
   txtw = TEXTW(text) - lrpad;
-  hasicon = title_show_icon && c->icon && titlew >= (int)(c->icw + ICONSPACING + lrpad);
-  iconw = hasicon ? (int)(c->icw + ICONSPACING) : 0;
+  ipic = titleicon_get(c, &iiw, &iih);
+  hasicon = title_show_icon && ipic != None && titlew >= iiw + ICONSPACING + (int)lrpad;
+  iconw = hasicon ? iiw + ICONSPACING : 0;
   /* the icon stays at the left; alignment positions the text only */
   if (title_align == 2) /* right: text ends at the button area */
     tx = MAX((int)lpad + iconw, titlew - txtw);
@@ -1913,7 +1926,7 @@ void drawtitle(Client *c) {
     drw_setfontset(drw, fonts_highlight_set);
   drw_text(drw, 0, 0, titlew, th, tx, text, 0, 0);
   if (hasicon)
-    drw_pic(drw, lpad, (th - c->ich) / 2, c->icw, c->ich, c->icon);
+    drw_pic(drw, (int)lpad, (th - iih) / 2, (unsigned int)iiw, (unsigned int)iih, ipic);
   for (i = 0; i < (int)NTITLEBTNS && btnw; i++) {
     bx = titlew + i * th;
     lp = MAX((th - (int)drw_fontset_getwidth(drw, title_btns[i])) / 2, 0);
@@ -2342,6 +2355,31 @@ static int tablayout(Monitor *m, int avail, TabCell *cells, int max,
    the same arithmetic bar_tabdotroom() the painter uses */
 static int tabiconsize(void) {
   return bar_tabiconsize(ICONSIZE, tab_mode == TabModeIcons ? (int)tab_sel_dot : 0);
+}
+
+/* icon size the titlebar uses: strips at least 4px taller than ICONSIZE reuse
+   the shared bar-sized picture (0); thinner strips get
+   their own smaller picture with the same 4px breathing room ICONSIZE keeps;
+   a non-positive size means not even that fits, so drawtitle shows no icon */
+static int titleiconsize(void) {
+  return th >= (int)(ICONSIZE + 4) ? 0 : th - 4;
+}
+
+/* the icon drawtitle shows, at the titlebar's own size. Fills the picture
+   and its size; None when there is nothing to show */
+static Picture titleicon_get(Client *c, int *w, int *h) {
+  if (c->titleicon) {
+    *w = (int)c->titleicw;
+    *h = (int)c->titleich;
+    return c->titleicon;
+  }
+  if (titleiconsize() == 0 && c->icon) {
+    *w = (int)c->icw;
+    *h = (int)c->ich;
+    return c->icon;
+  }
+  *w = *h = 0;
+  return None;
 }
 
 /* tab_icon_path with "$HOME/" or "~/" expanded */
@@ -5187,6 +5225,34 @@ static void toggletabmode(const Arg *arg) {
   drawbars();
 }
 
+/* flip the per-client titlebar (config default 1): recompute th, refresh
+   frame extents, and force each client through resizeclient so c->win is
+   re-placed, the client is notified, and the strip is repainted. Size hints
+   are re-applied first (they account for the new title offset) so terminals
+   like kitty keep cell-aligned client areas instead of padding. */
+static void toggletitle(const Arg *arg) {
+  Monitor *m;
+  Client *c;
+  int x, y, w, h;
+
+  title_show = !title_show;
+  th = title_show ? drw->fonts->h + 2 * title_pad : 0;
+  for (m = mons; m; m = m->next)
+    for (c = m->clients; c; c = c->next) {
+      x = c->x;
+      y = c->y;
+      w = c->w;
+      h = c->h;
+      setframeextents(c);
+      /* arrange() alone misses this: unchanged frame geometry short-circuits
+         in applysizehints, so placeclient() would never run. */
+      if (!c->isfullscreen)
+        applysizehints(c, &x, &y, &w, &h, 0);
+      resizeclient(c, x, y, w, h);
+    }
+  arrange(NULL);
+}
+
 /* find the Layout entry whose arrange function matches, so single-master modes
    can switch to / restore from their host layout without hardcoding an index */
 static const Layout *findlayout(void (*arrange)(Monitor *)) {
@@ -5359,7 +5425,12 @@ void freeicon(Client *c) {
     XRenderFreePicture(dpy, c->tabicon);
     c->tabicon = None;
   }
+  if (c->titleicon) {
+    XRenderFreePicture(dpy, c->titleicon);
+    c->titleicon = None;
+  }
   c->tabicon_size = 0;
+  c->titleicon_size = 0;
 }
 
 void togglewin(const Arg *arg) {
@@ -6157,7 +6228,7 @@ void updatetitle(Client *c) {
 void updateicon(Client *c) {
   int scm = c->mon->sel == c ? SchemeSel : SchemeNorm;
   unsigned int new_alpha;
-  int tabsz;
+  int tabsz, titlesz;
 
   if (c->hidden)
     scm = SchemeHid;
@@ -6168,15 +6239,20 @@ void updateicon(Client *c) {
   tabsz = tabiconsize();
   if (tabsz == ICONSIZE)
     tabsz = 0;
-  if (c->icon_alpha == new_alpha && c->icon && c->tabicon_size == tabsz)
+  titlesz = titleiconsize();
+  if (c->icon_alpha == new_alpha && c->icon && c->tabicon_size == tabsz &&
+      c->titleicon_size == titlesz)
     return;
 
   freeicon(c);
   c->icon_alpha = new_alpha;
   c->tabicon_size = tabsz;
+  c->titleicon_size = titlesz;
   c->icon = geticonprop(c->win, &c->icw, &c->ich, new_alpha, ICONSIZE);
   if (tabsz)
     c->tabicon = geticonprop(c->win, &c->tabicw, &c->tabich, new_alpha, tabsz);
+  if (titlesz > 0)
+    c->titleicon = geticonprop(c->win, &c->titleicw, &c->titleich, new_alpha, titlesz);
 }
 
 

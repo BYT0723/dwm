@@ -47,7 +47,7 @@ if ! kill -0 "$DWMPID" 2>/dev/null; then
 fi
 
 # knobs from the config the binary was built with
-title_show=$(sed -n 's/^static const *int *title_show *= *\([0-9][0-9]*\).*/\1/p' "$ROOT/config.h" | head -n 1)
+title_show=$(sed -n 's/^static\( const\)* *int *title_show *= *\([0-9][0-9]*\).*/\2/p' "$ROOT/config.h" | head -n 1)
 title_show=${title_show:-1}
 title_hide_fs=$(sed -n 's/^static const *int *title_hide_fullscreen *= *\([0-9][0-9]*\).*/\1/p' "$ROOT/config.h" | head -n 1)
 title_hide_fs=${title_hide_fs:-1}

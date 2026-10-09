@@ -294,9 +294,9 @@ static const unsigned int tab_sel_dot = 2;
 static const char tab_icon_path[] = "$HOME/.dwm/tab-fallback.png";  /* for clients without _NET_WM_ICON; missing file = no icon */
 
 /* titlebar: per-client decorations */
-static const          int title_show      = 1;          /* 0 means no titlebar, 1 shows a per-client titlebar (height = font height + 2 * title_pad) */
-static const          int title_hide_fullscreen = 1;   /* 1 = hide the titlebar in fullscreen (Mod+Shift+f: monocle layout with the bar hidden); [M] and maximize (Mod+f) keep theirs; floating windows keep theirs */
-static const unsigned int title_pad       = 6;          /* per-side padding; titlebar height = font height + 2 * title_pad */
+static                int title_show      = 1;          /* 0 means no titlebar, 1 shows a per-client titlebar (height = font height + 2 * title_pad) */
+static const          int title_hide_fullscreen = 1;    /* 1 = hide the titlebar in fullscreen (Mod+Shift+f: monocle layout with the bar hidden); [M] and maximize (Mod+f) keep theirs; floating windows keep theirs */
+static const unsigned int title_pad       = 4;          /* per-side padding; titlebar height = font height + 2 * title_pad */
 static const          int title_show_icon = 1;          /* 1 = draw the client icon at the left of the titlebar, 0 = text only */
 static const          int title_align     = 1;          /* text alignment, icon stays left: 0 = left, 1 = center (true center of full width), 2 = right */
 static const         char title_text[]    = "{title}";  /* titlebar text template; placeholders: {title}, {class} (same as tab_text) */
@@ -368,6 +368,7 @@ static Key keys[] = {
     // client manager
     {MODKEY,                       XK_b,                     togglebar,      {0}},
     {MODKEY|ShiftMask,             XK_b,                     toggletabmode,  {0}},
+    {MODKEY|ShiftMask,             XK_t,                     toggletitle,    {0}},
     {MODKEY,                       XK_j,                     focusstackvis,  {.i = +1}},
     {MODKEY,                       XK_k,                     focusstackvis,  {.i = -1}},
     {MODKEY|ShiftMask,             XK_j,                     focusstackhid,  {.i = +1}},
