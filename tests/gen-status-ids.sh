@@ -11,6 +11,7 @@ cd "$(dirname "$0")/.."
 OUT_H=${OUT_H:-status-ids.h}
 OUT_SH=${OUT_SH:-contrib/status-ids.sh}
 DEF=${DEF:-status-ids.def}
+mkdir -p "$(dirname "$OUT_H")" "$(dirname "$OUT_SH")"
 clean=$(mktemp); trap 'rm -f "$clean"' EXIT
 sed 's/#.*//' "$DEF" >"$clean"
 {
