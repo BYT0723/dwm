@@ -158,8 +158,8 @@ static const float cfact_presets[] = { 0.5, 1.0, 2.0 };         /* Mod+Shift+R: 
 /* gaps: inner/outer spacing around tiled clients (vanitygaps) */
 static const unsigned int gappih    = 6;
 static const unsigned int gappiv    = 6;
-static const unsigned int gappoh    = 10;
-static const unsigned int gappov    = 13;
+static const unsigned int gappoh    = 8;
+static const unsigned int gappov    = 8;
 static                int smartgaps = 0;  /* 1 means no outer gap when there is only one window */
 
 #define FORCE_VSPLIT 1 /* nrowgrid layout: force two clients to always split vertically */
@@ -265,8 +265,8 @@ static const char *tag_names[] = {"dev", "web", "chat", "util", "misc", "dl", "v
 /* pill: shared geometry for every bar pill (tags, layout, status, tabs).
    pill_radius is clamped to lpad at startup (pillr); pill_gap separates
    pills, zones and TabModeIconTitle pills. */
-static const unsigned int pill_radius = 6;
-static const unsigned int pill_gap    = 6;
+static const unsigned int pill_radius = 8;
+static const unsigned int pill_gap    = 8;
 
 static const unsigned int tab_width    = 16;         /* TabModeIconTitle: pill width in characters */
 static const         char tab_text[]   = "{title}";  /* TabModeIconTitle only; {title}, {class} */
