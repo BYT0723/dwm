@@ -456,6 +456,7 @@ static void sigchld(int unused);
 static void sighup(int unused);
 static void sigterm(int unused);
 static void spawn(const Arg *arg);
+static void runwindowhook(Client *c, const char *action);
 static int statusblock_idx(int id);
 static void statuspills_buildrun(const BarItem *items, size_t k, size_t n);
 static int runstatuswidth(const BarItem *items, size_t k, size_t n);
@@ -3981,6 +3982,7 @@ void manage(Window w, XWindowAttributes *wa, int mapped) {
     drawtitle(c);
   }
   focus(NULL);
+  runwindowhook(c, "open");
 }
 
 void mappingnotify(XEvent *e) {
@@ -4984,6 +4986,33 @@ void spawn(const Arg *arg) {
   }
 }
 
+/* window open/close hook: fork+exec /bin/sh -c windowhook_cmd with the
+   action and client info in the environment. Async (reaped by sigchld),
+   NULL/empty command disables it. Parent formats ids, child exports env. */
+static void runwindowhook(Client *c, const char *action) {
+  char wid[32], tags[32], mon[16];
+
+  if (!windowhook_cmd || !*windowhook_cmd || !c || !action)
+    return;
+  snprintf(wid, sizeof wid, "%lu", (unsigned long)c->win);
+  snprintf(tags, sizeof tags, "%u", c->tags);
+  snprintf(mon, sizeof mon, "%d", c->mon ? c->mon->num : -1);
+  if (fork() == 0) {
+    if (dpy)
+      close(ConnectionNumber(dpy));
+    setenv("ACTION", action, 1);
+    setenv("WID", wid, 1);
+    setenv("CLASS", c->class, 1);
+    setenv("TITLE", c->name, 1);
+    setenv("TAGS", tags, 1);
+    setenv("MON", mon, 1);
+    setsid();
+    execl("/bin/sh", "sh", "-c", windowhook_cmd, (char *)NULL);
+    fprintf(stderr, "dwm: exec sh -c windowhook_cmd failed");
+    _exit(EXIT_FAILURE);
+  }
+}
+
 /* advance past the status2d code at *s and return its horizontal
    advance ('f' digits, PILL_CLOSE pill_gap); other codes advance 0 */
 static int status2d_advance(char **s) {
@@ -5464,6 +5493,7 @@ void unmanage(Client *c, int destroyed) {
   Monitor *m = c->mon;
   XWindowChanges wc;
 
+  runwindowhook(c, "close");
   detach(c);
   detachstack(c);
   freeicon(c);

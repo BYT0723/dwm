@@ -420,6 +420,10 @@ static Key keys[] = {
 // status click event command
 static const char *statuscmd[] = {"/bin/sh", "-c", "$HOME/.dwm/dwm-statuscmd.sh $INDEX $BUTTON", NULL};
 
+// window open/close hook: run via /bin/sh -c with ACTION=open/close and
+// WID/CLASS/TITLE/TAGS/MON in the environment; NULL or empty disables it.
+static const char *windowhook_cmd = "$HOME/.dwm/dwm-windowhook.sh";
+
 /* click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, ClkTitleBar, or ClkRootWin */
 static Button buttons[] = {
     /* click          event   mask     button          function argument */
