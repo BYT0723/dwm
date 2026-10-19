@@ -79,15 +79,30 @@ if ! kill -0 "$DWMPID" 2>/dev/null; then echo "FAIL: dwm died"; cat "$WORK/dwm.l
 echo "PASS: dwm still running"
 
 # case 2: closing a hidden client must work (no focus-steal, no bad sel)
+# the hide key is parsed from the config's hide binding so the test
+# survives rebinding (MODKEY is assumed to be Mod4/Super, as in config.h)
+hideline=$(grep -E '^[[:space:]]*\{[^}]*hide,' "$ROOT/config.h" | head -n 1)
+hidemods=$(printf '%s' "$hideline" | sed -n 's/^[^{]*{\([^,]*\),.*/\1/p')
+hidexk=$(printf '%s' "$hideline" | sed -n 's/^[^{]*{[^,]*,[[:space:]]*\(XK_[A-Za-z0-9_]*\).*/\1/p')
+hidekey=""
+case "$hidemods" in *MODKEY*) hidekey="super";; esac
+case "$hidemods" in *ControlMask*) hidekey="${hidekey:+${hidekey}+}ctrl";; esac
+case "$hidemods" in *ShiftMask*) hidekey="${hidekey:+${hidekey}+}shift";; esac
+hidekey="${hidekey:+${hidekey}+}$(printf '%s' "$hidexk" | sed 's/^XK_//' | tr 'A-Z' 'a-z')"
+if [ -z "$hidexk" ]; then
+  echo "SKIP: could not parse hide key from config.h"
+  exit 0
+fi
+echo "INFO: hiding with key $hidekey"
 xterm -class mpv -geometry 80x24+800+100 -T close-hidden >/dev/null 2>&1 & XT3=$!
 wid3=$(waitwid close-hidden) || { echo "FAIL: hidden victim never mapped"; exit 1; }
 sleep 0.5
 xdotool windowactivate "$wid3" 2>/dev/null || true
 sleep 0.5
-xdotool key --clearmodifiers super+h 2>/dev/null || true   # Mod+h hides the selected client
+xdotool key --clearmodifiers "$hidekey" 2>/dev/null || true   # hide the selected client
 sleep 0.5
 if xwininfo -id "$wid3" 2>/dev/null | grep -q "Map State: IsViewable"; then
-  echo "FAIL: super+h did not hide the client (still viewable)"
+  echo "FAIL: $hidekey did not hide the client (still viewable)"
   exit 1
 fi
 echo "PASS: client hidden (Map State not IsViewable)"
