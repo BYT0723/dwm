@@ -116,7 +116,7 @@ All user configuration lives in `config.h`, grouped by area and named
   daemon afterwards.
 
 Key bindings worth knowing: `Mod+t` terminal, `Mod+d` launcher,
-`Mod+w` windows, `Mod+j/k` focus, `Mod+h/s` hide/show, `Mod+b` bar,
+`Mod+w` windows, `Mod+j/k` focus, `Mod+Shift+h`/`Mod+s` hide/show, `Mod+b` bar,
 `Mod+Shift+b` tab mode, `Mod+r` / `Mod+Shift+r` mfact/cfact presets,
 `Mod+q` kill client, `Mod+Ctrl+q` hot restart. Full list in `config.h`.
 
