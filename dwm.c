@@ -373,7 +373,7 @@ static void createframe(Client *c);
 static void placeclient(Client *c);
 static void drawtitle(Client *c);
 static void drawtitles(void);
-static int titlebtnsat(Client *c, int x);
+static int titlebtnsat(Client *c, int x, int y);
 static Client *frameclient(Window w);
 static void enternotify(XEvent *e);
 static void expose(XEvent *e);
@@ -886,7 +886,7 @@ void buttonpress(XEvent *e) {
     if (titleh(c) > 0) {
       /* left-click on a titlebar button acts directly (min/max/close),
          clicks elsewhere fall through to the ClkTitleBar bindings (drag) */
-      if (ev->button == Button1 && (btn = titlebtnsat(c, ev->x)) >= 0) {
+      if (ev->button == Button1 && (btn = titlebtnsat(c, ev->x, ev->y)) >= 0) {
         if (btn == 0)
           hideclient(c);
         else if (btn == 1)
@@ -1876,13 +1876,13 @@ setframeextents(Client *c)
 /* title_btns is configured in config.h; index 0 = minimize, 1 = maximize, 2 = close */
 #define NTITLEBTNS (LENGTH(title_btns))
 
-/* index of the titlebar button at frame-relative x, -1 for none */
+/* index of the titlebar button at frame-relative (x, y), -1 for none */
 int
-titlebtnsat(Client *c, int x)
+titlebtnsat(Client *c, int x, int y)
 {
   int btnw;
 
-  if (!c || titleh(c) <= 0)
+  if (!c || titleh(c) <= 0 || y >= th)
     return -1;
   btnw = NTITLEBTNS * th;
   if (c->w < btnw + lrpad || x < c->w - btnw)
