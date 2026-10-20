@@ -629,6 +629,12 @@ static void hoverrefresh(void);
 static Monitor *mons, *selmon;
 static Window root, wmcheckwin;
 
+/* Show Desktop hold-peek defers _NET_ACTIVE_WINDOW jumps until release:
+   indesktophold = 1 between showdesktop press and release,
+   desktop_pending remembers the last activation request seen meanwhile. */
+static int indesktophold = 0;
+static Client *desktop_pending = NULL;
+
 static Systray *systray = NULL;
 
 /* A client that is still tearing down its old icon during a hot restart can
@@ -1101,21 +1107,29 @@ void clientmessage(XEvent *e) {
   } else if (cme->message_type == netatom[NetActiveWindow]) {
     if (policy_jump_on_activate) {
       if (c != selmon->sel) {
-        unsigned int tag;
+        if (indesktophold) {
+          /* Show Desktop peek holds the current tagset: remember the
+             request and replay it on release instead of jumping now. */
+          desktop_pending = c;
+          if (!c->isurgent)
+            seturgent(c, 1);
+        } else {
+          unsigned int tag;
 
-        for (tag = 0; tag < LENGTH(tags) && !(c->tags & 1 << tag); tag++)
-          ;
-        setcurrentmon(c->mon);
-        if (tag < LENGTH(tags) && !(c->tags & selmon->tagset[selmon->seltags])) {
-          Arg a = {.ui = 1 << tag};
+          for (tag = 0; tag < LENGTH(tags) && !(c->tags & 1 << tag); tag++)
+            ;
+          setcurrentmon(c->mon);
+          if (tag < LENGTH(tags) && !(c->tags & selmon->tagset[selmon->seltags])) {
+            Arg a = {.ui = 1 << tag};
 
-          view(&a, KeyPressMask);
+            view(&a, KeyPressMask);
+          }
+          if (HIDDEN(c))
+            showwin(c); /* an activated hidden client must be displayed */
+          focus(c);
+          if (c)
+            restack(selmon);
         }
-        if (HIDDEN(c))
-          showwin(c); /* an activated hidden client must be displayed */
-        focus(c);
-        if (c)
-          restack(selmon);
       }
     } else if (c != selmon->sel && !c->isurgent) {
       seturgent(c, 1);
@@ -3706,7 +3720,7 @@ static int managedon(Client *c, Monitor *m) {
 }
 
 void showdesktop(const Arg *arg, unsigned int event) {
-  Client *c, *save;
+  Client *c, *save, *pend;
   int any = 0, restored = 0;
 
   (void)arg;
@@ -3719,7 +3733,11 @@ void showdesktop(const Arg *arg, unsigned int event) {
       }
     if (!any)
       return;
-    /* key repeat re-fires press while held; keep the first focus */
+    /* key repeat re-fires press while held; keep the first focus
+       and any activation already deferred meanwhile */
+    if (!indesktophold)
+      desktop_pending = NULL;
+    indesktophold = 1;
     if (!desktop_save)
       desktop_save = selmon->sel;
     for (c = selmon->clients; c; c = c->next)
@@ -3733,6 +3751,9 @@ void showdesktop(const Arg *arg, unsigned int event) {
   }
 
   /* release: restore only the clients this feature hid */
+  indesktophold = 0;
+  pend = desktop_pending;
+  desktop_pending = NULL;
   for (c = selmon->clients; c; c = c->next) {
     if (!c->desktop_hidden)
       continue;
@@ -3762,6 +3783,30 @@ void showdesktop(const Arg *arg, unsigned int event) {
       focus(c);
   }
   restack(selmon);
+  if (pend) {
+    Monitor *m;
+    int ok = 0;
+
+    for (m = mons; m && !(ok = managedon(pend, m)); m = m->next)
+      ;
+    if (ok) {
+      unsigned int tag;
+
+      for (tag = 0; tag < LENGTH(tags) && !(pend->tags & 1 << tag); tag++)
+        ;
+      setcurrentmon(pend->mon);
+      if (tag < LENGTH(tags) &&
+          !(pend->tags & selmon->tagset[selmon->seltags])) {
+        Arg a = {.ui = 1 << tag};
+
+        view(&a, KeyPressMask);
+      }
+      if (HIDDEN(pend))
+        showwin(pend);
+      focus(pend);
+      restack(selmon);
+    }
+  }
 }
 
 void incnmaster(const Arg *arg, unsigned int event) {
@@ -5578,6 +5623,11 @@ void unfocus(Client *c, int setfocus) {
 void unmanage(Client *c, int destroyed) {
   Monitor *m = c->mon;
   XWindowChanges wc;
+
+  if (c == desktop_pending)
+    desktop_pending = NULL;
+  if (c == desktop_save)
+    desktop_save = NULL;
 
   runwindowhook(c, "close");
   detach(c);
