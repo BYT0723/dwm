@@ -801,9 +801,7 @@ void arrange(Monitor *m) {
 /* fake fullscreen (Mod+Shift+f): monocle layout with the bar hidden.
    Plain [M] and the maximize host (focusmaster == 2) are not fullscreen.
    This is distinct from c->isfullscreen (EWMH _NET_WM_STATE_FULLSCREEN). */
-static int
-isfakefullscreen(Monitor *m)
-{
+static int isfakefullscreen(Monitor *m) {
   return m->lt[m->sellt]->arrange == monocle &&
       m->pertag->focusmaster[m->pertag->curtag] != 2 && !m->showbar;
 }
@@ -1751,9 +1749,7 @@ void drawbars(void) {
 
 /* vertical space the titlebar takes inside c's frame, 0 when disabled/hidden.
    c->x/y/w/h always describe the FRAME; the client lives at (0, titleh). */
-int
-titleh(Client *c)
-{
+int titleh(Client *c) {
   if (!title_show || !c || c->isfullscreen || c->notitle)
     return 0;
   if (title_hide_fullscreen && !c->isfloating && isfakefullscreen(c->mon))
@@ -1762,9 +1758,7 @@ titleh(Client *c)
 }
 
 /* 1 if the client asked for no window-manager decorations via Motif hints */
-static int
-motifnodecor(Window w)
-{
+static int motifnodecor(Window w) {
   Atom actual;
   int fmt;
   unsigned long n, extra;
@@ -1787,9 +1781,7 @@ out:
 }
 
 /* 1 if the client advertises GTK client-side decorations */
-static int
-hasgtkcsd(Window w)
-{
+static int hasgtkcsd(Window w) {
   Atom actual;
   int fmt;
   unsigned long n, extra;
@@ -1809,9 +1801,7 @@ out:
 }
 
 /* resolve c->notitle from the rule override and live self-decoration hints */
-void
-updatenodecor(Client *c)
-{
+void updatenodecor(Client *c) {
   if (c->rule_notitle) {
     c->notitle = 1;
     return;
@@ -1823,9 +1813,7 @@ updatenodecor(Client *c)
 
 /* create c->frame, reparent c->win into it and place it below the title area.
    The frame owns the border (c->bw); the client border is forced to 0. */
-void
-createframe(Client *c)
-{
+void createframe(Client *c) {
   XSetWindowAttributes wa = {
     .override_redirect = False,
     .background_pixel = 0,
@@ -1853,9 +1841,7 @@ createframe(Client *c)
 }
 
 /* (re)position c->win inside c->frame below the title area */
-void
-placeclient(Client *c)
-{
+void placeclient(Client *c) {
   int dh = titleh(c);
 
   XMoveResizeWindow(dpy, c->win, 0, dh, c->w, MAX(c->h - dh, 1));
@@ -1863,18 +1849,14 @@ placeclient(Client *c)
 
 /* publish the frame extents (left, right, top, bottom) on a client window
    so CSD clients can align shadows and hit areas to our decorations */
-void
-setframeextentswin(Window w, int bw, int top)
-{
+void setframeextentswin(Window w, int bw, int top) {
   long ext[4] = { bw, bw, bw + top, bw };
 
   XChangeProperty(dpy, w, netatom[NetFrameExtents], XA_CARDINAL, 32,
                   PropModeReplace, (unsigned char *)ext, 4);
 }
 
-void
-setframeextents(Client *c)
-{
+void setframeextents(Client *c) {
   if (!c)
     return;
   setframeextentswin(c->win, c->bw, titleh(c));
@@ -1884,9 +1866,7 @@ setframeextents(Client *c)
 #define NTITLEBTNS (LENGTH(title_btns))
 
 /* index of the titlebar button at frame-relative (x, y), -1 for none */
-int
-titlebtnsat(Client *c, int x, int y)
-{
+int titlebtnsat(Client *c, int x, int y) {
   int btnw;
 
   if (!c || titleh(c) <= 0 || y >= th)
@@ -1945,9 +1925,7 @@ void drawtitle(Client *c) {
   drw_map(drw, c->frame, 0, 0, c->w, th);
 }
 
-void
-drawtitles(void)
-{
+void drawtitles(void) {
   Monitor *m;
   Client *c;
 
@@ -1959,9 +1937,7 @@ drawtitles(void)
         drawtitle(c);
 }
 
-Client *
-frameclient(Window w)
-{
+Client *frameclient(Window w) {
   Monitor *m;
   Client *c;
 
@@ -3449,9 +3425,7 @@ Atom getatomprop(Client *c, Atom prop) {
 }
 
 /* read an ATOM-list property into out (at most max items); returns count */
-static int
-getatomlist(Client *c, Atom prop, Atom *out, int max)
-{
+static int getatomlist(Client *c, Atom prop, Atom *out, int max) {
   Atom actual;
   int fmt;
   unsigned long i, nitems, extra, n = 0;
@@ -3471,9 +3445,7 @@ getatomlist(Client *c, Atom prop, Atom *out, int max)
 
 /* 1 if the ATOM-list property prop on c->win contains val. Non-destructive:
    getatomprop reads the first item only, getstateprop deletes after reading */
-int
-hasatomprop(Client *c, Atom prop, Atom val)
-{
+int hasatomprop(Client *c, Atom prop, Atom val) {
   Atom list[64];
   int i, n = getatomlist(c, prop, list, LENGTH(list));
 
@@ -3854,9 +3826,7 @@ void keyrelease(XEvent *e) { keyevent(e, KeyReleaseMask); }
 
 /* ask c to close (WM_DELETE_WINDOW), killing it as a fallback. Does not
    touch focus/selmon, so it is safe for background clients too. */
-void
-closeclient(Client *c)
-{
+void closeclient(Client *c) {
   if (!c)
     return;
   if (!sendevent(c->win, wmatom[WMDelete], NoEventMask,
@@ -6405,9 +6375,7 @@ void updateicon(Client *c) {
 /* mirror _NET_WM_STATE_DEMANDS_ATTENTION into isurgent, the EWMH
    counterpart of the ICCCM urgency hint (re-derived from XUrgencyHint
    when the flag is absent). Never writes back to the client. */
-void
-syncattention(Client *c)
-{
+void syncattention(Client *c) {
   if (hasatomprop(c, netatom[NetWMState], netatom[NetWMStateDemandsAttention]))
     c->isurgent = 1;
   else
@@ -6417,9 +6385,7 @@ syncattention(Client *c)
 /* drop DEMANDS_ATTENTION from _NET_WM_STATE, keeping the other state atoms.
    The WM owns clearing it once the window got attention (EWMH 5.7), so a
    focused client does not re-light its tag on the next state change. */
-void
-clearattention(Client *c)
-{
+void clearattention(Client *c) {
   Atom list[64], keep[64];
   int i, n, m = 0;
 
