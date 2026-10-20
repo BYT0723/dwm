@@ -115,6 +115,21 @@ else
   err "hold path must use hidewin(c)"
 fi
 
+# 10. release order must not matter: a hold ends when any key of its chord
+# comes up, and the release is dispatched to the row recorded at press time
+# instead of being re-derived from kev->state. Generic to every binding that
+# listens for KeyRelease, so no action needs release-order handling of its own.
+if grep -q "holdrow" dwm.c && grep -q "IsModifierKey" dwm.c; then
+  info "an active hold releases by its recorded row on any chord-key release"
+else
+  err "keyevent must record the pressed row and release by it"
+fi
+if grep -q "desktoprelease\|pressmods" dwm.c; then
+  err "dispatch must not special-case an action or keep a press-mask table"
+else
+  info "no action-specific or keycode-table release handling"
+fi
+
 if [ "$fail" -ne 0 ]; then
   info "see docs/specs/SPEC-show-desktop-hold.md"
   exit 1

@@ -3838,10 +3838,20 @@ static int keyrepeat(XKeyEvent *kev) {
          (nev.xkey.time - kev->time) < 50;
 }
 
+/* A press of a binding that also listens for KeyRelease is a hold: it lasts
+   until a key of its chord comes up. Remember which row that press matched
+   and dispatch the release straight back to it, so the release path never
+   re-derives the chord from kev->state (a modifier let go first shrinks that
+   state, and re-matching then misses the row and the hold would stick). The
+   gesture ends on the bound key or on any of its modifiers, whichever the
+   user lets go of first; every hold binding gets this, no per-action hooks. */
+static int holdrow = -1;     /* keys[] row the active hold started */
+static KeyCode holdcode = 0; /* that row's bound keycode */
+
 /* one dispatch for both key events: press matches the modifier mask
-   exactly, release only requires the bound mods to still be held (so
-   letting go of MOD first works). `event` is the event mask bit that fired
-   and is handed to the handler, so future events just add another bit. */
+   exactly, an active hold releases by its recorded row. `event` is the
+   event mask bit that fired and is handed to the handler, so future events
+   just add another bit. */
 void keyevent(XEvent *e, unsigned int event) {
   unsigned int i;
   KeySym keysym;
@@ -3850,17 +3860,30 @@ void keyevent(XEvent *e, unsigned int event) {
   if (event == KeyReleaseMask && keyrepeat(kev))
     return;
   keysym = XKeycodeToKeysym(dpy, (KeyCode)kev->keycode, 0);
+  if (event == KeyReleaseMask && holdrow >= 0 &&
+      (kev->keycode == holdcode || IsModifierKey(keysym))) {
+    i = holdrow;
+    holdrow = -1;
+    keys[i].func(&(keys[i].arg), event);
+    return;
+  }
   for (i = 0; i < LENGTH(keys); i++) {
     if (keysym != keys[i].keysym || !(keys[i].ev & event))
       continue;
     if (event == KeyReleaseMask) {
-      /* tolerant match: releasing MOD before the key must still fire,
-         so require the bound mods to be held, not an exact mask match */
+      /* fallback for a release with no recorded hold: match on the bound
+         mods still being held rather than on an exact mask. Holds never get
+         here — they release through holdrow above, so the order in which
+         the chord's keys come up does not matter. */
       if ((CLEANMASK(kev->state) & CLEANMASK(keys[i].mod)) !=
           CLEANMASK(keys[i].mod))
         continue;
     } else if (CLEANMASK(keys[i].mod) != CLEANMASK(kev->state))
       continue;
+    if (event == KeyPressMask && (keys[i].ev & KeyReleaseMask)) {
+      holdrow = i;
+      holdcode = kev->keycode;
+    }
     keys[i].func(&(keys[i].arg), event);
   }
 }
