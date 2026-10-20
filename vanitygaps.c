@@ -1,13 +1,13 @@
 /* Key binding functions */
-static void defaultgaps(const Arg *arg);
-static void incrgaps(const Arg *arg);
-static void incrigaps(const Arg *arg);
-static void incrogaps(const Arg *arg);
-static void incrohgaps(const Arg *arg);
-static void incrovgaps(const Arg *arg);
-static void incrihgaps(const Arg *arg);
-static void incrivgaps(const Arg *arg);
-static void togglegaps(const Arg *arg);
+static void defaultgaps(const Arg *arg, unsigned int ev);
+static void incrgaps(const Arg *arg, unsigned int ev);
+static void incrigaps(const Arg *arg, unsigned int ev);
+static void incrogaps(const Arg *arg, unsigned int ev);
+static void incrohgaps(const Arg *arg, unsigned int ev);
+static void incrovgaps(const Arg *arg, unsigned int ev);
+static void incrihgaps(const Arg *arg, unsigned int ev);
+static void incrivgaps(const Arg *arg, unsigned int ev);
+static void togglegaps(const Arg *arg, unsigned int ev);
 /* Layouts (delete the ones you do not need) */
 static void bstack(Monitor *m);
 static void bstackhoriz(Monitor *m);
@@ -42,7 +42,7 @@ void setgaps(int oh, int ov, int ih, int iv) {
   arrange(selmon);
 }
 
-void togglegaps(const Arg *arg) {
+void togglegaps(const Arg *arg, unsigned int ev) {
 #if PERTAG_PATCH
   selmon->pertag->enablegaps[selmon->pertag->curtag] =
       !selmon->pertag->enablegaps[selmon->pertag->curtag];
@@ -52,7 +52,7 @@ void togglegaps(const Arg *arg) {
   arrange(NULL);
 }
 
-void defaultgaps(const Arg *arg) { setgaps(gappoh, gappov, gappih, gappiv); }
+void defaultgaps(const Arg *arg, unsigned int ev) { setgaps(gappoh, gappov, gappih, gappiv); }
 
 /* shared body for the inc* key bindings: add the deltas to current gaps */
 static void
@@ -61,19 +61,19 @@ addgaps(int oh, int ov, int ih, int iv) {
           selmon->gappiv + iv);
 }
 
-void incrgaps(const Arg *arg) { addgaps(arg->i, arg->i, arg->i, arg->i); }
+void incrgaps(const Arg *arg, unsigned int ev) { addgaps(arg->i, arg->i, arg->i, arg->i); }
 
-void incrigaps(const Arg *arg) { addgaps(0, 0, arg->i, arg->i); }
+void incrigaps(const Arg *arg, unsigned int ev) { addgaps(0, 0, arg->i, arg->i); }
 
-void incrogaps(const Arg *arg) { addgaps(arg->i, arg->i, 0, 0); }
+void incrogaps(const Arg *arg, unsigned int ev) { addgaps(arg->i, arg->i, 0, 0); }
 
-void incrohgaps(const Arg *arg) { addgaps(arg->i, 0, 0, 0); }
+void incrohgaps(const Arg *arg, unsigned int ev) { addgaps(arg->i, 0, 0, 0); }
 
-void incrovgaps(const Arg *arg) { addgaps(0, arg->i, 0, 0); }
+void incrovgaps(const Arg *arg, unsigned int ev) { addgaps(0, arg->i, 0, 0); }
 
-void incrihgaps(const Arg *arg) { addgaps(0, 0, arg->i, 0); }
+void incrihgaps(const Arg *arg, unsigned int ev) { addgaps(0, 0, arg->i, 0); }
 
-void incrivgaps(const Arg *arg) { addgaps(0, 0, 0, arg->i); }
+void incrivgaps(const Arg *arg, unsigned int ev) { addgaps(0, 0, 0, arg->i); }
 
 void getgaps(Monitor *m, int *oh, int *ov, int *ih, int *iv, unsigned int *nc) {
   unsigned int n, oe, ie;
