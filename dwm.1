@@ -63,105 +63,173 @@ click on a tag label applies that tag to the focused window.
 .B Mod1\-Button3
 click on a tag label adds/removes that tag to/from the focused window.
 .SS Keyboard commands
+Mod4 is the Super (Windows) key, Mod1 is Alt. All bindings below come from
+the default
+.IR config.h .
 .TP
-.B Mod1\-Shift\-Return
-Start
-.BR st(1).
+.B Mod4\-t
+Open a terminal.
 .TP
-.B Mod1\-p
-Spawn
-.BR dmenu(1)
-for launching other programs.
+.B Mod4\-n
+Open a floating terminal.
 .TP
-.B Mod1\-,
-Focus previous screen, if any.
+.B Mod4\-e
+Open the file manager.
 .TP
-.B Mod1\-.
-Focus next screen, if any.
+.B Mod4\-d
+Application launcher.
 .TP
-.B Mod1\-Shift\-,
-Send focused window to previous screen, if any.
+.B Mod4\-Control\-d
+Power menu.
 .TP
-.B Mod1\-Shift\-.
-Send focused window to next screen, if any.
+.B Mod4\-w
+Window switcher.
 .TP
-.B Mod1\-b
-Toggles bar on and off.
+.B Mod4\-Shift\-w
+Wallpaper switcher.
 .TP
-.B Mod1\-t
-Sets tiled layout.
+.B Mod4\-a
+Screenshot (direct save).
 .TP
-.B Mod1\-f
-Sets floating layout.
+.B Mod4\-Shift\-a
+Screenshot (interactive).
 .TP
-.B Mod1\-m
-Sets monocle layout.
+.B Mod4\-m
+Module menu.
 .TP
-.B Mod1\-space
-Toggles between current and previous layout.
+.B Mod4\-Shift\-m
+Music (mpd) menu.
 .TP
-.B Mod1\-j
-Focus next window.
+.B Mod4\-Shift\-l
+Layout menu.
 .TP
-.B Mod1\-k
-Focus previous window.
+.B Mod4\-z
+Focus follows master: the focused window takes the sole master slot.
 .TP
-.B Mod1\-i
+.B Mod4\-f
+Maximize the focused window (monocle host, keeps gaps).
+.TP
+.B Mod4\-Shift\-f
+Fullscreen the focused window (monocle layout with the bar hidden).
+.TP
+.B Mod4\-Control\-v
 Increase number of windows in master area.
 .TP
-.B Mod1\-d
+.B Mod4\-Control\-s
 Decrease number of windows in master area.
 .TP
-.B Mod1\-l
-Increase master area size.
+.B Mod4\-r
+Cycle master area width preset.
 .TP
-.B Mod1\-h
-Decrease master area size.
+.B Mod4\-Shift\-r
+Cycle focused window size preset.
 .TP
-.B Mod1\-Return
-Zooms/cycles focused window to/from master area (tiled layouts only).
+.B Mod4\-b
+Toggle the bar on and off.
 .TP
-.B Mod1\-Shift\-c
-Close focused window.
+.B Mod4\-Shift\-b
+Toggle the tab display mode (icon+title vs. icons).
 .TP
-.B Mod1\-Shift\-space
+.B Mod4\-Shift\-t
+Toggle the per-client titlebar.
+.TP
+.B Mod4\-j
+Focus next visible window.
+.TP
+.B Mod4\-k
+Focus previous visible window.
+.TP
+.B Mod4\-Shift\-j
+Focus next window, including hidden ones.
+.TP
+.B Mod4\-Shift\-k
+Focus previous window, including hidden ones.
+.TP
+.B Mod4\-s
+Show (unhide) the focused window.
+.TP
+.B Mod4\-Shift\-h
+Hide the focused window.
+.TP
+.B Mod4\-Shift\-s
+Show all hidden windows on the current tag.
+.TP
+.B Mod4\-Shift\-d
+Hold to show the desktop: hides every visible window on the current
+monitor while held, restores them on release.
+.TP
+.B Mod4\-Control\-space
 Toggle focused window between tiled and floating state.
 .TP
-.B Mod1\-Tab
-Toggles to the previously selected tags.
+.B Mod4\-Return
+Zoom/cycle focused window to/from master area (tiled layouts only).
 .TP
-.B Mod1\-Shift\-[1..n]
-Apply nth tag to focused window.
+.B Mod4\-Tab
+Toggle to the previously selected tags.
 .TP
-.B Mod1\-Shift\-0
-Apply all tags to focused window.
+.B Mod4\-Control\-0
+Add/remove all windows with all tags to/from the view.
 .TP
-.B Mod1\-Control\-Shift\-[1..n]
-Add/remove nth tag to/from focused window.
+.B Mod4\-,
+Focus previous monitor, if any.
 .TP
-.B Mod1\-[1..n]
-View all windows with nth tag.
+.B Mod4\-.
+Focus next monitor, if any.
 .TP
-.B Mod1\-0
-View all windows with any tag.
+.B Mod4\-Control\-,
+Send focused window to previous monitor, if any.
 .TP
-.B Mod1\-Control\-[1..n]
-Add/remove all windows with nth tag to/from the view.
+.B Mod4\-Control\-.
+Send focused window to next monitor, if any.
 .TP
-.B Mod1\-Shift\-q
+.B Mod4\-q
+Close focused window.
+.TP
+.B Mod4\-Control\-q
+Hot-restart dwm.
+.TP
+.B Mod4\-Shift\-Control\-q
 Quit dwm.
 .TP
-.B Mod1\-Control\-Shift\-q
-Restart dwm.
+.B Mod4\-Mod1\-u / i / o / 6 / 7 / 8 / 9
+Increase all / inner / outer / inner-horizontal / inner-vertical /
+outer-horizontal / outer-vertical gaps.
+.TP
+.B Mod4\-Mod1\-0
+Toggle gaps on and off.
+.TP
+.B Mod4\-Mod1\-Shift\-u / i / o / 6 / 7 / 8 / 9
+Decrease the corresponding gaps.
+.TP
+.B Mod4\-Mod1\-Shift\-0
+Reset gaps to defaults.
+.TP
+.B Mod4\-[1..n]
+View all windows with nth tag.
+.TP
+.B Mod4\-0
+View all windows with any tag.
+.TP
+.B Mod4\-Shift\-[1..n]
+Apply nth tag to focused window.
+.TP
+.B Mod4\-Shift\-0
+Apply all tags to focused window.
+.TP
+.B Mod4\-Control\-[1..n]
+Add/remove all windows with nth tag to/from the view.
+.TP
+.B Mod4\-Control\-Shift\-[1..n]
+Add/remove nth tag to/from focused window.
 .SS Mouse commands
 .TP
-.B Mod1\-Button1
+.B Mod4\-Button1
 Move focused window while dragging. Tiled windows will be toggled to the floating state.
 .TP
-.B Mod1\-Button2
+.B Mod4\-Button2
 Toggles focused window between floating and tiled state.
 .TP
-.B Mod1\-Button3
+.B Mod4\-Button3
 Resize focused window while dragging. Tiled windows will be toggled to the floating state.
 .SH FILES
 The files containing programs to be started along with dwm are searched for in
