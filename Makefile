@@ -30,6 +30,7 @@ test: tests/barparse_test
 	./tests/barparse_test
 	./tests/check-status-ids.sh
 	./tests/check-pill-radius.sh
+	./tests/show-desktop-check.sh
 
 # end-to-end bar test on a private Xvfb display; needs Xvfb, xterm, xdotool,
 # xwd and ImageMagick (convert/compare)

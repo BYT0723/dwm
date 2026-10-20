@@ -318,10 +318,10 @@ static const unsigned int hover_preview_borderpx = 2;    /* px highlight border 
 #define MODKEY Mod4Mask
 #define SUPKEY Mod1Mask
 #define TAGKEYS(KEY, TAG)                                                 \
-    {MODKEY,                           KEY, view,       {.ui = 1 << TAG}},  \
-    {MODKEY | ShiftMask,               KEY, toggleview, {.ui = 1 << TAG}},  \
-    {MODKEY | ControlMask,             KEY, tag,        {.ui = 1 << TAG}},  \
-    {MODKEY | ControlMask | ShiftMask, KEY, toggletag,  {.ui = 1 << TAG}},
+    {MODKEY,                           KEY, view,       {.ui = 1 << TAG}, KeyPressMask},  \
+    {MODKEY | ShiftMask,               KEY, toggleview, {.ui = 1 << TAG}, KeyPressMask},  \
+    {MODKEY | ControlMask,             KEY, tag,        {.ui = 1 << TAG}, KeyPressMask},  \
+    {MODKEY | ControlMask | ShiftMask, KEY, toggletag,  {.ui = 1 << TAG}, KeyPressMask},
 
 /* helper for spawning shell commands in the pre dwm-5.0 fashion */
 #define SHCMD(cmd) { .v = (const char *[]) { "/bin/sh", "-c", cmd, NULL } }
@@ -331,81 +331,82 @@ static const unsigned int hover_preview_borderpx = 2;    /* px highlight border 
 static const char *layoutmenu_cmd = "$HOME/.dwm/dwm-layoutmenu.sh";
 
 static Key keys[] = {
-    /* modifier                    key                       function        argument */
-    {MODKEY,                       XK_t,                     spawn,          LAUNCHCMD("term")},
-    {MODKEY,                       XK_n,                     spawn,          LAUNCHCMD("term", "float")},
-    {MODKEY,                       XK_e,                     spawn,          LAUNCHCMD("fm")},
-    {0,                            XF86XK_AudioLowerVolume,  spawn,          SHCMD("$HOME/.dwm/tools/volume.sh down")},
-    {0,                            XF86XK_AudioRaiseVolume,  spawn,          SHCMD("$HOME/.dwm/tools/volume.sh up")},
-    {0,                            XF86XK_AudioMute,         spawn,          SHCMD("$HOME/.dwm/tools/volume.sh toggle")},
-    {0,                            XF86XK_MonBrightnessDown, spawn,          SHCMD("$HOME/.dwm/tools/brightness.sh down")},
-    {0,                            XF86XK_MonBrightnessUp,   spawn,          SHCMD("$HOME/.dwm/tools/brightness.sh up")},
+    /* modifier                    key                       function        argument  events */
+    {MODKEY,                       XK_t,                     spawn,          LAUNCHCMD("term"), KeyPressMask},
+    {MODKEY,                       XK_n,                     spawn,          LAUNCHCMD("term", "float"), KeyPressMask},
+    {MODKEY,                       XK_e,                     spawn,          LAUNCHCMD("fm"), KeyPressMask},
+    {0,                            XF86XK_AudioLowerVolume,  spawn,          SHCMD("$HOME/.dwm/tools/volume.sh down"), KeyPressMask},
+    {0,                            XF86XK_AudioRaiseVolume,  spawn,          SHCMD("$HOME/.dwm/tools/volume.sh up"), KeyPressMask},
+    {0,                            XF86XK_AudioMute,         spawn,          SHCMD("$HOME/.dwm/tools/volume.sh toggle"), KeyPressMask},
+    {0,                            XF86XK_MonBrightnessDown, spawn,          SHCMD("$HOME/.dwm/tools/brightness.sh down"), KeyPressMask},
+    {0,                            XF86XK_MonBrightnessUp,   spawn,          SHCMD("$HOME/.dwm/tools/brightness.sh up"), KeyPressMask},
     // rofi
-    {MODKEY,                       XK_d,                     spawn,          LAUNCHCMD("apps")},
-    {MODKEY|ControlMask,           XK_d,                     spawn,          LAUNCHCMD("powermenu")},
-    {MODKEY,                       XK_w,                     spawn,          LAUNCHCMD("windows")},
-    {MODKEY|ShiftMask,             XK_w,                     spawn,          LAUNCHCMD("wallpaper")},
+    {MODKEY,                       XK_d,                     spawn,          LAUNCHCMD("apps"), KeyPressMask},
+    {MODKEY|ControlMask,           XK_d,                     spawn,          LAUNCHCMD("powermenu"), KeyPressMask},
+    {MODKEY,                       XK_w,                     spawn,          LAUNCHCMD("windows"), KeyPressMask},
+    {MODKEY|ShiftMask,             XK_w,                     spawn,          LAUNCHCMD("wallpaper"), KeyPressMask},
     // screenshot
-    {MODKEY,                       XK_a,                     spawn,          LAUNCHCMD("screenshot", "pure")},
-    {MODKEY|ShiftMask,             XK_a,                     spawn,          LAUNCHCMD("screenshot")},
+    {MODKEY,                       XK_a,                     spawn,          LAUNCHCMD("screenshot", "pure"), KeyPressMask},
+    {MODKEY|ShiftMask,             XK_a,                     spawn,          LAUNCHCMD("screenshot"), KeyPressMask},
     // common modules
-    {MODKEY,                       XK_m,                     spawn,          LAUNCHCMD("modules")},
-    {MODKEY|ShiftMask,             XK_m,                     spawn,          LAUNCHCMD("mpd")},
+    {MODKEY,                       XK_m,                     spawn,          LAUNCHCMD("modules"), KeyPressMask},
+    {MODKEY|ShiftMask,             XK_m,                     spawn,          LAUNCHCMD("mpd"), KeyPressMask},
     // layout
     // {MODKEY,                       XK_t,                     setlayout,      {.v = &layouts[0]}},
     // {MODKEY,                       XK_f,                     setlayout,      {.v = &layouts[1]}},
-    {MODKEY|ShiftMask,             XK_l,                     layoutmenu,     {0}},
+    {MODKEY|ShiftMask,             XK_l,                     layoutmenu,     {0}, KeyPressMask},
     // focus follows master: focused window holds sole master slot in tile
-    {MODKEY,                       XK_z,                     focusmaster,    {0}},
-    {MODKEY,                       XK_f,                     maximize,       {0}},
-    {MODKEY|ShiftMask,             XK_f,                     fullscreen,     {0}},
+    {MODKEY,                       XK_z,                     focusmaster,    {0}, KeyPressMask},
+    {MODKEY,                       XK_f,                     maximize,       {0}, KeyPressMask},
+    {MODKEY|ShiftMask,             XK_f,                     fullscreen,     {0}, KeyPressMask},
     // layout adjust
-    {MODKEY|ControlMask,           XK_v,                     incnmaster,     {.i = +1}},
-    {MODKEY|ControlMask,           XK_s,                     incnmaster,     {.i = -1}},
+    {MODKEY|ControlMask,           XK_v,                     incnmaster,     {.i = +1}, KeyPressMask},
+    {MODKEY|ControlMask,           XK_s,                     incnmaster,     {.i = -1}, KeyPressMask},
     // preset switching (niri-style, forward-only)
-    {MODKEY,                       XK_r,                     cyclemfact,     {0}},
-    {MODKEY|ShiftMask,             XK_r,                     cyclecfact,     {0}},
+    {MODKEY,                       XK_r,                     cyclemfact,     {0}, KeyPressMask},
+    {MODKEY|ShiftMask,             XK_r,                     cyclecfact,     {0}, KeyPressMask},
     // client manager
-    {MODKEY,                       XK_b,                     togglebar,      {0}},
-    {MODKEY|ShiftMask,             XK_b,                     toggletabmode,  {0}},
-    {MODKEY|ShiftMask,             XK_t,                     toggletitle,    {0}},
-    {MODKEY,                       XK_j,                     focusstackvis,  {.i = +1}},
-    {MODKEY,                       XK_k,                     focusstackvis,  {.i = -1}},
-    {MODKEY|ShiftMask,             XK_j,                     focusstackhid,  {.i = +1}},
-    {MODKEY|ShiftMask,             XK_k,                     focusstackhid,  {.i = -1}},
-    {MODKEY,                       XK_s,                     show,           {0}},
-    {MODKEY|ShiftMask,             XK_h,                     hide,           {0}},
-    {MODKEY|ShiftMask,             XK_s,                     showall,        {0}},
-    {MODKEY|ControlMask,           XK_space,                 togglefloating, {0}},
-    {MODKEY,                       XK_Return,                zoom,           {0}},
-    {MODKEY,                       XK_Tab,                   view,           {0}},
-    {MODKEY,                       XK_0,                     view,           {.ui = ~0}},
-    {MODKEY|ShiftMask,             XK_0,                     tag,            {.ui = ~0}},
-    {MODKEY|ControlMask,           XK_0,                     toggletag,      {.ui = ~0}},
-    {MODKEY,                       XK_comma,                 focusmon,       {.i = -1}},
-    {MODKEY,                       XK_period,                focusmon,       {.i = +1}},
-    {MODKEY|ControlMask,           XK_comma,                 tagmon,         {.i = -1}},
-    {MODKEY|ControlMask,           XK_period,                tagmon,         {.i = +1}},
-    {MODKEY,                       XK_q,                     killclient,     {0}},
-    {MODKEY|ControlMask,           XK_q,                     quit,           {1}}, // hot restart
-    {MODKEY|ShiftMask|ControlMask, XK_q,                     quit,           {0}}, // kill dwm
+    {MODKEY,                       XK_b,                     togglebar,      {0}, KeyPressMask},
+    {MODKEY|ShiftMask,             XK_b,                     toggletabmode,  {0}, KeyPressMask},
+    {MODKEY|ShiftMask,             XK_t,                     toggletitle,    {0}, KeyPressMask},
+    {MODKEY,                       XK_j,                     focusstackvis,  {.i = +1}, KeyPressMask},
+    {MODKEY,                       XK_k,                     focusstackvis,  {.i = -1}, KeyPressMask},
+    {MODKEY|ShiftMask,             XK_j,                     focusstackhid,  {.i = +1}, KeyPressMask},
+    {MODKEY|ShiftMask,             XK_k,                     focusstackhid,  {.i = -1}, KeyPressMask},
+    {MODKEY,                       XK_s,                     show,           {0}, KeyPressMask},
+    {MODKEY|ShiftMask,             XK_h,                     hide,           {0}, KeyPressMask},
+    {MODKEY|ShiftMask,             XK_s,                     showall,        {0}, KeyPressMask},
+    {MODKEY|ShiftMask,             XK_d,                     showdesktop,    {0}, KeyPressMask | KeyReleaseMask},
+    {MODKEY|ControlMask,           XK_space,                 togglefloating, {0}, KeyPressMask},
+    {MODKEY,                       XK_Return,                zoom,           {0}, KeyPressMask},
+    {MODKEY,                       XK_Tab,                   view,           {0}, KeyPressMask},
+    {MODKEY,                       XK_0,                     view,           {.ui = ~0}, KeyPressMask},
+    {MODKEY|ShiftMask,             XK_0,                     tag,            {.ui = ~0}, KeyPressMask},
+    {MODKEY|ControlMask,           XK_0,                     toggletag,      {.ui = ~0}, KeyPressMask},
+    {MODKEY,                       XK_comma,                 focusmon,       {.i = -1}, KeyPressMask},
+    {MODKEY,                       XK_period,                focusmon,       {.i = +1}, KeyPressMask},
+    {MODKEY|ControlMask,           XK_comma,                 tagmon,         {.i = -1}, KeyPressMask},
+    {MODKEY|ControlMask,           XK_period,                tagmon,         {.i = +1}, KeyPressMask},
+    {MODKEY,                       XK_q,                     killclient,     {0}, KeyPressMask},
+    {MODKEY|ControlMask,           XK_q,                     quit,           {1}, KeyPressMask}, // hot restart
+    {MODKEY|ShiftMask|ControlMask, XK_q,                     quit,           {0}, KeyPressMask}, // kill dwm
     // gap manager
-    {MODKEY|SUPKEY,                XK_u,                     incrgaps,       {.i = +1}},
-    {MODKEY|SUPKEY,                XK_i,                     incrigaps,      {.i = +1}},
-    {MODKEY|SUPKEY,                XK_o,                     incrogaps,      {.i = +1}},
-    {MODKEY|SUPKEY,                XK_6,                     incrihgaps,     {.i = +1}},
-    {MODKEY|SUPKEY,                XK_7,                     incrivgaps,     {.i = +1}},
-    {MODKEY|SUPKEY,                XK_8,                     incrohgaps,     {.i = +1}},
-    {MODKEY|SUPKEY,                XK_9,                     incrovgaps,     {.i = +1}},
-    {MODKEY|SUPKEY,                XK_0,                     togglegaps,     {0}},
-    {MODKEY|SUPKEY|ShiftMask,      XK_u,                     incrgaps,       {.i = -1}},
-    {MODKEY|SUPKEY|ShiftMask,      XK_i,                     incrigaps,      {.i = -1}},
-    {MODKEY|SUPKEY|ShiftMask,      XK_o,                     incrogaps,      {.i = -1}},
-    {MODKEY|SUPKEY|ShiftMask,      XK_6,                     incrihgaps,     {.i = -1}},
-    {MODKEY|SUPKEY|ShiftMask,      XK_7,                     incrivgaps,     {.i = -1}},
-    {MODKEY|SUPKEY|ShiftMask,      XK_8,                     incrohgaps,     {.i = -1}},
-    {MODKEY|SUPKEY|ShiftMask,      XK_9,                     incrovgaps,     {.i = -1}},
-    {MODKEY|SUPKEY|ShiftMask,      XK_0,                     defaultgaps,    {0}},
+    {MODKEY|SUPKEY,                XK_u,                     incrgaps,       {.i = +1}, KeyPressMask},
+    {MODKEY|SUPKEY,                XK_i,                     incrigaps,      {.i = +1}, KeyPressMask},
+    {MODKEY|SUPKEY,                XK_o,                     incrogaps,      {.i = +1}, KeyPressMask},
+    {MODKEY|SUPKEY,                XK_6,                     incrihgaps,     {.i = +1}, KeyPressMask},
+    {MODKEY|SUPKEY,                XK_7,                     incrivgaps,     {.i = +1}, KeyPressMask},
+    {MODKEY|SUPKEY,                XK_8,                     incrohgaps,     {.i = +1}, KeyPressMask},
+    {MODKEY|SUPKEY,                XK_9,                     incrovgaps,     {.i = +1}, KeyPressMask},
+    {MODKEY|SUPKEY,                XK_0,                     togglegaps,     {0}, KeyPressMask},
+    {MODKEY|SUPKEY|ShiftMask,      XK_u,                     incrgaps,       {.i = -1}, KeyPressMask},
+    {MODKEY|SUPKEY|ShiftMask,      XK_i,                     incrigaps,      {.i = -1}, KeyPressMask},
+    {MODKEY|SUPKEY|ShiftMask,      XK_o,                     incrogaps,      {.i = -1}, KeyPressMask},
+    {MODKEY|SUPKEY|ShiftMask,      XK_6,                     incrihgaps,     {.i = -1}, KeyPressMask},
+    {MODKEY|SUPKEY|ShiftMask,      XK_7,                     incrivgaps,     {.i = -1}, KeyPressMask},
+    {MODKEY|SUPKEY|ShiftMask,      XK_8,                     incrohgaps,     {.i = -1}, KeyPressMask},
+    {MODKEY|SUPKEY|ShiftMask,      XK_9,                     incrovgaps,     {.i = -1}, KeyPressMask},
+    {MODKEY|SUPKEY|ShiftMask,      XK_0,                     defaultgaps,    {0}, KeyPressMask},
     TAGKEYS(XK_1, 0)
     TAGKEYS(XK_2, 1)
     TAGKEYS(XK_3, 2)

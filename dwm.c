@@ -178,7 +178,7 @@ typedef struct {
   unsigned int click;
   unsigned int mask;
   unsigned int button;
-  void (*func)(const Arg *arg);
+  void (*func)(const Arg *arg, unsigned int event);
   const Arg arg;
 } Button;
 
@@ -225,13 +225,16 @@ struct Client {
   int rule_notitle; /* Rule override: 1 = never show a titlebar for this client */
   int notitle;  /* resolved: rule override OR motif/gtk self-decoration hints */
   int fromredock; /* tray icon: 1 = re-docked leftover of a previous dwm session */
+  int desktop_hidden; /* 1 = hidden by showdesktop, restored on release */
 };
 
 typedef struct {
   unsigned int mod;
   KeySym keysym;
-  void (*func)(const Arg *);
+  void (*func)(const Arg *arg, unsigned int event);
   const Arg arg;
+  /* events that fire func, e.g. KeyPressMask | KeyReleaseMask */
+  unsigned int ev;
 } Key;
 
 typedef struct {
@@ -342,8 +345,8 @@ static void configure(Client *c);
 static void configurenotify(XEvent *e);
 static void configurerequest(XEvent *e);
 static Monitor *createmon(void);
-static void cyclecfact(const Arg *arg);
-static void cyclemfact(const Arg *arg);
+static void cyclecfact(const Arg *arg, unsigned int event);
+static void cyclemfact(const Arg *arg, unsigned int event);
 static void destroynotify(XEvent *e);
 static void detach(Client *c);
 static void detachstack(Client *c);
@@ -381,13 +384,13 @@ static void focus(Client *c);
 static void focusin(XEvent *e);
 static Client *focusclient(Monitor *m);
 static int focusmode(Monitor *m);
-static void focusmon(const Arg *arg);
+static void focusmon(const Arg *arg, unsigned int event);
 static void focusstack(int inc, int vis);
-static void focusstackhid(const Arg *arg);
-static void focusstackvis(const Arg *arg);
+static void focusstackhid(const Arg *arg, unsigned int event);
+static void focusstackvis(const Arg *arg, unsigned int event);
 static void freehspic(Client *c);
 static void freeicon(Client *c);
-static void fullscreen(const Arg *arg);
+static void fullscreen(const Arg *arg, unsigned int event);
 static Atom getatomprop(Client *c, Atom prop);
 static int getatomlist(Client *c, Atom prop, Atom *out, int max);
 static int hasatomprop(Client *c, Atom prop, Atom val);
@@ -400,32 +403,34 @@ static unsigned int getsystraywidth();
 static int gettextprop(Window w, Atom atom, char *text, unsigned int size);
 static void grabbuttons(Client *c, int focused);
 static void grabkeys(void);
-static void hide(const Arg *arg);
+static void hide(const Arg *arg, unsigned int event);
 static void hideclient(Client *c);
 static void hidewin(Client *c);
-static void incnmaster(const Arg *arg);
+static void incnmaster(const Arg *arg, unsigned int event);
 static void keypress(XEvent *e);
+static void keyrelease(XEvent *e);
+static void keyevent(XEvent *e, unsigned int event);
 static void leavenotify(XEvent *e);
-static void killclient(const Arg *arg);
+static void killclient(const Arg *arg, unsigned int event);
 static void loadxrdb(void);
-static void layoutmenu(const Arg *arg);
+static void layoutmenu(const Arg *arg, unsigned int event);
 static void manage(Window w, XWindowAttributes *wa, int mapped);
 static void mappingnotify(XEvent *e);
 static void maprequest(XEvent *e);
 static void monocle(Monitor *m);
 static void motionnotify(XEvent *e);
-static void movemouse(const Arg *arg);
+static void movemouse(const Arg *arg, unsigned int event);
 static Client *nexttiled(Client *c);
 static void pop(Client *);
 static void propertynotify(XEvent *e);
-static void quit(const Arg *arg);
+static void quit(const Arg *arg, unsigned int event);
 static Monitor *recttomon(int x, int y, int w, int h);
 static void removesystrayicon(Client *i);
 static void resize(Client *c, int x, int y, int w, int h, int interact);
 static void resizebarwin(Monitor *m);
 static unsigned int barwininnerw(Monitor *m);
 static void resizeclient(Client *c, int x, int y, int w, int h);
-static void resizemouse(const Arg *arg);
+static void resizemouse(const Arg *arg, unsigned int event);
 static void resizerequest(XEvent *e);
 static void restack(Monitor *m);
 static void restoreclientorder(void);
@@ -440,7 +445,7 @@ static void setclientstate(Client *c, long state);
 static void setcurrentmon(Monitor *m);
 static void setfocus(Client *c);
 static void setfullscreen(Client *c, int fullscreen);
-static void setlayout(const Arg *arg);
+static void setlayout(const Arg *arg, unsigned int event);
 static void setstateprop(Window w, Atom a, unsigned long *vals, int nvals);
 static void setup(void);
 static void setframeextents(Client *c);
@@ -448,14 +453,15 @@ static void setframeextentswin(Window w, int bw, int top);
 static void syncattention(Client *c);
 static void clearattention(Client *c);
 static void seturgent(Client *c, int urg);
-static void show(const Arg *arg);
-static void showall(const Arg *arg);
+static void show(const Arg *arg, unsigned int event);
+static void showall(const Arg *arg, unsigned int event);
+static void showdesktop(const Arg *arg, unsigned int event);
 static void showhide(Client *c);
 static void showwin(Client *c);
 static void sigchld(int unused);
 static void sighup(int unused);
 static void sigterm(int unused);
-static void spawn(const Arg *arg);
+static void spawn(const Arg *arg, unsigned int event);
 static void runwindowhook(Client *c, const char *action);
 static int statusblock_idx(int id);
 static void statuspills_buildrun(const BarItem *items, size_t k, size_t n);
@@ -475,13 +481,13 @@ static int status2d_runwidth(char *s);
 static void systraydock(Window w);
 static int systrayredock(Window w);
 static Monitor *systraytomon(Monitor *m);
-static void tag(const Arg *arg);
-static void tagmon(const Arg *arg);
-static void togglebar(const Arg *arg);
-static void togglefloating(const Arg *arg);
+static void tag(const Arg *arg, unsigned int event);
+static void tagmon(const Arg *arg, unsigned int event);
+static void togglebar(const Arg *arg, unsigned int event);
+static void togglefloating(const Arg *arg, unsigned int event);
 static void togglefloatingclient(Client *c);
-static void focusmaster(const Arg *arg);
-static void maximize(const Arg *arg);
+static void focusmaster(const Arg *arg, unsigned int event);
+static void maximize(const Arg *arg, unsigned int event);
 static void hoverfire(void);
 static void hoverhide(void);
 static void hovershow(Client *c, int tx);
@@ -493,11 +499,11 @@ typedef const char *(*template_resolve)(const char *f, size_t *plen, void *ctx);
 static void template_expand(const char *fmt, template_resolve resolve, void *ctx, char *buf, size_t len);
 static const char *tab_placeholder(const char *f, size_t *plen, void *ctx);
 static const char *tag_placeholder(const char *f, size_t *plen, void *ctx);
-static void toggletabmode(const Arg *arg);
-static void toggletag(const Arg *arg);
-static void toggletitle(const Arg *arg);
-static void toggleview(const Arg *arg);
-static void togglewin(const Arg *arg);
+static void toggletabmode(const Arg *arg, unsigned int event);
+static void toggletag(const Arg *arg, unsigned int event);
+static void toggletitle(const Arg *arg, unsigned int event);
+static void toggleview(const Arg *arg, unsigned int event);
+static void togglewin(const Arg *arg, unsigned int event);
 static void fitmonitor(Client *c);
 static int trayrank(const char *class);
 static void unfocus(Client *c, int setfocus);
@@ -523,7 +529,7 @@ static void updatesystrayiconstate(Client *i, XPropertyEvent *ev);
 static void updatetitle(Client *c);
 static void updatewindowtype(Client *c);
 static void updatewmhints(Client *c);
-static void view(const Arg *arg);
+static void view(const Arg *arg, unsigned int event);
 static Client *wintoclient(Window w);
 static Monitor *wintomon(Window w);
 static Client *wintosystrayicon(Window w);
@@ -531,7 +537,7 @@ static int xerror(Display *dpy, XErrorEvent *ee);
 static int xerrordummy(Display *dpy, XErrorEvent *ee);
 static int xerrorstart(Display *dpy, XErrorEvent *ee);
 static void xinitvisual();
-static void zoom(const Arg *arg);
+static void zoom(const Arg *arg, unsigned int event);
 
 /* variables */
 static const char autostartblocksh[] = "autostart_blocking.sh";
@@ -590,6 +596,7 @@ static void (*handler[LASTEvent])(XEvent *) = {
     [Expose] = expose,
     [FocusIn] = focusin,
     [KeyPress] = keypress,
+    [KeyRelease] = keyrelease,
     [LeaveNotify] = leavenotify,
     [MappingNotify] = mappingnotify,
     [MapRequest] = maprequest,
@@ -892,7 +899,7 @@ void buttonpress(XEvent *e) {
         else if (btn == 1)
           togglefloatingclient(c);
         else
-          killclient(NULL);
+          killclient(NULL, KeyPressMask);
         return;
       }
       click = ClkTitleBar;
@@ -908,7 +915,7 @@ void buttonpress(XEvent *e) {
       buttons[i].button == ev->button &&
       CLEANMASK(buttons[i].mask) == CLEANMASK(ev->state))
       buttons[i].func((click == ClkTagBar || click == ClkWinTitle) &&
-      buttons[i].arg.i == 0 ? &arg : &buttons[i].arg);
+      buttons[i].arg.i == 0 ? &arg : &buttons[i].arg, KeyPressMask);
 }
 
 void checkotherwm(void) {
@@ -926,7 +933,7 @@ void cleanup(void) {
   Monitor *m;
   size_t i;
 
-  view(&a);
+  view(&a, KeyPressMask);
   selmon->lt[selmon->sellt] = &foo;
   for (m = mons; m; m = m->next)
     while (m->stack)
@@ -1090,9 +1097,9 @@ void clientmessage(XEvent *e) {
     if (selmon->sel != c)
       return;
     if (dir == 8)
-      movemouse(NULL);
+      movemouse(NULL, KeyPressMask);
     else
-      resizemouse(NULL);
+      resizemouse(NULL, KeyPressMask);
   } else if (cme->message_type == netatom[NetActiveWindow]) {
     if (policy_jump_on_activate) {
       if (c != selmon->sel) {
@@ -1104,7 +1111,7 @@ void clientmessage(XEvent *e) {
         if (tag < LENGTH(tags) && !(c->tags & selmon->tagset[selmon->seltags])) {
           Arg a = {.ui = 1 << tag};
 
-          view(&a);
+          view(&a, KeyPressMask);
         }
         if (HIDDEN(c))
           showwin(c); /* an activated hidden client must be displayed */
@@ -3365,13 +3372,13 @@ void setcurrentmon(Monitor *m) {
   updatecurrentdesktop();
 }
 
-void focusmon(const Arg *arg) {
+void focusmon(const Arg *arg, unsigned int event) {
   setcurrentmon(dirtomon(arg->i));
 }
 
-void focusstackvis(const Arg *arg) { focusstack(arg->i, 0); }
+void focusstackvis(const Arg *arg, unsigned int event) { focusstack(arg->i, 0); }
 
-void focusstackhid(const Arg *arg) { focusstack(arg->i, 1); }
+void focusstackhid(const Arg *arg, unsigned int event) { focusstack(arg->i, 1); }
 
 void focusstack(int inc, int hid) {
   Client *c = NULL, *i;
@@ -3670,6 +3677,7 @@ void grabkeys(void) {
     KeyCode code;
 
     XUngrabKey(dpy, AnyKey, AnyModifier, root);
+    /* one table: a grab covers both the press and the release of a key */
     for (i = 0; i < LENGTH(keys); i++)
       if ((code = XKeysymToKeycode(dpy, keys[i].keysym)))
         for (j = 0; j < LENGTH(modifiers); j++)
@@ -3688,7 +3696,7 @@ void hideclient(Client *c) {
   arrange(c->mon);
 }
 
-void hide(const Arg *arg) {
+void hide(const Arg *arg, unsigned int event) {
   (void)arg;
   hideclient(selmon->sel);
 }
@@ -3707,7 +3715,84 @@ void hidewin(Client *c) {
   updateicon(c);
 }
 
-void incnmaster(const Arg *arg) {
+/* Show Desktop hold-peek: press hides every visible client on selmon,
+   release restores them. desktop_hidden marks exactly the clients this
+   feature hid, so clients the user hid by hand stay hidden. desktop_save
+   only feeds focus restore. */
+static Client *desktop_save = NULL;
+
+/* 1 if c is still managed on m; the saved focus may have been closed
+   while the desktop was held */
+static int managedon(Client *c, Monitor *m) {
+  Client *i;
+
+  if (!c || !m)
+    return 0;
+  for (i = m->clients; i && i != c; i = i->next)
+    ;
+  return i != NULL;
+}
+
+void showdesktop(const Arg *arg, unsigned int event) {
+  Client *c, *save;
+  int any = 0, restored = 0;
+
+  (void)arg;
+  if (event == KeyPressMask) {
+    /* press */
+    for (c = selmon->clients; c; c = c->next)
+      if (ISVISIBLE(c) && !HIDDEN(c)) {
+        any = 1;
+        break;
+      }
+    if (!any)
+      return;
+    /* key repeat re-fires press while held; keep the first focus */
+    if (!desktop_save)
+      desktop_save = selmon->sel;
+    for (c = selmon->clients; c; c = c->next)
+      if (ISVISIBLE(c) && !HIDDEN(c)) {
+        hidewin(c);
+        c->desktop_hidden = 1;
+      }
+    focus(NULL);
+    arrange(selmon);
+    return;
+  }
+
+  /* release: restore only the clients this feature hid */
+  for (c = selmon->clients; c; c = c->next) {
+    if (!c->desktop_hidden)
+      continue;
+    c->desktop_hidden = 0;
+    /* the user may have shown it again, or it left the tagset, meanwhile */
+    if (!ISVISIBLE(c) || !HIDDEN(c))
+      continue;
+    XMapWindow(dpy, c->frame);
+    XMapWindow(dpy, c->win);
+    c->hidden = 0;
+    setclientstate(c, NormalState);
+    updateicon(c);
+    restored = 1;
+  }
+  save = desktop_save;
+  desktop_save = NULL;
+  if (restored) {
+    arrange(selmon);
+    drawtitles();
+  }
+  if (managedon(save, selmon))
+    focus(save);
+  else if (restored && !selmon->sel) {
+    for (c = selmon->clients; c && !ISVISIBLE(c); c = c->next)
+      ;
+    if (c)
+      focus(c);
+  }
+  restack(selmon);
+}
+
+void incnmaster(const Arg *arg, unsigned int event) {
   selmon->nmaster = selmon->pertag->nmasters[selmon->pertag->curtag] =
       MAX(selmon->nmaster + arg->i, 0);
   arrange(selmon);
@@ -3724,18 +3809,48 @@ static int isuniquegeom(XineramaScreenInfo *unique, size_t n,
 }
 #endif /* XINERAMA */
 
-void keypress(XEvent *e) {
+/* auto-repeat guard for the release path: X re-posts a KeyPress right
+   after the KeyRelease of a held key, and that pair is not a real release */
+static int keyrepeat(XKeyEvent *kev) {
+  XEvent nev;
+
+  if (!XPending(dpy))
+    return 0;
+  XPeekEvent(dpy, &nev);
+  return nev.type == KeyPress && nev.xkey.keycode == kev->keycode &&
+         (nev.xkey.time - kev->time) < 50;
+}
+
+/* one dispatch for both key events: press matches the modifier mask
+   exactly, release only requires the bound mods to still be held (so
+   letting go of MOD first works). `event` is the event mask bit that fired
+   and is handed to the handler, so future events just add another bit. */
+void keyevent(XEvent *e, unsigned int event) {
   unsigned int i;
   KeySym keysym;
-  XKeyEvent *ev;
+  XKeyEvent *kev = &e->xkey;
 
-  ev = &e->xkey;
-  keysym = XKeycodeToKeysym(dpy, (KeyCode)ev->keycode, 0);
-  for (i = 0; i < LENGTH(keys); i++)
-    if (keysym == keys[i].keysym &&
-        CLEANMASK(keys[i].mod) == CLEANMASK(ev->state) && keys[i].func)
-      keys[i].func(&(keys[i].arg));
+  if (event == KeyReleaseMask && keyrepeat(kev))
+    return;
+  keysym = XKeycodeToKeysym(dpy, (KeyCode)kev->keycode, 0);
+  for (i = 0; i < LENGTH(keys); i++) {
+    if (keysym != keys[i].keysym || !(keys[i].ev & event))
+      continue;
+    if (event == KeyReleaseMask) {
+      /* tolerant match: releasing MOD before the key must still fire,
+         so require the bound mods to be held, not an exact mask match */
+      if ((CLEANMASK(kev->state) & CLEANMASK(keys[i].mod)) !=
+          CLEANMASK(keys[i].mod))
+        continue;
+    } else if (CLEANMASK(keys[i].mod) != CLEANMASK(kev->state))
+      continue;
+    keys[i].func(&(keys[i].arg), event);
+  }
 }
+
+void keypress(XEvent *e) { keyevent(e, KeyPressMask); }
+
+void keyrelease(XEvent *e) { keyevent(e, KeyReleaseMask); }
 
 /* ask c to close (WM_DELETE_WINDOW), killing it as a fallback. Does not
    touch focus/selmon, so it is safe for background clients too. */
@@ -3756,7 +3871,7 @@ closeclient(Client *c)
   }
 }
 
-void killclient(const Arg *arg) {
+void killclient(const Arg *arg, unsigned int event) {
   if (!selmon->sel)
     return;
 
@@ -3797,7 +3912,7 @@ void loadxrdb() {
 }
 
 
-void layoutmenu(const Arg *arg) {
+void layoutmenu(const Arg *arg, unsigned int event) {
   FILE *p;
   char c[16], *s;
   int i;
@@ -3811,7 +3926,7 @@ void layoutmenu(const Arg *arg) {
     return;
 
   i = atoi(c);
-  setlayout(&((Arg){.v = &layouts[i]}));
+  setlayout(&((Arg){.v = &layouts[i]}), KeyPressMask);
 }
 
 /* shrink a floating frame proportionally until it fits the monitor, so an
@@ -4079,7 +4194,7 @@ void motionnotify(XEvent *e) {
   mon = m;
 }
 
-void movemouse(const Arg *arg) {
+void movemouse(const Arg *arg, unsigned int event) {
   int x, y, ocx, ocy, nx, ny;
   Client *c;
   Monitor *m;
@@ -4240,7 +4355,7 @@ void propertynotify(XEvent *e) {
   }
 }
 
-void quit(const Arg *arg) {
+void quit(const Arg *arg, unsigned int event) {
   if(arg->i) restart = 1;
   running = 0;
 }
@@ -4324,7 +4439,7 @@ void resizeclient(Client *c, int x, int y, int w, int h) {
   XSync(dpy, False);
 }
 
-void resizemouse(const Arg *arg) {
+void resizemouse(const Arg *arg, unsigned int event) {
   int ocx, ocy, nw, nh;
   Client *c;
   Monitor *m;
@@ -4639,14 +4754,14 @@ void setfocus(Client *c) {
 }
 
 static const Layout *last_layout;
-void fullscreen(const Arg *arg) {
+void fullscreen(const Arg *arg, unsigned int event) {
   if (selmon->showbar) {
     last_layout = selmon->lt[selmon->sellt];
-    setlayout(&((Arg){.v = &layouts[2]}));
+    setlayout(&((Arg){.v = &layouts[2]}), KeyPressMask);
   } else {
-    setlayout(&((Arg){.v = last_layout}));
+    setlayout(&((Arg){.v = last_layout}), KeyPressMask);
   }
-  togglebar(arg);
+  togglebar(arg, event);
 }
 
 void setfullscreen(Client *c, int fullscreen) {
@@ -4678,7 +4793,7 @@ void setfullscreen(Client *c, int fullscreen) {
   }
 }
 
-void setlayout(const Arg *arg) {
+void setlayout(const Arg *arg, unsigned int event) {
   if (!arg || !arg->v || arg->v != selmon->lt[selmon->sellt])
     selmon->sellt = selmon->pertag->sellts[selmon->pertag->curtag] ^= 1;
   if (arg && arg->v)
@@ -4703,7 +4818,7 @@ static float nextpreset(const float *presets, unsigned int n, float cur) {
 }
 
 /* niri-style preset cycling: step forward through cfact_presets (wrap-around) */
-void cyclecfact(const Arg *arg) {
+void cyclecfact(const Arg *arg, unsigned int event) {
   Client *c;
 
   c = selmon->sel;
@@ -4714,7 +4829,7 @@ void cyclecfact(const Arg *arg) {
 }
 
 /* niri-style preset cycling: step forward through mfact_presets (wrap-around) */
-void cyclemfact(const Arg *arg) {
+void cyclemfact(const Arg *arg, unsigned int event) {
   if (!selmon->lt[selmon->sellt]->arrange)
     return;
   selmon->mfact = selmon->pertag->mfacts[selmon->pertag->curtag] =
@@ -4907,7 +5022,8 @@ void setup(void) {
   wa.cursor = cursor[CurNormal]->cursor;
   wa.event_mask = SubstructureRedirectMask | SubstructureNotifyMask |
                   ButtonPressMask | PointerMotionMask | EnterWindowMask |
-                  LeaveWindowMask | StructureNotifyMask | PropertyChangeMask | KeyPressMask;
+                  LeaveWindowMask | StructureNotifyMask | PropertyChangeMask |
+                  KeyPressMask | KeyReleaseMask;
   XChangeWindowAttributes(dpy, root, CWEventMask | CWCursor, &wa);
   XSelectInput(dpy, root, wa.event_mask);
   grabkeys();
@@ -4960,15 +5076,15 @@ void sigchld(int unused) {
 
 void sighup(int unused) {
   Arg a = {.i = 1};
-  quit(&a);
+  quit(&a, KeyPressMask);
 }
 
 void sigterm(int unused) {
   Arg a = {.i = 0};
-  quit(&a);
+  quit(&a, KeyPressMask);
 }
 
-void spawn(const Arg *arg) {
+void spawn(const Arg *arg, unsigned int event) {
   if (fork() == 0) {
     if (dpy)
       close(ConnectionNumber(dpy));
@@ -5188,7 +5304,7 @@ static Window traywin(void) {
   return systray ? systray->win : None;
 }
 
-void tag(const Arg *arg) {
+void tag(const Arg *arg, unsigned int event) {
   if (selmon->sel && arg->ui & TAGMASK) {
     Client *c = selmon->sel;
     unsigned int t = arg->ui & TAGMASK;
@@ -5198,14 +5314,14 @@ void tag(const Arg *arg) {
     focus(NULL);
     arrange(selmon);
     if (policy_focus_on_move) {
-      view(arg);
+      view(arg, event);
       if (t && !(t & (t - 1)) && !HIDDEN(c))
         focus(c);
     }
   }
 }
 
-void tagmon(const Arg *arg) {
+void tagmon(const Arg *arg, unsigned int event) {
   Client *c = selmon->sel;
   Monitor *m;
   if (!c || !mons->next)
@@ -5218,7 +5334,7 @@ void tagmon(const Arg *arg) {
   }
 }
 
-void togglebar(const Arg *arg) {
+void togglebar(const Arg *arg, unsigned int event) {
   selmon->showbar = selmon->pertag->showbars[selmon->pertag->curtag] =
       !selmon->showbar;
   updatebarpos(selmon);
@@ -5242,7 +5358,7 @@ void togglebar(const Arg *arg) {
    own size (TabModeIcons keeps room for the selection dot), so every client's
    tab-sized icon is rebuilt and every bar is redrawn; the old slot geometry
    and any open tab tooltip go with it. */
-static void toggletabmode(const Arg *arg) {
+static void toggletabmode(const Arg *arg, unsigned int event) {
   Monitor *m;
   Client *c;
 
@@ -5259,7 +5375,7 @@ static void toggletabmode(const Arg *arg) {
    re-placed, the client is notified, and the strip is repainted. Size hints
    are re-applied first (they account for the new title offset) so terminals
    like kitty keep cell-aligned client areas instead of padding. */
-static void toggletitle(const Arg *arg) {
+static void toggletitle(const Arg *arg, unsigned int event) {
   Monitor *m;
   Client *c;
   int x, y, w, h;
@@ -5306,7 +5422,7 @@ static void setfmmode(int mode, void (*arrange)(Monitor *)) {
     /* leaving the mode: clear it, restore the pre-mode layout if recorded */
     *f = 0;
     if (selmon->pertag->fmlast[t]) {
-      setlayout(&((Arg){.v = (void *)selmon->pertag->fmlast[t]}));
+      setlayout(&((Arg){.v = (void *)selmon->pertag->fmlast[t]}), KeyPressMask);
       selmon->pertag->fmlast[t] = NULL;
     } else {
       arrange(selmon);
@@ -5320,16 +5436,16 @@ static void setfmmode(int mode, void (*arrange)(Monitor *)) {
     selmon->pertag->fmlast[t] = selmon->lt[selmon->sellt];
   *f = mode;
   if (selmon->lt[selmon->sellt] != host)
-    setlayout(&((Arg){.v = (void *)host}));
+    setlayout(&((Arg){.v = (void *)host}), KeyPressMask);
   else
     arrange(selmon);
 }
 
-void focusmaster(const Arg *arg) {
+void focusmaster(const Arg *arg, unsigned int event) {
   setfmmode(1, centeredfloatingmaster); /* focusmaster: host = centeredfloatingmaster */
 }
 
-void maximize(const Arg *arg) {
+void maximize(const Arg *arg, unsigned int event) {
   setfmmode(2, monocle); /* maximize: host = monocle (all tiled stacked) */
 }
 
@@ -5373,12 +5489,12 @@ void togglefloatingclient(Client *c) {
   arrange(c->mon);
 }
 
-void togglefloating(const Arg *arg) {
+void togglefloating(const Arg *arg, unsigned int event) {
   (void)arg;
   togglefloatingclient(selmon->sel);
 }
 
-void toggletag(const Arg *arg) {
+void toggletag(const Arg *arg, unsigned int event) {
   unsigned int newtags;
 
   if (!selmon->sel)
@@ -5393,7 +5509,7 @@ void toggletag(const Arg *arg) {
   }
 }
 
-void toggleview(const Arg *arg) {
+void toggleview(const Arg *arg, unsigned int event) {
   unsigned int newtagset =
       selmon->tagset[selmon->seltags] ^ (arg->ui & TAGMASK);
   int i;
@@ -5425,7 +5541,7 @@ void toggleview(const Arg *arg) {
         selmon->pertag->ltidxs[selmon->pertag->curtag][selmon->sellt ^ 1];
 
     if (selmon->showbar != selmon->pertag->showbars[selmon->pertag->curtag])
-      togglebar(NULL);
+      togglebar(NULL, event);
 
     focus(NULL);
     arrange(selmon);
@@ -5462,7 +5578,7 @@ void freeicon(Client *c) {
   c->titleicon_size = 0;
 }
 
-void togglewin(const Arg *arg) {
+void togglewin(const Arg *arg, unsigned int event) {
   Client *c = (Client *)arg->v;
 
   if (c == selmon->sel) {
@@ -6204,13 +6320,13 @@ void updatesystrayiconstate(Client *i, XPropertyEvent *ev) {
             traywin(), XEMBED_EMBEDDED_VERSION);
 }
 
-void show(const Arg *arg) {
+void show(const Arg *arg, unsigned int event) {
   if (selmon->hidsel)
     selmon->hidsel = 0;
   showwin(selmon->sel);
 }
 
-void showall(const Arg *arg) {
+void showall(const Arg *arg, unsigned int event) {
   Client *c = NULL;
   selmon->hidsel = 0;
   for (c = selmon->clients; c; c = c->next) {
@@ -6351,7 +6467,7 @@ void updatewmhints(Client *c) {
   }
 }
 
-void view(const Arg *arg) {
+void view(const Arg *arg, unsigned int event) {
   int i;
   unsigned int tmptag;
 
@@ -6384,7 +6500,7 @@ void view(const Arg *arg) {
       selmon->pertag->ltidxs[selmon->pertag->curtag][selmon->sellt ^ 1];
 
   if (selmon->showbar != selmon->pertag->showbars[selmon->pertag->curtag])
-    togglebar(NULL);
+    togglebar(NULL, event);
 
   selmon->tagset[selmon->seltags] = arg->ui & TAGMASK;
   focus(NULL);
@@ -6496,7 +6612,7 @@ void xinitvisual() {
   }
 }
 
-void zoom(const Arg *arg) {
+void zoom(const Arg *arg, unsigned int event) {
   Client *c = selmon->sel;
 
   if (!c || !selmon->lt[selmon->sellt]->arrange || c->isfloating)
