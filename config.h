@@ -66,7 +66,7 @@ static const unsigned int alphas[][3]      = {
     [SchemeTagNorm]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     [SchemeTagSel]   = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     // layout
-    [SchemeLayout]   = { OPAQUE,      OPAQUE,           TRANSPARENT },
+    [SchemeLayout]   = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     // tabs
     [SchemeNorm]     = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     [SchemeSel]      = { OPAQUE,      TAB_SEL_BG_ALPHA, TAB_SEL_BG_ALPHA },
@@ -221,20 +221,15 @@ static const         char *tray_order[]           = { "fcitx", "...", "easyeffec
  * NOTE: StVolume is not listed in any zone although the writer still emits
  * it; add a ST(Volume) item to show it. */
 static const BarItem bar_left[] = {
-  { BarLayout, 0 }, { BarTags, 0 },
-  { BarPillBreak, 0 },
-  ST(Cpu), ST(Mem), ST(Disk),
-  { BarPillBreak, 0 },
+  { BarTags, 0 }, { BarLayout, 0 }, { BarPillBreak, 0 },
+  ST(Cpu), ST(Mem), ST(Disk), { BarPillBreak, 0 },
   ST(Net)
 };
 static const BarItem bar_center[] = { { BarTabs, 0 } };
 static const BarItem bar_right[]  = {
-  ST(Rss), ST(Mail), ST(Notify),
-  { BarPillBreak, 0 },
-  ST(Weather),
-  { BarPillBreak, 0 },
-  ST(Date),
-  { BarPillBreak, 0 },
+  ST(Rss), ST(Mail), ST(Notify), { BarPillBreak, 0 },
+  ST(Weather), { BarPillBreak, 0 },
+  ST(Date), { BarPillBreak, 0 },
   ST(Screencast), ST(Singbox), ST(Mpd), ST(Battery)
 };
 
@@ -242,18 +237,14 @@ static const BarItem bar_right[]  = {
  * choice now, so a different set of status ids belongs here too (the writer no
  * longer emits a cut marker) */
 static const BarItem bar_left_portrait[] = {
-  { BarLayout, 0 }, { BarTags, 0 },
-  { BarPillBreak, 0 },
+  { BarLayout, 0 }, { BarTags, 0 }, { BarPillBreak, 0 },
   ST(Cpu), ST(Mem)
 };
 static const BarItem bar_center_portrait[] = { { BarTabs, 0 } };
 static const BarItem bar_right_portrait[]  = {
-  ST(Rss), ST(Mail), ST(Notify),
-  { BarPillBreak, 0 },
-  ST(Weather),
-  { BarPillBreak, 0 },
-  ST(Date),
-  { BarPillBreak, 0 },
+  ST(Rss), ST(Mail), ST(Notify), { BarPillBreak, 0 },
+  ST(Weather), { BarPillBreak, 0 },
+  ST(Date), { BarPillBreak, 0 },
   ST(Screencast), ST(Singbox), ST(Mpd), ST(Battery)
 };
 
