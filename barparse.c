@@ -1,6 +1,7 @@
 /* See LICENSE file for copyright and license details. */
 #include "barparse.h"
 
+#include <stdio.h>
 #include <string.h>
 
 /* record the pending [start, len) slice as a block tagged with curid */
@@ -100,15 +101,23 @@ int bar_pills(const char *src, const BarBlock *blocks, int nblocks,
       dst[len++] = PILL_OPEN;
       dst[len++] = '^';
       open = 1;
+    } else {
+      /* separate consecutive cells of one pill with a zero-width code, so
+         the draw pass sees every cell boundary (width, colours and caps
+         treat it as nothing; the +4 room above covers it, like the open
+         marker it replaces here) */
+      dst[len++] = '^';
+      dst[len++] = '^';
+    }
+    if (ncells < maxcells) {
+      cells[ncells].block = bi;
+      cells[ncells].gap = 0;
+      cells[ncells].poff = len;
+      ncells++;
     }
     memcpy(dst + len, src + blocks[bi].off, (size_t)blen);
     len += blen;
     dst[len] = '\0';
-    if (ncells < maxcells) {
-      cells[ncells].block = bi;
-      cells[ncells].gap = 0;
-      ncells++;
-    }
   }
 
   if (open)
@@ -140,6 +149,53 @@ int bar_cells(int want, int n, int avail, int gap, BarCellsMode mode, int *out,
     for (i = 0; i < n && i < maxw; i++)
       out[i] = base + (i < rem ? 1 : 0);
   return room + gap * n;
+}
+
+int bar_rowsplit(const char *s, int *top_len, int *bot_off) {
+  int i, iscode = 0, codestart = 0;
+
+  if (!s)
+    return 0;
+  for (i = 0; s[i]; i++) {
+    if ((unsigned char)s[i] == '^') {
+      if (!iscode) {
+        iscode = 1;
+        codestart = i;
+      } else {
+        iscode = 0;
+      }
+      continue;
+    }
+    if (iscode && i == codestart + 1 && s[i] == 's' && s[i + 1] == '^') {
+      if (top_len)
+        *top_len = codestart;
+      if (bot_off)
+        *bot_off = codestart + 3;
+      return 1;
+    }
+  }
+  return 0;
+}
+
+void bar_pixelsize(const char *base, unsigned int size, char *dst, int dstlen) {
+  const char *p, *tail;
+  size_t head;
+
+  if (!dst || dstlen <= 0)
+    return;
+  if (!base)
+    base = "";
+  p = strstr(base, "pixelsize=");
+  if (!p) {
+    snprintf(dst, (size_t)dstlen, "%s:pixelsize=%u", base, size);
+    return;
+  }
+  p += strlen("pixelsize=");
+  tail = p;
+  while (*tail >= '0' && *tail <= '9')
+    tail++;
+  head = (size_t)(p - base);
+  snprintf(dst, (size_t)dstlen, "%.*s%u%s", (int)head, base, size, tail);
 }
 
 int bar_centerx(int barw, int stw, int leftw, int rightw, int centerw) {

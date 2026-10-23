@@ -30,11 +30,14 @@ typedef struct {
   int off, end;
 } BarBlock;
 
-/* One drawn block of a pill: which parsed block it came from, and whether a
-   pill gap follows it (true for the last block of each pill). */
+/* One drawn block of a pill: which parsed block it came from, whether a
+   pill gap follows it (true for the last block of each pill), and the byte
+   offset in the pill string where this block's content starts (after the
+   pill's open marker), so the draw pass can map stream positions to cells. */
 typedef struct {
   int block;
   int gap;
+  int poff;
 } BarPillCell;
 
 /* Pill wrap markers: bar_pills wraps each pill in ^PILL_OPEN .. ^PILL_CLOSE
@@ -68,6 +71,15 @@ int bar_pills(const char *src, const BarBlock *blocks, int nblocks,
               const int *ids, char *dst, int dstlen, BarPillCell *cells,
               int maxcells);
 
+/* Row-break splitter: find the first empty ^s^ code in a status2d run and
+   split the run into two stacked rows there. Only an `s` in code-identifier
+   position (right after the opening ^) with an empty body counts: ^sx^, an
+   `s` inside a ^c/^b body and a bare text `s` never split. Sets *top_len to
+   the top row's byte length (excluding the break) and *bot_off to the
+   bottom row's start offset, and returns 1; returns 0 when there is no row
+   break (outputs untouched). */
+int bar_rowsplit(const char *s, int *top_len, int *bot_off);
+
 /* How a row of cells treats the room it is given. */
 typedef enum {
   BarCellsFit,   /* nominal width when it fits, otherwise levelled to avail */
@@ -94,6 +106,13 @@ int bar_cells(int want, int n, int avail, int gap, BarCellsMode mode, int *out,
    so the caller must pass a centerw that fits it (centerw <= barw - leftw -
    rightw); such a middle can only fill that span. */
 int bar_centerx(int barw, int stw, int leftw, int rightw, int centerw);
+
+/* Derive a stacked-row font name from a base font name by overriding only
+   its pixel size: replace the digits after pixelsize=, or append
+   :pixelsize=N when the base carries none. Family, style and fallback
+   order stay identical to the base. Always NUL-terminates (truncating the
+   result when it does not fit). */
+void bar_pixelsize(const char *base, unsigned int size, char *dst, int dstlen);
 
 /* Vertical room TabModeIcons reserves under a tab icon for the selection dot:
    the dot's diameter (2 * dot) plus the one-pixel gap above it. 0 when the

@@ -558,10 +558,16 @@ static int statusgen;
 static int statusparsed_gen = -1;
 static char pbuf[2048];                   /* pills built from stbuf, ^PILL_OPEN .. ^PILL_CLOSE wrapped */
 /* one drawn status block: where it sits and how wide, so a click maps back
-   to the control-character id the writer tagged it with */
+   to the control-character id the writer tagged it with. poff maps the
+   block to its content in the pill string for the draw pass, gap tells
+   whether a pill_gap follows it in the layout, and blk is its index in
+   stblocks for content scans. */
 typedef struct {
   unsigned int id;
   int x, w;
+  int poff;
+  int gap;
+  int blk;
 } StatusCell;
 static StatusCell scells[MAX_STBLOCKS];
 static int nscells;
@@ -617,6 +623,7 @@ static Display *dpy;
 static Drw *drw;
 static Fnt *fonts_set;
 static Fnt *fonts_highlight_set;
+static Fnt *fonts_stacked_set; /* small companion fontset for stacked rows, NULL on failure */
 static Window toolwin = None; /* hover tooltip window */
 static Drw *tooldrw = NULL;   /* drawing context for the tooltip */
 static Client *hoverc = NULL; /* client the tooltip is shown for */
@@ -978,6 +985,7 @@ void cleanup(void) {
   XDestroyWindow(dpy, wmcheckwin);
   drw_free(drw);
   drw_fontset_free(fonts_highlight_set);
+  drw_fontset_free(fonts_stacked_set);
   XSync(dpy, False);
   XSetInputFocus(dpy, PointerRoot, RevertToPointerRoot, CurrentTime);
   XDeleteProperty(dpy, root, netatom[NetActiveWindow]);
@@ -2018,6 +2026,30 @@ static void drawpillcap(Clr *work, int capx, int pillw) {
   drw_rounded(drw, capx, 0, bh, pillr, RoundedLeft);
 }
 
+/* 1 if the drawn cell's block carries a ^s^ row break and stacking is on */
+static int cell_stacked(int ci) {
+  int off, end, save, top, bot, found;
+
+  if (ci < 0 || ci >= nscells || !stacked_rows || !fonts_stacked_set)
+    return 0;
+  off = stblocks[scells[ci].blk].off;
+  end = stblocks[scells[ci].blk].end;
+  save = stbuf[end];
+  stbuf[end] = '\0';
+  found = bar_rowsplit(stbuf + off, &top, &bot);
+  stbuf[end] = (char)save;
+  return found;
+}
+
+/* paint a stacked cell's full-height body strip once, with the colours in
+   force at its first text run (like drawpillcap for the pill itself) */
+static void rowfill(int ci, int rowx0) {
+  int bw = scells[ci].w - (scells[ci].gap ? (int)pill_gap : 0);
+
+  if (bw > 0)
+    drw_rect(drw, rowx0, 0, (unsigned int)bw, (unsigned int)bh, 1, 1);
+}
+
 /* draw consecutive status items [k, k + n) as one joined segment of the
    open pill and record a slot per drawn block so a click resolves to that
    block's INDEX; returns the x after the segment. Only the selected monitor
@@ -2039,6 +2071,12 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
   int capx = -1;   /* pending left cap of the open pill, -1 when none */
   int pillw = 0;   /* its body width, from the layout pass */
   int pillprologue = 0; /* 1 while the pill's leading codes are applied */
+  int ci = -1;     /* drawn cell the parse pointer sits in, -1 before the first */
+  int row = 0;     /* 1 while drawing the bottom row of a stacked cell */
+  int ry = 0, rh = bh; /* text geometry: full height, or one half when stacked */
+  int pillstart = -1; /* x where the open pill started, -1 when unknown */
+  int rowx0 = -1;  /* block start of the open stacked cell, -1 when none */
+  int needfill = 0; /* 1 while the open stacked cell's body strip is unpainted */
 
   if (m != selmon)
     return x;
@@ -2077,8 +2115,12 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
           pillprologue = 0;
           capx = -1;
         }
+        if (needfill && rowx0 >= 0 && ci >= 0) {
+          rowfill(ci, rowx0);
+          needfill = 0;
+        }
         w = TEXTW(text);
-        drw_text(drw, x, 0, w, bh, lpad, text, 0, skip_pad);
+        drw_text(drw, x, ry, w, rh, lpad, text, 0, skip_pad);
         skip_pad = 0;
         x += w;
       }
@@ -2122,7 +2164,18 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
           drw_rect(drw, rx + x, ry, rw, rh, 1, 0);
         } else if (text[i] == 'f')
           x += atoi(text + ++i);
-        else if (text[i] == PILL_OPEN) {
+        else if (text[i] == 's' && text[i + 1] == '^' && !row && ci >= 0 &&
+                 cell_stacked(ci)) {
+          /* row break: the bottom row starts at the block's left edge in
+             the bar's bottom half, clearing the rounded corner like the
+             top row does when this cell opens the pill. Only the first
+             break counts, like the width pass. */
+          x = origin + scells[ci].x;
+          row = 1;
+          ry = bh / 2;
+          skip_pad = (pillstart >= 0 &&
+                      origin + scells[ci].x == pillstart && pillr > 0);
+        } else if (text[i] == PILL_OPEN) {
           /* remember the cap and draw it with the pill's first run instead:
              the pill's own ^b must apply first so cap, body and text agree,
              and the body width is known from the layout pass. Mid-pill the
@@ -2142,6 +2195,7 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
           capx = x;
           pillw = (spillidx < nspills) ? spills[spillidx].w : 0;
           spillidx++;
+          pillstart = capx;
           /* reset the pill base to the configured colours; the pill's own
              leading ^b then refines its background */
           pillbase[ColFg] = scheme[SchemeStatus][ColFg];
@@ -2150,6 +2204,17 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
           pillprologue = 1;
           skip_pad = (pillr > 0);
         } else if (text[i] == PILL_CLOSE) {
+          if (rowx0 >= 0 && ci >= 0) {
+            /* a stacked cell ends here: level x to the layout width (the
+               wider row) so the right cap lands where measuring put it */
+            int fix = rowx0 + scells[ci].w -
+                      (scells[ci].gap ? (int)pill_gap : 0);
+            if (x < fix)
+              x = fix;
+            rowx0 = -1;
+            needfill = 0;
+          }
+          pillstart = -1;
           if (!last)
             continue; /* a following segment continues the pill */
           if (capx >= 0) { /* a pill with no drawn text at all */
@@ -2174,6 +2239,34 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
       text = text + i + 1;
       i = -1;
       iscode = 0;
+
+      /* track the drawn cell across codes; entering a stacked cell switches
+         to the small font for two half-height rows, leaving one levels x
+         to the layout width and restores the normal font */
+      while (ci + 1 < nscells && text - pbuf >= scells[ci + 1].poff) {
+        if (rowx0 >= 0 && ci >= 0) {
+          int fix = rowx0 + scells[ci].w -
+                    (scells[ci].gap ? (int)pill_gap : 0);
+          if (x < fix)
+            x = fix;
+          rowx0 = -1;
+          needfill = 0;
+        }
+        ci++;
+        if (cell_stacked(ci)) {
+          rowx0 = origin + scells[ci].x;
+          needfill = 1;
+          drw_setfontset(drw, fonts_stacked_set);
+          row = 0;
+          ry = 0;
+          rh = bh / 2;
+        } else if (row) {
+          drw_setfontset(drw, fonts_set);
+          row = 0;
+          ry = 0;
+          rh = bh;
+        }
+      }
     }
   }
 
@@ -2187,11 +2280,16 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
        TEXTW("") = lrpad pixels in the scheme's background, leaving a stray
        block-coloured rectangle after the last pill */
     if (*text) {
+      if (needfill && rowx0 >= 0 && ci >= 0) {
+        rowfill(ci, rowx0);
+        needfill = 0;
+      }
       w = TEXTW(text);
-      drw_text(drw, x, 0, w, bh, lpad, text, 0, 0);
+      drw_text(drw, x, ry, w, rh, lpad, text, 0, 0);
     }
   }
 
+  drw_setfontset(drw, fonts_set);
   drw_setscheme(drw, scheme[SchemeNorm]);
 
   /* record the drawn blocks; a click resolves to the block's id, which is
@@ -4935,6 +5033,19 @@ void setup(void) {
   if (!(fonts_set = drw_fontset_create(drw, fonts, LENGTH(fonts))))
     die("no fonts could be loaded.");
   fonts_highlight_set = drw_fontset_create(drw, fonts_highlight, LENGTH(fonts_highlight));
+  {
+    /* stacked rows reuse the main families at a smaller size, so Nerd Font
+       coverage and the CJK fallback order match the bar exactly */
+    char sbuf[LENGTH(fonts)][128];
+    const char *snames[LENGTH(fonts)];
+    unsigned int i;
+
+    for (i = 0; i < LENGTH(fonts); i++) {
+      bar_pixelsize(fonts[i], stacked_fontsize, sbuf[i], sizeof sbuf[i]);
+      snames[i] = sbuf[i];
+    }
+    fonts_stacked_set = drw_fontset_create(drw, snames, LENGTH(snames));
+  }
   drw_setfontset(drw, fonts_set); /* drw_fontset_create overwrites drw->fonts */
 
   // NOTE: halving lpad avoids rounding cracks in status text width
@@ -5221,12 +5332,30 @@ static void statusparse(const char *text) {
   statusparsed_gen = statusgen;
 }
 
-/* drawn width of block i: its text with status2d codes interpreted */
+/* drawn width of block i: its text with status2d codes interpreted. A block
+   carrying the ^s^ row break (and stacked_rows with the small font loaded)
+   draws two half-height rows; its width is the wider row, measured in the
+   small font. A second ^s^ is not a break: width and drawing both ignore
+   it, so they agree. */
 static int status_block_width(int i) {
   int w, save = stbuf[stblocks[i].end];
+  int top, bot;
 
   stbuf[stblocks[i].end] = '\0';
-  w = status2d_runwidth(stbuf + stblocks[i].off);
+  if (stacked_rows && fonts_stacked_set &&
+      bar_rowsplit(stbuf + stblocks[i].off, &top, &bot)) {
+    int wtop, wbot, savebreak = stbuf[stblocks[i].off + top];
+
+    stbuf[stblocks[i].off + top] = '\0';
+    drw_setfontset(drw, fonts_stacked_set);
+    wtop = status2d_runwidth(stbuf + stblocks[i].off);
+    stbuf[stblocks[i].off + top] = (char)savebreak;
+    wbot = status2d_runwidth(stbuf + stblocks[i].off + bot);
+    drw_setfontset(drw, fonts_set);
+    w = MAX(wtop, wbot);
+  } else {
+    w = status2d_runwidth(stbuf + stblocks[i].off);
+  }
   stbuf[stblocks[i].end] = save;
   return w;
 }
@@ -5272,6 +5401,9 @@ static void statuspills_buildrun(const BarItem *items, size_t k, size_t n) {
       scells[nscells].id = stblocks[cells[i].block].id;
       scells[nscells].x = stpills_w;
       scells[nscells].w = bw + gap;
+      scells[nscells].poff = cells[i].poff;
+      scells[nscells].gap = gap ? 1 : 0;
+      scells[nscells].blk = cells[i].block;
       nscells++;
     }
     stpills_w += bw + gap;

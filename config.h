@@ -266,6 +266,15 @@ static const char *tag_names[] = {"dev", "web", "chat", "util", "misc", "dl", "v
 static const unsigned int pill_radius = 6;
 static const unsigned int pill_gap    = 8;
 
+/* stacked status rows: point size of the half-height rows, derived from
+   fonts[] above, so family and fallback order stay identical to the bar.
+   Two rows must fit in bh, so keep this well below the main size. */
+static const unsigned int stacked_fontsize = 10;
+
+/* stacked status rows: 1 = a block carrying ^s^ draws two half-height rows,
+   0 = the break is ignored and rows join on one line */
+static const int stacked_rows = 1;
+
 static const unsigned int tab_width    = 16;         /* TabModeIconTitle: pill width in characters */
 static const         char tab_text[]   = "{title}";  /* TabModeIconTitle only; {title}, {class} */
 static const unsigned int tab_icon_gap = 8;          /* TabModeIcons only: space in px between icons in the shared pill */

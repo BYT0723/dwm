@@ -82,7 +82,7 @@ pills(void) {
   { /* ids within a pill are drawn in id-list order and share the caps */
     const int ids[] = {2, 1, -1};
     const int wb[] = {1, 0}, wg[] = {0, 1};
-    pills_case("pills-order", "\x01""a\x02""b", ids, "^(^ba^)^", 2, wb, wg);
+    pills_case("pills-order", "\x01""a\x02""b", ids, "^(^b^^a^)^", 2, wb, wg);
   }
   { /* absent ids are skipped; a pill of only absent ids emits nothing */
     const int ids[] = {9, 1, 0, 9, -1};
@@ -99,6 +99,93 @@ pills(void) {
     const int wb[] = {0}, wg[] = {1};
     pills_case("pills-dup-id", "\x01""a\x01""b", ids, "^(^a^)^", 1, wb, wg);
   }
+}
+
+/* row-break splitter: only an empty ^s^ code (s first in code, body empty)
+   splits a status2d run into two stacked rows */
+static void
+rows_case(const char *name, const char *s, int wantfound, int wanttop,
+          int wantbot) {
+  int top = -1, bot = -1;
+  int got = bar_rowsplit(s, &top, &bot);
+
+  CHECK(got == wantfound, "%s: found %d, want %d", name, got, wantfound);
+  if (wantfound) {
+    CHECK(top == wanttop, "%s: top %d, want %d", name, top, wanttop);
+    CHECK(bot == wantbot, "%s: bot %d, want %d", name, bot, wantbot);
+  }
+}
+
+static void
+rows(void) {
+  rows_case("rows-basic", "ab^s^cd", 1, 2, 5);
+  rows_case("rows-none", "ab^c#fff^cd", 0, 0, 0);
+  rows_case("rows-body-s", "^cs^ab", 0, 0, 0);
+  rows_case("rows-nonempty", "a^sx^b", 0, 0, 0);
+  rows_case("rows-empty-top", "^s^cd", 1, 0, 3);
+  rows_case("rows-empty-bot", "ab^s^", 1, 2, 5);
+  rows_case("rows-first-only", "a^s^b^s^c", 1, 1, 4);
+  rows_case("rows-unterminated", "ab^s", 0, 0, 0);
+  rows_case("rows-text-s", "sage^s^x", 1, 4, 7);
+  rows_case("rows-after-code", "^b#000^ab^s^cd", 1, 9, 12);
+}
+
+/* cell separators: consecutive cells of one pill are split by a zero-width
+   ^^ code (drawn and measured as nothing), so the draw pass sees every
+   cell boundary; single-cell pills carry none */
+static void
+separators(void) {
+  char sbuf[256], obuf[256];
+  BarBlock blocks[32];
+  BarPillCell cells[32];
+  int nblocks, n;
+
+  {
+    const int ids[] = {2, 1, -1};
+
+    nblocks = bar_blocks("\x01""a\x02""b", sbuf, sizeof sbuf, blocks, 32);
+    n = bar_pills(sbuf, blocks, nblocks, ids, obuf, sizeof obuf, cells, 32);
+    CHECK(n == 2, "seps-cells: %d cells, want 2", n);
+    CHECK(strcmp(obuf, "^(^b^^a^)^") == 0, "seps-dst: '%s'", obuf);
+    CHECK(cells[0].poff == 3, "seps-poff0: %d, want 3", cells[0].poff);
+    CHECK(cells[1].poff == 6, "seps-poff1: %d, want 6", cells[1].poff);
+  }
+
+  { /* one pill per cell: no separator, offsets still recorded */
+    const int ids[] = {1, 0, 2, -1};
+
+    nblocks = bar_blocks("\x01""a\x02""b", sbuf, sizeof sbuf, blocks, 32);
+    n = bar_pills(sbuf, blocks, nblocks, ids, obuf, sizeof obuf, cells, 32);
+    CHECK(n == 2, "seps-single: %d cells, want 2", n);
+    CHECK(strcmp(obuf, "^(^a^)^^(^b^)^") == 0, "seps-single-dst: '%s'", obuf);
+    CHECK(cells[0].poff == 3, "seps-single-poff0: %d", cells[0].poff);
+    CHECK(cells[1].poff == 10, "seps-single-poff1: %d", cells[1].poff);
+  }
+}
+
+/* stacked font derivation: override only the pixel size of a base font
+   name, keeping family and fallback order identical to the bar */
+static void
+pixelsize_case(const char *name, const char *base, unsigned int size,
+               int dstlen, const char *want) {
+  char dst[128];
+  int i;
+
+  for (i = 0; i < 128; i++)
+    dst[i] = 'x';
+  bar_pixelsize(base, size, dst, dstlen > 0 ? dstlen : (int)sizeof(dst));
+  CHECK(strcmp(dst, want) == 0, "%s: got '%s', want '%s'", name, dst, want);
+  CHECK((int)strlen(dst) < (dstlen > 0 ? dstlen : 128),
+        "%s: not NUL-terminated in bounds", name);
+}
+
+static void
+fontsizes(void) {
+  pixelsize_case("px-replace", "CaskaydiaCove Nerd Font:pixelsize=14:antialias=true", 10, 0,
+                 "CaskaydiaCove Nerd Font:pixelsize=10:antialias=true");
+  pixelsize_case("px-shrink", "Font:pixelsize=14", 9, 0, "Font:pixelsize=9");
+  pixelsize_case("px-append", "Font", 10, 0, "Font:pixelsize=10");
+  pixelsize_case("px-trunc", "CaskaydiaCove Nerd Font:pixelsize=14:antialias=true", 10, 20, "CaskaydiaCove Nerd ");
 }
 
 /* tab selection-dot reservation: the icon shrink (TabModeIcons) and the
@@ -284,6 +371,9 @@ main(void) {
   cells();
   centers();
   dots();
+  rows();
+  separators();
+  fontsizes();
 
   printf("%s: %d checks, %d failures\n", failures ? "FAILED" : "ok", checks,
          failures);
