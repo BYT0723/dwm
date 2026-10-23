@@ -5374,7 +5374,7 @@ void tag(const Arg *arg, unsigned int event) {
     updateclientlist();
     focus(NULL);
     arrange(selmon);
-    if (policy_focus_on_move) {
+    if (policy_follow_moved_client) {
       view(arg, event);
       if (t && !(t & (t - 1)) && !HIDDEN(c))
         focus(c);
@@ -5389,7 +5389,7 @@ void tagmon(const Arg *arg, unsigned int event) {
     return;
   m = dirtomon(arg->i);
   sendmon(c, m);
-  if (policy_focus_on_move && !HIDDEN(c)) {
+  if (policy_follow_moved_client && !HIDDEN(c)) {
     setcurrentmon(m);
     focus(c);
   }

@@ -226,7 +226,8 @@ static const         char *tray_order[]           = { "fcitx", "...", "easyeffec
  * NOTE: StVolume is not listed in any zone although the writer still emits
  * it; add a ST(Volume) item to show it. */
 static const BarItem bar_left[] = {
-  { BarHost, 0 }, { BarTags, 0 }, { BarLayout, 0 }, { BarPillBreak, 0 },
+  { BarHost, 0 }, { BarLayout, 0 }, { BarPillBreak, 0 },
+  { BarTags, 0 }, { BarPillBreak, 0 },
   ST(Cpu), ST(Mem), ST(Disk), { BarPillBreak, 0 },
   ST(Net)
 };
@@ -242,7 +243,8 @@ static const BarItem bar_right[]  = {
  * choice now, so a different set of status ids belongs here too (the writer no
  * longer emits a cut marker) */
 static const BarItem bar_left_portrait[] = {
-  { BarHost, 0 }, { BarLayout, 0 }, { BarTags, 0 }, { BarPillBreak, 0 },
+  { BarHost, 0 }, { BarLayout, 0 }, { BarPillBreak, 0 },
+  { BarTags, 0 }, { BarPillBreak, 0 },
   ST(Cpu), ST(Mem)
 };
 static const BarItem bar_center_portrait[] = { { BarTabs, 0 } };
@@ -261,7 +263,7 @@ static const char *tag_names[] = {"dev", "web", "chat", "util", "misc", "dl", "v
 /* pill: shared geometry for every bar pill (tags, layout, status, tabs).
    pill_radius is clamped to lpad at startup (pillr); pill_gap separates
    pills, zones and TabModeIconTitle pills. */
-static const unsigned int pill_radius = 8;
+static const unsigned int pill_radius = 6;
 static const unsigned int pill_gap    = 8;
 
 static const unsigned int tab_width    = 16;         /* TabModeIconTitle: pill width in characters */
@@ -456,7 +458,7 @@ static Button buttons[] = {
 
 /*--- policy: stack, hide and focus behaviour --------------------------------*/
 
-static const          int policy_show_hidden      = 1;  /* 1 = focusstackhid shows hidden windows permanently; 0 = preview, re-hide on switch away */
-static const unsigned int policy_attach_top       = 0;  /* new window is attached to the top of the stack */
-static const          int policy_focus_on_move    = 1;  /* switch view and focus follow the client moved by tag/tagmon */
-static const          int policy_jump_on_activate = 1;  /* 1 = _NET_ACTIVE_WINDOW (e.g. rofi -show window) jumps to the window's tag/monitor; 0 = only mark it urgent */
+static const          int policy_show_hidden         = 1;  /* 1 = focusstackhid shows hidden windows permanently; 0                                = preview, re-hide on switch away */
+static const unsigned int policy_attach_top          = 0;  /* new window is attached to the top of the stack */
+static const          int policy_follow_moved_client = 1;  /* switch view and focus follow the client moved by tag/tagmon */
+static const          int policy_jump_on_activate    = 1;  /* 1 = _NET_ACTIVE_WINDOW (e.g. rofi -show window) jumps to the window's tag/monitor; 0 = only mark it urgent */
