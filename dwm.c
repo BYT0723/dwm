@@ -2763,8 +2763,12 @@ static void tabpaint(Monitor *m, int x, int w, Client *c) {
     if (cap)
       drw_rounded(drw, x + w - pillr, 0, bh, pillr, RoundedRight);
   }
-  if (!flatbar && drw->scheme == scheme[SchemeSel])
-    drawtabborder(x, w, NULL);
+  if (!flatbar) {
+    if (scm == SchemeSel)
+      drawtabborder(x, w, NULL);
+    else
+      drawtabborder(x, w, scheme[SchemeTabIcons]);
+  }
 
   // floating marker
   if (c->isfloating)
