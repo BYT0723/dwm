@@ -86,6 +86,14 @@ else
   info "no raw-pillr pads left in the icons row"
 fi
 
+# 6. a stacked cell opening the pill must not paint over its left cap:
+#    rowfill starts after pillr at pillstart so the rounded corner survives.
+if grep -q "rowx0 == pillstart" dwm.c; then
+  info "stacked rowfill preserves the pill left cap"
+else
+  err "rowfill must skip the left cap at pillstart or stacked pills lose their left arc"
+fi
+
 if [ "$fail" -ne 0 ]; then
   info "see drawstatusseg/drawpillcap in dwm.c"
   exit 1

@@ -2042,12 +2042,21 @@ static int cell_stacked(int ci) {
 }
 
 /* paint a stacked cell's full-height body strip once, with the colours in
-   force at its first text run (like drawpillcap for the pill itself) */
-static void rowfill(int ci, int rowx0) {
+   force at its first text run (like drawpillcap for the pill itself). When
+   the cell opens the pill its left cap already paints [rowx0, pillr): start
+   after the cap so the rounded corner survives. */
+static void rowfill(int ci, int rowx0, int pillstart) {
   int bw = scells[ci].w - (scells[ci].gap ? (int)pill_gap : 0);
+  int fx = rowx0;
 
+  if (pillstart >= 0 && rowx0 == pillstart && pillr > 0) {
+    if (bw <= pillr)
+      return;
+    fx += pillr;
+    bw -= pillr;
+  }
   if (bw > 0)
-    drw_rect(drw, rowx0, 0, (unsigned int)bw, (unsigned int)bh, 1, 1);
+    drw_rect(drw, fx, 0, (unsigned int)bw, (unsigned int)bh, 1, 1);
 }
 
 /* draw consecutive status items [k, k + n) as one joined segment of the
@@ -2116,7 +2125,7 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
           capx = -1;
         }
         if (needfill && rowx0 >= 0 && ci >= 0) {
-          rowfill(ci, rowx0);
+          rowfill(ci, rowx0, pillstart);
           needfill = 0;
         }
         w = TEXTW(text);
@@ -2281,7 +2290,7 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
        block-coloured rectangle after the last pill */
     if (*text) {
       if (needfill && rowx0 >= 0 && ci >= 0) {
-        rowfill(ci, rowx0);
+        rowfill(ci, rowx0, pillstart);
         needfill = 0;
       }
       w = TEXTW(text);
