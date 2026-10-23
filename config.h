@@ -459,6 +459,7 @@ static Button buttons[] = {
 /*--- policy: stack, hide and focus behaviour --------------------------------*/
 
 static const          int policy_show_hidden         = 1;  /* 1 = focusstackhid shows hidden windows permanently; 0                                = preview, re-hide on switch away */
+static const          int policy_hide_vacant_tags    = 0;  /* 1 = hide tags with no windows unless selected; 0 = always show all tags */
 static const unsigned int policy_attach_top          = 0;  /* new window is attached to the top of the stack */
 static const          int policy_follow_moved_client = 1;  /* switch view and focus follow the client moved by tag/tagmon */
 static const          int policy_jump_on_activate    = 1;  /* 1 = _NET_ACTIVE_WINDOW (e.g. rofi -show window) jumps to the window's tag/monitor; 0 = only mark it urgent */

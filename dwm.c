@@ -1444,7 +1444,7 @@ static int tagswidth(Monitor *m, int occ) {
   int i, w = 0;
 
   for (i = 0; i < LENGTH(tags); i++)
-    if (occ & 1 << i || m->tagset[m->seltags] & 1 << i)
+    if (!policy_hide_vacant_tags || occ & 1 << i || m->tagset[m->seltags] & 1 << i)
       w += tagtextw(i);
   return w;
 }
@@ -1469,15 +1469,15 @@ static int drawtags(Monitor *m, int x, int occ, int urg, int first, int last) {
 
   if (last)
     for (i = 0; i < LENGTH(tags); i++)
-      if (occ & 1 << i || m->tagset[m->seltags] & 1 << i)
+      if (!policy_hide_vacant_tags || occ & 1 << i || m->tagset[m->seltags] & 1 << i)
         lastvis = i;
 
   for (i = 0; i < LENGTH(tags); i++) {
     char text[64];
     int cap, skip, tx, tw;
 
-    /* Do not draw vacant tags */
-    if (!(occ & 1 << i || m->tagset[m->seltags] & 1 << i))
+    /* Do not draw vacant tags when policy_hide_vacant_tags is set */
+    if (policy_hide_vacant_tags && !(occ & 1 << i || m->tagset[m->seltags] & 1 << i))
       continue;
     template_expand(tag_text, tag_placeholder, &i, text, sizeof(text));
     tw = TEXTW(text);
