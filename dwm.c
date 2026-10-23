@@ -1291,7 +1291,10 @@ void destroynotify(XEvent *e) {
     unmanage(c, 1);
   } else if (tray_show && (c = wintosystrayicon(ev->window))) {
     removesystrayicon(c);
-    updatesystray(1);
+    /* a removal shifts every icon after it left; force an Expose so moved
+       icons repaint (composited ARGB bridges like SysTray-X otherwise keep
+       showing the parent background while staying interactive) */
+    updatesystray(3);
   }
   if (selmon->sel && !selmon->sel->neverfocus)
     setfocus(selmon->sel);
@@ -4344,7 +4347,7 @@ void propertynotify(XEvent *e) {
       dirty = 1;
     }
     if (dirty)
-      updatesystray(1);
+      updatesystray(3);
   }
 
   if ((ev->window == root) && (ev->atom == XA_WM_NAME))
@@ -4436,11 +4439,11 @@ Monitor *recttomon(int x, int y, int w, int h) {
 void removesystrayicon(Client *i) {
   Client **ii;
 
-  if (!tray_show || !i)
+  if (!tray_show || !i || !systray)
     return;
   for (ii = &systray->icons; *ii && *ii != i; ii = &(*ii)->next)
     ;
-  if (ii)
+  if (*ii)
     *ii = i->next;
   free(i);
 }
@@ -4563,7 +4566,7 @@ void resizerequest(XEvent *e) {
 
   if ((i = wintosystrayicon(ev->window))) {
     updatesystrayicongeom(i, ev->width, ev->height);
-    updatesystray(1);
+    updatesystray(3);
   }
 }
 
@@ -6166,7 +6169,8 @@ void systraydock(Window w) {
     c->next = *cur;
     *cur = c;
   }
-  updatesystray(1);
+  /* a sorted insert can shift existing icons; force repaint like removal */
+  updatesystray(3);
 }
 
 #define TRAY_MANAGER_DELAY 800 /* ms before repeating the MANAGER broadcast */
@@ -6284,10 +6288,9 @@ void updatesystray(int flag) {
                              bar_borderpx, scheme[SchemeSystray][ColBorder].pixel,
                              scheme[SchemeSystray][ColBg].pixel);
     wa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
-    wa.event_mask        = ButtonPressMask | ExposureMask;
+    wa.event_mask        = ButtonPressMask | ExposureMask | SubstructureNotifyMask;
     wa.override_redirect = True;
     wa.border_pixel = scheme[SchemeSystray][ColBorder].pixel;
-    XSelectInput(dpy, systray->win, SubstructureNotifyMask);
     XChangeProperty(dpy, systray->win, netatom[NetSystemTrayOrientation], XA_CARDINAL, 32, PropModeReplace, (unsigned char *)&netatom[NetSystemTrayOrientationHorz], 1);
     XChangeWindowAttributes(dpy, systray->win, CWEventMask|CWOverrideRedirect|CWBackPixel|CWBorderPixel, &wa);
     uint32_t opacity = (uint32_t)(alphas[SchemeSystray][1] * 0x01010101U);
@@ -6601,7 +6604,7 @@ Monitor *wintomon(Window w) {
 Client *wintosystrayicon(Window w) {
   Client *i = NULL;
 
-  if (!tray_show || !w)
+  if (!tray_show || !w || !systray)
     return i;
   for (i = systray->icons; i && i->win != w; i = i->next)
     ;
