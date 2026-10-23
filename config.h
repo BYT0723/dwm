@@ -269,7 +269,7 @@ static const unsigned int pill_gap    = 8;
 /* stacked status rows: point size of the half-height rows, derived from
    fonts[] above, so family and fallback order stay identical to the bar.
    Two rows must fit in bh, so keep this well below the main size. */
-static const unsigned int stacked_fontsize = 10;
+static const unsigned int stacked_fontsize = 12;
 
 /* stacked status rows: 1 = a block carrying ^s^ draws two half-height rows,
    0 = the break is ignored and rows join on one line */
