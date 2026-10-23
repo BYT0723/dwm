@@ -241,19 +241,15 @@ static const BarItem bar_right[]  = {
 
 /* portrait monitors (wh > ww) use these zones instead; orientation is a config
  * choice now, so a different set of status ids belongs here too (the writer no
- * longer emits a cut marker) */
+ * longer emits a cut marker). A portrait zone defined as an alias follows its
+ * landscape zone; replace the alias with an array to customize it. */
 static const BarItem bar_left_portrait[] = {
   { BarHost, 0 }, { BarLayout, 0 }, { BarPillBreak, 0 },
   { BarTags, 0 }, { BarPillBreak, 0 },
   ST(Cpu), ST(Mem)
 };
-static const BarItem bar_center_portrait[] = { { BarTabs, 0 } };
-static const BarItem bar_right_portrait[]  = {
-  ST(Rss), ST(Mail), ST(Notify), { BarPillBreak, 0 },
-  ST(Weather), { BarPillBreak, 0 },
-  ST(Date), { BarPillBreak, 0 },
-  ST(Screencast), ST(Singbox), ST(Mpd), ST(Battery)
-};
+#define bar_center_portrait bar_center
+#define bar_right_portrait bar_right
 
 /* tags[] only defines the number of tags (TAGMASK depends on LENGTH(tags)); its text is not rendered. */
 static const char tag_text[]   = "{icon} {name}";  /* tag text template; placeholders: {name}, {icon}, {index} */
