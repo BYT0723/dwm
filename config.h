@@ -34,6 +34,8 @@ static char col_white[]    = "#eee8d5";  /*  7: white    */
 static char col_ab_black[] = "#000000";
 static char *colors[][3] = {
     /*                      fg            bg           border    */
+    // host
+    [SchemeHost]     = { col_blue,     col_black,    col_black    },
     // tag
     [SchemeTagNorm]  = { col_white,    col_black,    col_black    },
     [SchemeTagSel]   = { col_black,    col_blue,     col_black    },
@@ -62,6 +64,8 @@ static char *colors[][3] = {
 
 static const unsigned int alphas[][3]      = {
     /*                     fg            bg               border   */
+    // host
+    [SchemeHost]     = { OPAQUE,      TAB_SEL_BG_ALPHA, TRANSPARENT },
     // tag
     [SchemeTagNorm]  = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
     [SchemeTagSel]   = { OPAQUE,      BG_ALPHA,         TRANSPARENT },
@@ -196,6 +200,7 @@ static const          int bar_fontpad  = 8;
 static const          int bar_pad_v    = 2;  /* vertical padding of bar */
 static const          int bar_pad_h    = 2;  /* horizontal padding of bar */
 static const unsigned int bar_borderpx = 1;  /* bar and pill outline width in px; 0 = no outline */
+static const          char host[]      = "  ";
 
 #define ICONSIZE (bh - 2 * bar_borderpx - 4) /* or adaptively preserve 2 pixels each side */
 #define ICONSPACING 4 /* space between icon and title */
@@ -215,13 +220,13 @@ static const         char *tray_order[]           = { "fcitx", "...", "easyeffec
  * middle), clamped so it never runs over a side zone.
  * BarTabs stretches when its fixed width does not fit, so keep it last.
  * Every status block is its own item, ST(Cpu), and consecutive
- * BarTags/BarLayout/BarStatus items share one pill; { BarPillBreak, 0 }
+ * BarHost/BarTags/BarLayout/BarStatus items share one pill; { BarPillBreak, 0 }
  * starts a new pill. BarTabs always starts its own pill and never joins.
  * A St* id the writer leaves out (empty panel, portrait cut) draws nothing.
  * NOTE: StVolume is not listed in any zone although the writer still emits
  * it; add a ST(Volume) item to show it. */
 static const BarItem bar_left[] = {
-  { BarTags, 0 }, { BarLayout, 0 }, { BarPillBreak, 0 },
+  { BarHost, 0 }, { BarTags, 0 }, { BarLayout, 0 }, { BarPillBreak, 0 },
   ST(Cpu), ST(Mem), ST(Disk), { BarPillBreak, 0 },
   ST(Net)
 };
@@ -237,7 +242,7 @@ static const BarItem bar_right[]  = {
  * choice now, so a different set of status ids belongs here too (the writer no
  * longer emits a cut marker) */
 static const BarItem bar_left_portrait[] = {
-  { BarLayout, 0 }, { BarTags, 0 }, { BarPillBreak, 0 },
+  { BarHost, 0 }, { BarLayout, 0 }, { BarTags, 0 }, { BarPillBreak, 0 },
   ST(Cpu), ST(Mem)
 };
 static const BarItem bar_center_portrait[] = { { BarTabs, 0 } };
@@ -416,9 +421,12 @@ static const char *statuscmd[] = {"/bin/sh", "-c", "$HOME/.dwm/dwm-statuscmd.sh 
 // WID/CLASS/TITLE/TAGS/MON in the environment; NULL or empty disables it.
 static const char *windowhook_cmd = "$HOME/.dwm/dwm-windowhook.sh";
 
-/* click can be ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, ClkTitleBar, or ClkRootWin */
+/* click can be ClkHost, ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, ClkTitleBar, or ClkRootWin */
 static Button buttons[] = {
     /* click          event   mask     button          function argument */
+    // hostname
+    {  ClkHost,       0,      Button1, spawn,          LAUNCHCMD("apps")},
+    {  ClkHost,       0,      Button3, spawn,          LAUNCHCMD("powermenu")},
     // tag
     {  ClkTagBar,     0,      Button1, view,           {0}},
     {  ClkTagBar,     0,      Button3, toggleview,     {0}},

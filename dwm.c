@@ -100,6 +100,7 @@ enum {
   SchemeNorm,
   SchemeSel,
   SchemeHid,
+  SchemeHost,
   SchemeTabIcons,
   SchemeTagNorm,
   SchemeTagSel,
@@ -157,6 +158,7 @@ enum {
   WMLast
 }; /* default atoms */
 enum {
+  ClkHost,
   ClkTagBar,
   ClkLtSymbol,
   ClkStatusText,
@@ -244,12 +246,12 @@ typedef struct {
 
 /* bar layout: items are grouped into three zones (config.h) and each zone
    is filled in array order. Every status block is its own item,
-   { BarStatus, StCpu }, and consecutive BarTags/BarLayout/BarStatus items
-   share one pill; { BarPillBreak, 0 } starts a new pill. BarTabs always
+   { BarStatus, StCpu }, and consecutive BarHost/BarTags/BarLayout/BarStatus
+   items share one pill; { BarPillBreak, 0 } starts a new pill. BarTabs always
    starts its own pill and never joins. A status block the writer left out
    (empty panel, portrait cut) draws nothing, and a pill whose items all
    draw nothing emits no pill and no gap. */
-typedef enum { BarNone, BarTags, BarLayout, BarTabs, BarStatus, BarPillBreak } BarModule;
+typedef enum { BarNone, BarHost, BarTags, BarLayout, BarTabs, BarStatus, BarPillBreak } BarModule;
 typedef struct {
   BarModule mod;
   int id; /* BarStatus only: the StatusBlockId drawn; other modules ignore it */
@@ -1385,11 +1387,12 @@ static const BarSlot *barslotat(Monitor *m, int x) {
   return NULL;
 }
 
-/* BarTags, BarLayout and single status blocks are joinable: consecutive
-   ones share one pill. BarPillBreak, BarTabs and BarNone all end the run.
-   Returns how many items starting at k form that pill (1 for a lone item). */
+/* BarHost, BarTags, BarLayout and single status blocks are joinable:
+   consecutive ones share one pill. BarPillBreak, BarTabs and BarNone all end
+   the run. Returns how many items starting at k form that pill (1 for a lone
+   item). */
 static int barjoinable(BarModule mod) {
-  return mod == BarTags || mod == BarLayout || mod == BarStatus;
+  return mod == BarHost || mod == BarTags || mod == BarLayout || mod == BarStatus;
 }
 
 static size_t pillrun(const BarItem *items, size_t nitems, size_t k) {
@@ -1411,11 +1414,11 @@ static int statusblock_idx(int id) {
   return -1;
 }
 
-/* 1 if the bar item draws anything: layout always does, tags only with a
-   visible tag, a status block only when the writer emitted it. statusparse()
-   must have run before asking about BarStatus. */
+/* 1 if the bar item draws anything: host and layout always do, tags only
+   with a visible tag, a status block only when the writer emitted it.
+   statusparse() must have run before asking about BarStatus. */
 static int segdrawn(Monitor *m, BarModule mod, int id, int occ) {
-  if (mod == BarLayout)
+  if (mod == BarHost || mod == BarLayout)
     return 1;
   if (mod == BarTags)
     return tagswidth(m, occ) > 0;
@@ -1505,11 +1508,25 @@ static int drawlayout(Monitor *m, int x, int first, int last) {
                   m->ltsymbol, 0, skip);
 }
 
-/* draw the pill formed by the items [k, k + pillrun(k)): tags, layout and
-   status blocks join into one pill with shared outer caps and one outline.
-   Consecutive BarStatus items draw as one joined segment; first/last land on
-   the drawn segments so absent blocks never steal a cap. Records the slots
-   and closes the pill with a right cap plus its outline. Returns the new x. */
+/* the host symbol from x on; first draws the left cap, last leaves room for
+   the right one. Returns the new x. */
+static int drawhost(Monitor *m, int x, int first, int last) {
+  int w = TEXTW(host);
+  int skip = first && pillr > 0;
+
+  drw_setscheme(drw, scheme[SchemeHost]);
+  if (skip)
+    drawleftcap(x);
+  addslot(m, x, w, ClkHost, (Arg){0});
+  return drw_text(drw, x, 0, w - (last ? pillr : 0), bh, lpad, host, 0, skip);
+}
+
+/* draw the pill formed by the items [k, k + pillrun(k)): host, tags, layout
+   and status blocks join into one pill with shared outer caps and one
+   outline. Consecutive BarStatus items draw as one joined segment; first/last
+   land on the drawn segments so absent blocks never steal a cap. Records the
+   slots and closes the pill with a right cap plus its outline. Returns the
+   new x. */
 static int drawbarpill(Monitor *m, const BarItem *items, size_t nitems, size_t k,
                        int x, int occ, int urg) {
   int gx = x, first = !flatbar, appendcap = 0;
@@ -1525,6 +1542,10 @@ static int drawbarpill(Monitor *m, const BarItem *items, size_t nitems, size_t k
       if (!segdrawn(m, BarTags, 0, occ))
         continue; /* no visible tag: no segment, no cap */
       x = drawtags(m, x, occ, urg, first, last);
+      if (last)
+        appendcap = 1;
+    } else if (items[k + j].mod == BarHost) {
+      x = drawhost(m, x, first, last);
       if (last)
         appendcap = 1;
     } else if (items[k + j].mod == BarLayout) {
@@ -1547,7 +1568,7 @@ static int drawbarpill(Monitor *m, const BarItem *items, size_t nitems, size_t k
   }
 
   if (x > gx && !flatbar) {
-    /* tags/layout shorten their last run for the cap; a trailing status
+    /* host/tags/layout shorten their last run for the cap; a trailing status
        segment already painted its own cap over its last runs */
     if (appendcap)
       x += drw_rounded(drw, x, 0, bh, pillr, RoundedRight);
@@ -1556,15 +1577,17 @@ static int drawbarpill(Monitor *m, const BarItem *items, size_t nitems, size_t k
   return x;
 }
 
-/* width of one pill run: tags, layout and the present status blocks. A run
-   that draws nothing has width 0, so the caller drops it with its gap. */
+/* width of one pill run: host, tags, layout and the present status blocks. A
+   run that draws nothing has width 0, so the caller drops it with its gap. */
 static int barpillwidth(Monitor *m, const BarItem *items, size_t k, size_t run,
                         int occ) {
   size_t j;
   int w = 0;
 
   for (j = 0; j < run; j++) {
-    if (items[k + j].mod == BarTags)
+    if (items[k + j].mod == BarHost)
+      w += TEXTW(host);
+    else if (items[k + j].mod == BarTags)
       w += tagswidth(m, occ);
     else if (items[k + j].mod == BarLayout)
       w += TEXTW(m->ltsymbol);
