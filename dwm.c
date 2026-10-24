@@ -359,6 +359,15 @@ static void drawtabborder(int x, int w, Clr *s);
 static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
                          size_t n, int first, int last);
 static int tagswidth(Monitor *m, int occ);
+static void tagsel(Monitor *m, int *sel, int *count);
+static int tagdotr(void);
+static int tagseldotr(void);
+static int tagdotswidth(void);
+static int tagleftw(void);
+static void tagbgdot_paint(int scm, int cx, int cy, int r);
+static void tagurgdot_paint(int fscm, int rscm, int cx, int cy, int r);
+static int drawtagscompact(Monitor *m, int x, int occ, int urg, int first,
+                           int last);
 static int tablayout(Monitor *m, int avail, TabCell *cells, int max, int *ncells);
 static int drawbarpill(Monitor *m, const BarItem *items, size_t nitems, size_t k,
                        int x, int occ, int urg);
@@ -501,6 +510,7 @@ typedef const char *(*template_resolve)(const char *f, size_t *plen, void *ctx);
 static void template_expand(const char *fmt, template_resolve resolve, void *ctx, char *buf, size_t len);
 static const char *tab_placeholder(const char *f, size_t *plen, void *ctx);
 static const char *tag_placeholder(const char *f, size_t *plen, void *ctx);
+static const char *tagcombo_placeholder(const char *f, size_t *plen, void *ctx);
 static void toggletabmode(const Arg *arg, unsigned int event);
 static void toggletag(const Arg *arg, unsigned int event);
 static void toggletitle(const Arg *arg, unsigned int event);
@@ -1454,6 +1464,11 @@ static int hasdrawnafter(Monitor *m, const BarItem *items, size_t k, size_t run,
 static int tagswidth(Monitor *m, int occ) {
   int i, w = 0;
 
+  if (tag_pill_mode == TagPillCompact) {
+    /* the left cell always reserves the widest tag text, so switching tags
+       never moves the pill (nor anything after it) */
+    return tagleftw() + tagdotswidth();
+  }
   for (i = 0; i < LENGTH(tags); i++)
     if (!policy_hide_vacant_tags || occ & 1 << i || m->tagset[m->seltags] & 1 << i)
       w += tagtextw(i);
@@ -1472,11 +1487,162 @@ static void drawleftcap(int x) {
     drw_rect(drw, x + pillr, 0, (unsigned int)(lpad - pillr), bh, 1, 1);
 }
 
+/* selected-tag state for the Compact tags pill: sel is the lowest selected
+   tag, count how many are selected (multi view shows the combo label) */
+static void tagsel(Monitor *m, int *sel, int *count) {
+  unsigned int mask = m->tagset[m->seltags];
+  int i, n = 0;
+
+  *sel = tagindex(mask);
+  for (i = 0; i < (int)LENGTH(tags); i++)
+    if (mask & 1u << i)
+      n++;
+  *count = n;
+}
+
+/* dot radius clamped to the bar height, the single source for dot geometry */
+static int tagdotr(void) {
+  return MAX(1, MIN((int)tag_dot_radius, bh / 2 - 1));
+}
+
+/* selected-dot radius: lives in the same pitch cell as a normal dot, so the
+   pill never moves with selection; clamped clear of neighbours (1px) and of
+   the right cap (the trailing pad keeps lpad past it when last) */
+static int tagseldotr(void) {
+  int r = tagdotr(), pitch = 2 * r + (int)tag_dot_gap;
+
+  return MAX(1, MIN((int)tag_sel_dot_radius,
+                    MIN(pitch - r - 1, MIN(lpad + r - (int)tag_dot_gap / 2, bh / 2 - 1))));
+}
+
+/* fixed width of the Compact dot row: symmetric lpad plus one diameter per
+   tag at gap pitch, so occupancy never moves the pill. The trailing pad
+   carries an extra pillr: when this run is last the right cap eats exactly
+   that, so the dots keep the same clearance in every case */
+static int tagdotswidth(void) {
+  int n = (int)LENGTH(tags), d = 2 * tagdotr();
+
+  if (n <= 0)
+    return 0;
+  return lpad + n * d + (n - 1) * (int)tag_dot_gap + lpad + pillr;
+}
+
+/* fixed width of the Compact left cell: the widest of every tag text under
+   the tag_text template and the combo label at full count, so switching
+   tags (or in and out of multi view) never moves the pill */
+static int tagleftw(void) {
+  int i, w = 0;
+  char combo[64];
+  unsigned int full = (unsigned int)LENGTH(tags);
+
+  template_expand(tag_combo_text, tagcombo_placeholder, &full, combo, sizeof(combo));
+  w = TEXTW(combo);
+  for (i = 0; i < (int)LENGTH(tags); i++)
+    w = MAX(w, tagtextw((unsigned int)i));
+  return w;
+}
+
+/* a filled dot in the scheme's background colour, e.g. SEL blue on a NORM
+   dot-zone background; the bg-fill counterpart of tabseldot_paint */
+static void tagbgdot_paint(int scm, int cx, int cy, int r) {
+  Clr *work = scheme[LENGTH(colors)];
+
+  if (r <= 0)
+    return;
+  drw_setscheme(drw, work);
+  work[ColBg] = scheme[scm][ColBg];
+  drawdisc(cx - r, cy - r, 2 * r);
+  drw_setscheme(drw, scheme[scm]);
+}
+
+/* an urgent dot: solid fill in fscm's background with a 1px ring in rscm's
+   foreground, distinct from every plain state on a dark dot-zone background */
+static void tagurgdot_paint(int fscm, int rscm, int cx, int cy, int r) {
+  if (r <= 0)
+    return;
+  tagbgdot_paint(fscm, cx, cy, r);
+  drw_setscheme(drw, scheme[rscm]);
+  drw_circle_empty(drw, cx, cy, r);
+}
+
+/* the Compact tags pill from x on: the selected tag's [icon name] on the left
+   (the cell always reserves the widest tag/combo text; the combo label when
+   several tags are selected) and a fixed row of status dots on the right
+   (hollow = empty, NORM filled = occupied, SEL filled bigger = selected,
+   filled + ring = urgent). Dots keep fixed geometry and each one is
+   clickable like a full tag; last shortens the dot zone for the right cap
+   the way drawlayout() does. Returns the new x. */
+static int drawtagscompact(Monitor *m, int x, int occ, int urg, int first, int last) {
+  unsigned int selmask = m->tagset[m->seltags];
+  int gx = x, n = (int)LENGTH(tags), r = tagdotr(), d = 2 * r;
+  int gap = (int)tag_dot_gap, pitch = d + gap;
+  int zone = tagdotswidth(), zw = zone - (last ? pillr : 0);
+  int sel, nsel, multi, i, dx, cy = bh / 2, lw = tagleftw();
+
+  tagsel(m, &sel, &nsel);
+  multi = nsel > 1;
+  drw_setscheme(drw, scheme[SchemeTagSel]);
+  if (!multi && sel >= 0) {
+    char text[64];
+    int cap = first && x == gx && pillr > 0;
+
+    template_expand(tag_text, tag_placeholder, &sel, text, sizeof(text));
+    if (cap)
+      drawleftcap(x);
+    /* the full cell is filled so short names leave blank Sel background;
+       the text stays left-aligned at the same x for every tag */
+    x = drw_text(drw, x, 0, (unsigned int)lw, bh, lpad, text, urg & 1 << sel, cap);
+  } else {
+    /* multi-select: the combo label in the full cell, so the reserved width
+       reads as intentional; inverts when any viewed tag is urgent */
+    char text[64];
+    int cap = first && x == gx && pillr > 0;
+    int minv = (urg & selmask) != 0;
+    unsigned int cn = (unsigned int)nsel;
+
+    template_expand(tag_combo_text, tagcombo_placeholder, &cn, text, sizeof(text));
+    if (cap)
+      drawleftcap(x);
+    x = drw_text(drw, x, 0, (unsigned int)lw, bh, lpad, text, minv, cap);
+  }
+
+  dx = x;
+  drw_setscheme(drw, scheme[SchemeTagNorm]);
+  drw_rect(drw, dx, 0, (unsigned int)zw, bh, 1, 1);
+  for (i = 0; i < n; i++) {
+    /* every dot is centred in its pitch cell, so a larger selected dot
+       never moves its neighbours or the pill */
+    int cx = dx + lpad + i * pitch + pitch / 2;
+    int x0 = i ? dx + lpad + i * pitch - gap / 2 : dx;
+    int x1 = (i == n - 1) ? dx + zw + (last ? pillr : 0)
+                          : dx + lpad + (i + 1) * pitch - gap / 2;
+
+    if (selmask & 1 << i)
+      tagbgdot_paint(SchemeTagSel, cx, cy, tagseldotr());
+    else if (urg & 1 << i)
+      tagurgdot_paint(SchemeTagSel, SchemeTagNorm, cx, cy, r);
+    else if (occ & 1 << i)
+      tabseldot_paint(SchemeTagNorm, cx, cy, r);
+    else {
+      drw_setscheme(drw, scheme[SchemeTagNorm]);
+      drw_circle_empty(drw, cx, cy, r);
+    }
+    addslot(m, x0, x1 - x0, ClkTagBar, (Arg){.ui = 1 << i});
+  }
+  /* the pill tail is the NORM dot zone, so the right cap drawbarpill appends
+     uses its background */
+  drw_setscheme(drw, scheme[SchemeTagNorm]);
+  return dx + zw;
+}
+
 /* the visible tags from x on. first draws the pill's left cap and keeps the
    first run clear of it; last shortens the final run so the right cap fits
    inside its padding, the way drawlayout() does. Returns the new x. */
 static int drawtags(Monitor *m, int x, int occ, int urg, int first, int last) {
   int gx = x, i, w, lastvis = -1;
+
+  if (tag_pill_mode == TagPillCompact)
+    return drawtagscompact(m, x, occ, urg, first, last);
 
   if (last)
     for (i = 0; i < LENGTH(tags); i++)
@@ -2361,6 +2527,19 @@ static const char *tag_placeholder(const char *f, size_t *plen, void *ctx) {
     static char buf[16];
     *plen = 7;
     snprintf(buf, sizeof buf, "%u", i + 1);
+    return buf;
+  }
+  return NULL;
+}
+
+/* resolve {count} against a selected-tag count, for the combo label */
+static const char *tagcombo_placeholder(const char *f, size_t *plen, void *ctx) {
+  unsigned int n = *(unsigned int *)ctx;
+
+  if (!strncmp(f, "{count}", 7)) {
+    static char buf[16];
+    *plen = 7;
+    snprintf(buf, sizeof buf, "%u", n);
     return buf;
   }
   return NULL;
