@@ -229,12 +229,11 @@ static const BarItem bar_left[] = {
   { BarHost, 0 }, { BarLayout, 0 }, { BarPillBreak, 0 },
   { BarTags, 0 }, { BarPillBreak, 0 },
   ST(Cpu), ST(Mem), ST(Disk), { BarPillBreak, 0 },
-  ST(Net)
 };
 static const BarItem bar_center[] = { { BarTabs, 0 } };
 static const BarItem bar_right[]  = {
   ST(Rss), ST(Mail), ST(Notify), { BarPillBreak, 0 },
-  ST(Weather), { BarPillBreak, 0 },
+  ST(Net), ST(Weather), { BarPillBreak, 0 },
   ST(Date), { BarPillBreak, 0 },
   ST(Screencast), ST(Singbox), ST(Mpd), ST(Battery)
 };
