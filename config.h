@@ -441,7 +441,7 @@ static const char *statuscmd[] = {"/bin/sh", "-c", "$HOME/.dwm/dwm-statuscmd.sh 
 // WID/CLASS/TITLE/TAGS/MON in the environment; NULL or empty disables it.
 static const char *windowhook_cmd = "$HOME/.dwm/dwm-windowhook.sh";
 
-/* click can be ClkHost, ClkTagBar, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, ClkTitleBar, or ClkRootWin */
+/* click can be ClkHost, ClkTagBar, ClkTagLeft, ClkLtSymbol, ClkStatusText, ClkWinTitle, ClkClientWin, ClkTitleBar, or ClkRootWin */
 static Button buttons[] = {
     /* click          event   mask     button          function argument */
     // hostname
@@ -452,6 +452,8 @@ static Button buttons[] = {
     {  ClkTagBar,     0,      Button3, toggleview,     {0}},
     {  ClkTagBar,     MODKEY, Button1, tag,            {0}},
     {  ClkTagBar,     MODKEY, Button3, toggletag,      {0}},
+    // tags pill left segment: press-hold to peek the desktop, release restores
+    {  ClkTagLeft,    0,      Button1, peekdesktop,     {0}},
     // layout
     {  ClkLtSymbol,   0,      Button1, setlayout,      {0}},
     {  ClkLtSymbol,   0,      Button3, layoutmenu,     {0}},

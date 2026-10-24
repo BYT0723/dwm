@@ -160,6 +160,7 @@ enum {
 enum {
   ClkHost,
   ClkTagBar,
+  ClkTagLeft,
   ClkLtSymbol,
   ClkStatusText,
   ClkWinTitle,
@@ -467,6 +468,7 @@ static void seturgent(Client *c, int urg);
 static void show(const Arg *arg, unsigned int event);
 static void showall(const Arg *arg, unsigned int event);
 static void showdesktop(const Arg *arg, unsigned int event);
+static void peekdesktop(const Arg *arg, unsigned int event);
 static void showhide(Client *c);
 static void showwin(Client *c);
 static void sigchld(int unused);
@@ -1595,6 +1597,8 @@ static int drawtagscompact(Monitor *m, int x, int occ, int urg, int first, int l
     template_expand(tag_text, tag_placeholder, &sel, text, sizeof(text));
     if (cap)
       drawleftcap(x);
+    /* the left segment is the peek target: press-hold hides, release restores */
+    addslot(m, x, lw, ClkTagLeft, (Arg){0});
     /* the full cell is filled so short names leave blank Sel background;
        the text stays left-aligned at the same x for every tag */
     x = drw_text(drw, x, 0, (unsigned int)lw, bh, lpad, text, urg & 1 << sel, cap);
@@ -1609,6 +1613,8 @@ static int drawtagscompact(Monitor *m, int x, int occ, int urg, int first, int l
     template_expand(tag_combo_text, tagcombo_placeholder, &cn, text, sizeof(text));
     if (cap)
       drawleftcap(x);
+    /* multi-select shares the same peek target as the single-tag cell */
+    addslot(m, x, lw, ClkTagLeft, (Arg){0});
     x = drw_text(drw, x, 0, (unsigned int)lw, bh, lpad, text, minv, cap);
   }
 
@@ -4127,6 +4133,27 @@ void showdesktop(const Arg *arg, unsigned int event) {
       restack(selmon);
     }
   }
+}
+
+/* Tags-pill left-segment peek: press-hold hides, release restores.
+   movemouse-style self-contained grab, so buttons[] needs no ev column
+   and the barwin mask stays ButtonPress-only. */
+void peekdesktop(const Arg *arg, unsigned int event) {
+  XEvent ev;
+
+  (void)arg; (void)event;
+  if (XGrabPointer(dpy, root, False, BUTTONMASK, GrabModeAsync, GrabModeAsync,
+                   None, cursor[CurNormal]->cursor, CurrentTime) != GrabSuccess)
+    return;
+  showdesktop(NULL, KeyPressMask);
+  do {
+    XMaskEvent(dpy, BUTTONMASK | ExposureMask | SubstructureRedirectMask, &ev);
+    if (ev.type == ConfigureRequest || ev.type == Expose ||
+        ev.type == MapRequest || ev.type == ClientMessage)
+      handler[ev.type](&ev);
+  } while (ev.type != ButtonRelease);
+  XUngrabPointer(dpy, CurrentTime);
+  showdesktop(NULL, KeyReleaseMask);
 }
 
 void incnmaster(const Arg *arg, unsigned int event) {
