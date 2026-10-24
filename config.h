@@ -200,7 +200,7 @@ static const          int bar_fontpad  = 8;
 static const          int bar_pad_v    = 2;  /* vertical padding of bar */
 static const          int bar_pad_h    = 2;  /* horizontal padding of bar */
 static const unsigned int bar_borderpx = 1;  /* bar and pill outline width in px; 0 = no outline */
-static const          char host[]      = "  ";
+static const          char host[]      = "";
 
 #define ICONSIZE (bh - 2 * bar_borderpx - 4) /* or adaptively preserve 2 pixels each side */
 #define ICONSPACING 4 /* space between icon and title */
@@ -253,9 +253,9 @@ static const BarItem bar_left_portrait[] = {
 
 /* tags[] only defines the number of tags (TAGMASK depends on LENGTH(tags)); its text is not rendered. */
 static const char tag_text[]   = "{icon} {name}";  /* tag text template; placeholders: {name}, {icon}, {index} */
-static const char tag_combo_text[] = "󰕘  [{count}]";  /* TagPillCompact multi-select label in the fixed left cell; placeholder: {count} */
+static const char tag_combo_text[] = "󰕘 [{count}]";  /* TagPillCompact multi-select label in the fixed left cell; placeholder: {count} */
 static const char *tags[]      = {"", "", "󰭹", "", "", "", "", "", ""};
-static const char *tag_names[] = {"dev", "web", "chat", "util", "misc", "dl", "vid", "mus", "game"};
+static const char *tag_names[] = {" dev", " web", "chat", "util", "misc", " dl ", " vid", " mus", "game"};
 
 /* pill: shared geometry for every bar pill (tags, layout, status, tabs).
    pill_radius is clamped to lpad at startup (pillr); pill_gap separates
@@ -273,7 +273,7 @@ static TagPillMode tag_pill_mode = TagPillCompact;
 /* TagPillCompact status dots: radius in px and gap in px between dot hitboxes */
 static const unsigned int tag_dot_radius = 4;
 static const unsigned int tag_sel_dot_radius = 6;  /* selected dot, centred in the same pitch cell; clamped to keep clear of neighbours */
-static const unsigned int tag_dot_gap    = 6;
+static const unsigned int tag_dot_gap    = 8;
 
 /* stacked status rows: point size of the half-height rows, derived from
    fonts[] above, so family and fallback order stay identical to the bar.
