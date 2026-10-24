@@ -207,7 +207,7 @@ static const          char host[]      = "";
 
 /* systray: XEMBED tray, merged into the bar or a separate window */
 static const          int tray_show               = 1;  /* 0 means no systray */
-static const unsigned int tray_pinning            = 0;  /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
+static const unsigned int tray_pinning            = 1;  /* 0: sloppy systray follows selected monitor, >0: pin systray to monitor X */
 static const unsigned int tray_spacing            = 2;  /* systray spacing */
 static const          int tray_pinning_fail_first = 1;  /* 1: if pinning fails, display systray on the first monitor, False: display systray on the last monitor*/
 static const          int tray_pad                = 4;
