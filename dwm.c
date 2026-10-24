@@ -1542,17 +1542,23 @@ static int tagleftw(void) {
   return w;
 }
 
-/* a filled dot in the scheme's background colour, e.g. SEL blue on a NORM
-   dot-zone background; the bg-fill counterpart of tabseldot_paint */
-static void tagbgdot_paint(int scm, int cx, int cy, int r) {
+/* a filled dot in the given fill colour; both tag and tab dots share it,
+   drw_rounded paints in ColBg so a scratch scheme carries the fill */
+static void dotfill_paint(int scm, Clr fill, int cx, int cy, int r) {
   Clr *work = scheme[LENGTH(colors)];
 
   if (r <= 0)
     return;
   drw_setscheme(drw, work);
-  work[ColBg] = scheme[scm][ColBg];
+  work[ColBg] = fill;
   drawdisc(cx - r, cy - r, 2 * r);
   drw_setscheme(drw, scheme[scm]);
+}
+
+/* a filled dot in the scheme's background colour, e.g. SEL blue on a NORM
+   dot-zone background; the bg-fill counterpart of tabseldot_paint */
+static void tagbgdot_paint(int scm, int cx, int cy, int r) {
+  dotfill_paint(scm, scheme[scm][ColBg], cx, cy, r);
 }
 
 /* an urgent dot: solid fill in fscm's background with a 1px ring in rscm's
@@ -1673,29 +1679,26 @@ static int drawtags(Monitor *m, int x, int occ, int urg, int first, int last) {
 
 /* the layout symbol from x on; first draws the left cap, last leaves room for
    the right one. Returns the new x. */
-static int drawlayout(Monitor *m, int x, int first, int last) {
-  int w = TEXTW(m->ltsymbol);
+static int drawstrpill(Monitor *m, int x, int first, int last, int scm,
+                       const char *text, unsigned int click) {
+  int w = TEXTW(text);
   int skip = first && pillr > 0;
 
-  drw_setscheme(drw, scheme[SchemeLayout]);
+  drw_setscheme(drw, scheme[scm]);
   if (skip)
     drawleftcap(x);
-  addslot(m, x, w, ClkLtSymbol, (Arg){0});
-  return drw_text(drw, x, 0, w - (last ? pillr : 0), bh, lpad,
-                  m->ltsymbol, 0, skip);
+  addslot(m, x, w, click, (Arg){0});
+  return drw_text(drw, x, 0, w - (last ? pillr : 0), bh, lpad, text, 0, skip);
+}
+
+static int drawlayout(Monitor *m, int x, int first, int last) {
+  return drawstrpill(m, x, first, last, SchemeLayout, m->ltsymbol, ClkLtSymbol);
 }
 
 /* the host symbol from x on; first draws the left cap, last leaves room for
    the right one. Returns the new x. */
 static int drawhost(Monitor *m, int x, int first, int last) {
-  int w = TEXTW(host);
-  int skip = first && pillr > 0;
-
-  drw_setscheme(drw, scheme[SchemeHost]);
-  if (skip)
-    drawleftcap(x);
-  addslot(m, x, w, ClkHost, (Arg){0});
-  return drw_text(drw, x, 0, w - (last ? pillr : 0), bh, lpad, host, 0, skip);
+  return drawstrpill(m, x, first, last, SchemeHost, host, ClkHost);
 }
 
 /* draw the pill formed by the items [k, k + pillrun(k)): host, tags, layout
@@ -2225,6 +2228,44 @@ static void rowfill(int ci, int rowx0, int pillstart) {
     drw_rect(drw, fx, 0, (unsigned int)bw, (unsigned int)bh, 1, 1);
 }
 
+/* interpreter state for one drawstatusseg run: the open pill's pending cap
+   plus the stacked-cell tracker. x/text flow stays in the caller so the
+   ^-code loop keeps its pointer-reset shape. */
+typedef struct {
+  Clr *work;
+  Clr pillbase[3];
+  int capx, pillw, pillprologue;
+  int ci, row, ry, rh, pillstart, rowx0, needfill, origin;
+} SegState;
+
+/* reset a pill's base colours to the configured status colours; ^d restores
+   to this, the pill's own leading ^b refines it */
+static void seg_reset_pillbase(SegState *s) {
+  s->pillbase[ColFg] = scheme[SchemeStatus][ColFg];
+  s->pillbase[ColBg] = scheme[SchemeStatus][ColBg];
+  s->pillbase[ColBorder] = scheme[SchemeStatus][ColBorder];
+}
+
+/* paint the pending left cap with the pill's first run */
+static void seg_flush_cap(SegState *s) {
+  if (s->capx >= 0) {
+    drawpillcap(s->work, s->capx, s->pillw);
+    s->pillprologue = 0;
+    s->capx = -1;
+  }
+}
+
+/* level x to the stacked cell's layout width; caller guards rowx0/ci >= 0 */
+static void seg_level_x(int *x, SegState *s) {
+  int fix = s->rowx0 + scells[s->ci].w -
+            (scells[s->ci].gap ? (int)pill_gap : 0);
+
+  if (*x < fix)
+    *x = fix;
+  s->rowx0 = -1;
+  s->needfill = 0;
+}
+
 /* draw consecutive status items [k, k + n) as one joined segment of the
    open pill and record a slot per drawn block so a click resolves to that
    block's INDEX; returns the x after the segment. Only the selected monitor
@@ -2235,23 +2276,24 @@ static void rowfill(int ci, int rowx0, int pillstart) {
    shared pill. A segment whose blocks are all absent draws nothing. */
 static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
                          size_t n, int first, int last) {
-  int i, w, roww, origin;
+  int i, w, roww;
   short iscode = 0;
   /* 1 = the next text run draws right after a PILL_OPEN cap, so its left
      padding must be skipped to keep the rounded corner visible */
   int skip_pad = 0;
   char *text;
-  Clr *work = scheme[LENGTH(colors)];
-  Clr pillbase[3]; /* pill colours as of its first drawn run, for ^d */
-  int capx = -1;   /* pending left cap of the open pill, -1 when none */
-  int pillw = 0;   /* its body width, from the layout pass */
-  int pillprologue = 0; /* 1 while the pill's leading codes are applied */
-  int ci = -1;     /* drawn cell the parse pointer sits in, -1 before the first */
-  int row = 0;     /* 1 while drawing the bottom row of a stacked cell */
-  int ry = 0, rh = bh; /* text geometry: full height, or one half when stacked */
-  int pillstart = -1; /* x where the open pill started, -1 when unknown */
-  int rowx0 = -1;  /* block start of the open stacked cell, -1 when none */
-  int needfill = 0; /* 1 while the open stacked cell's body strip is unpainted */
+  SegState s;
+
+  s.work = scheme[LENGTH(colors)];
+  s.capx = -1;   /* pending left cap of the open pill, -1 when none */
+  s.pillw = 0;   /* its body width, from the layout pass */
+  s.pillprologue = 0; /* 1 while the pill's leading codes are applied */
+  s.ci = -1;     /* drawn cell the parse pointer sits in, -1 before the first */
+  s.row = 0;     /* 1 while drawing the bottom row of a stacked cell */
+  s.ry = 0, s.rh = bh; /* text geometry: full height, or one half when stacked */
+  s.pillstart = -1; /* x where the open pill started, -1 when unknown */
+  s.rowx0 = -1;  /* block start of the open stacked cell, -1 when none */
+  s.needfill = 0; /* 1 while the open stacked cell's body strip is unpainted */
 
   if (m != selmon)
     return x;
@@ -2267,15 +2309,15 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
 
   /* width of the segment; kept apart from `w`, which the interpreter reuses */
   roww = stpills_w;
-  origin = x;
+  s.origin = x;
 
   /* draw on the working scheme, reset to the configured status colours so
      ^c/^b from an earlier pill or the previous frame cannot leak */
-  drw_setscheme(drw, work);
-  work[ColFg] = scheme[SchemeStatus][ColFg];
-  work[ColBg] = scheme[SchemeStatus][ColBg];
-  work[ColBorder] = scheme[SchemeStatus][ColBorder];
-  memcpy(pillbase, work, sizeof pillbase);
+  drw_setscheme(drw, s.work);
+  s.work[ColFg] = scheme[SchemeStatus][ColFg];
+  s.work[ColBg] = scheme[SchemeStatus][ColBg];
+  s.work[ColBorder] = scheme[SchemeStatus][ColBorder];
+  seg_reset_pillbase(&s);
 
   /* process status text */
   i = -1;
@@ -2285,17 +2327,13 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
 
       text[i] = '\0';
       if (strlen(text) > 0) {
-        if (capx >= 0) { /* first run of a pill: body and cap, then the text */
-          drawpillcap(work, capx, pillw);
-          pillprologue = 0;
-          capx = -1;
-        }
-        if (needfill && rowx0 >= 0 && ci >= 0) {
-          rowfill(ci, rowx0, pillstart);
-          needfill = 0;
+        seg_flush_cap(&s);
+        if (s.needfill && s.rowx0 >= 0 && s.ci >= 0) {
+          rowfill(s.ci, s.rowx0, s.pillstart);
+          s.needfill = 0;
         }
         w = TEXTW(text);
-        drw_text(drw, x, ry, w, rh, lpad, text, 0, skip_pad);
+        drw_text(drw, x, s.ry, w, s.rh, lpad, text, 0, skip_pad);
         skip_pad = 0;
         x += w;
       }
@@ -2315,13 +2353,13 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
                            alphas[SchemeStatus][isbg ? 1 : 0]);
             /* the pill's leading ^b is its pane background: remember it as
                the colour ^d resets to */
-            if (isbg && pillprologue)
-              pillbase[ColBg] = drw->scheme[ColBg];
+            if (isbg && s.pillprologue)
+              s.pillbase[ColBg] = drw->scheme[ColBg];
           }
           i += n;
         } else if (text[i] == 'd') {
-          drw->scheme[ColFg] = pillbase[ColFg];
-          drw->scheme[ColBg] = pillbase[ColBg];
+          drw->scheme[ColFg] = s.pillbase[ColFg];
+          drw->scheme[ColBg] = s.pillbase[ColBg];
         } else if (text[i] == 'r') {
           int rx, ry, rw, rh;
 
@@ -2339,17 +2377,17 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
           drw_rect(drw, rx + x, ry, rw, rh, 1, 0);
         } else if (text[i] == 'f')
           x += atoi(text + ++i);
-        else if (text[i] == 's' && text[i + 1] == '^' && !row && ci >= 0 &&
-                 cell_stacked(ci)) {
+        else if (text[i] == 's' && text[i + 1] == '^' && !s.row && s.ci >= 0 &&
+                 cell_stacked(s.ci)) {
           /* row break: the bottom row starts at the block's left edge in
              the bar's bottom half, clearing the rounded corner like the
              top row does when this cell opens the pill. Only the first
              break counts, like the width pass. */
-          x = origin + scells[ci].x;
-          row = 1;
-          ry = bh / 2;
-          skip_pad = (pillstart >= 0 &&
-                      origin + scells[ci].x == pillstart && pillr > 0);
+          x = s.origin + scells[s.ci].x;
+          s.row = 1;
+          s.ry = bh / 2;
+          skip_pad = (s.pillstart >= 0 &&
+                      s.origin + scells[s.ci].x == s.pillstart && pillr > 0);
         } else if (text[i] == PILL_OPEN) {
           /* remember the cap and draw it with the pill's first run instead:
              the pill's own ^b must apply first so cap, body and text agree,
@@ -2361,49 +2399,33 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
              bare bar background instead of the pane colour. Only the rounded
              corner itself is gated on pillr. */
           if (!first) {
-            pillbase[ColFg] = scheme[SchemeStatus][ColFg];
-            pillbase[ColBg] = scheme[SchemeStatus][ColBg];
-            pillbase[ColBorder] = scheme[SchemeStatus][ColBorder];
-            pillprologue = 1;
+            seg_reset_pillbase(&s);
+            s.pillprologue = 1;
             continue;
           }
-          capx = x;
-          pillw = (spillidx < nspills) ? spills[spillidx].w : 0;
+          s.capx = x;
+          s.pillw = (spillidx < nspills) ? spills[spillidx].w : 0;
           spillidx++;
-          pillstart = capx;
+          s.pillstart = s.capx;
           /* reset the pill base to the configured colours; the pill's own
              leading ^b then refines its background */
-          pillbase[ColFg] = scheme[SchemeStatus][ColFg];
-          pillbase[ColBg] = scheme[SchemeStatus][ColBg];
-          pillbase[ColBorder] = scheme[SchemeStatus][ColBorder];
-          pillprologue = 1;
+          seg_reset_pillbase(&s);
+          s.pillprologue = 1;
           skip_pad = (pillr > 0);
         } else if (text[i] == PILL_CLOSE) {
-          if (rowx0 >= 0 && ci >= 0) {
-            /* a stacked cell ends here: level x to the layout width (the
-               wider row) so the right cap lands where measuring put it */
-            int fix = rowx0 + scells[ci].w -
-                      (scells[ci].gap ? (int)pill_gap : 0);
-            if (x < fix)
-              x = fix;
-            rowx0 = -1;
-            needfill = 0;
-          }
-          pillstart = -1;
+          if (s.rowx0 >= 0 && s.ci >= 0)
+            seg_level_x(&x, &s);
+          s.pillstart = -1;
           if (!last)
             continue; /* a following segment continues the pill */
-          if (capx >= 0) { /* a pill with no drawn text at all */
-            drawpillcap(work, capx, pillw);
-            pillprologue = 0;
-            capx = -1;
-          }
+          seg_flush_cap(&s);
           if (pillr <= 0)
             continue; /* square pill: no right cap to paint */
           /* the right cap overlaps the last runs; the caller draws the one
              outline around the whole pill, so no border and no gap here */
           drw_setscheme(drw, scheme[SchemeEmpty]);
           drw_rect(drw, x-pillr, 0, pillr, bh, 1, 0);
-          drw_setscheme(drw, work);
+          drw_setscheme(drw, s.work);
           drw_rounded(drw, x-pillr, 0, bh, pillr, RoundedRight);
         }
       }
@@ -2418,49 +2440,39 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
       /* track the drawn cell across codes; entering a stacked cell switches
          to the small font for two half-height rows, leaving one levels x
          to the layout width and restores the normal font */
-      while (ci + 1 < nscells && text - pbuf >= scells[ci + 1].poff) {
-        if (rowx0 >= 0 && ci >= 0) {
-          int fix = rowx0 + scells[ci].w -
-                    (scells[ci].gap ? (int)pill_gap : 0);
-          if (x < fix)
-            x = fix;
-          rowx0 = -1;
-          needfill = 0;
-        }
-        ci++;
-        if (cell_stacked(ci)) {
-          rowx0 = origin + scells[ci].x;
-          needfill = 1;
+      while (s.ci + 1 < nscells && text - pbuf >= scells[s.ci + 1].poff) {
+        if (s.rowx0 >= 0 && s.ci >= 0)
+          seg_level_x(&x, &s);
+        s.ci++;
+        if (cell_stacked(s.ci)) {
+          s.rowx0 = s.origin + scells[s.ci].x;
+          s.needfill = 1;
           drw_setfontset(drw, fonts_stacked_set);
-          row = 0;
-          ry = 0;
-          rh = bh / 2;
-        } else if (row) {
+          s.row = 0;
+          s.ry = 0;
+          s.rh = bh / 2;
+        } else if (s.row) {
           drw_setfontset(drw, fonts_set);
-          row = 0;
-          ry = 0;
-          rh = bh;
+          s.row = 0;
+          s.ry = 0;
+          s.rh = bh;
         }
       }
     }
   }
 
   if (!iscode) {
-    if (capx >= 0) { /* a pill with no drawn text at all */
-      drawpillcap(work, capx, pillw);
-      pillprologue = 0;
-      capx = -1;
-    }
+    seg_flush_cap(&s);
     /* an empty trailing run must not be drawn: drw_text() would fill
        TEXTW("") = lrpad pixels in the scheme's background, leaving a stray
        block-coloured rectangle after the last pill */
     if (*text) {
-      if (needfill && rowx0 >= 0 && ci >= 0) {
-        rowfill(ci, rowx0, pillstart);
-        needfill = 0;
+      if (s.needfill && s.rowx0 >= 0 && s.ci >= 0) {
+        rowfill(s.ci, s.rowx0, s.pillstart);
+        s.needfill = 0;
       }
       w = TEXTW(text);
-      drw_text(drw, x, ry, w, rh, lpad, text, 0, 0);
+      drw_text(drw, x, s.ry, w, s.rh, lpad, text, 0, 0);
     }
   }
 
@@ -2470,10 +2482,10 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
   /* record the drawn blocks; a click resolves to the block's id, which is
      the INDEX the writer's click command expects */
   for (i = 0; i < nscells; i++)
-    addslot(m, origin + scells[i].x, scells[i].w, ClkStatusText,
+    addslot(m, s.origin + scells[i].x, scells[i].w, ClkStatusText,
             (Arg){.ui = scells[i].id});
 
-  return origin + roww;
+  return s.origin + roww;
 }
 
 /* expand a template string ({name}, {icon}, ...) into buf */
@@ -2883,15 +2895,7 @@ static void drawdisc(int x, int y, int d) {
    foreground, centred under the selected icon. drw_rounded paints in ColBg, so
    it is handed a scratch scheme whose background is that foreground. */
 static void tabseldot_paint(int scm, int cx, int cy, int r) {
-  Clr *work = scheme[LENGTH(colors)];
-
-  if (r <= 0)
-    return;
-  /* drw_rounded() paints in ColBg, so that is all the scratch scheme needs */
-  drw_setscheme(drw, work);
-  work[ColBg] = scheme[scm][ColFg];
-  drawdisc(cx - r, cy - r, 2 * r);
-  drw_setscheme(drw, scheme[scm]);
+  dotfill_paint(scm, scheme[scm][ColFg], cx, cy, r);
 }
 
 /* the TabModeIcons hidden mark: a hollow circle of radius r in SchemeTabIcons
@@ -6141,8 +6145,7 @@ void updatebarpos(Monitor *m) {
  * Multi-tag windows appear once, under their lowest set bit.
  * Sticky (~0, e.g. bilichat-tui) naturally falls to 0 (first group).
  * tags == 0 (untagged) also maps to 0. */
-static int
-clientdesktop(Client *c) {
+static int clientdesktop(Client *c) {
   unsigned int i;
 
   if (!c || !c->tags)
@@ -6153,16 +6156,14 @@ clientdesktop(Client *c) {
   return 0;
 }
 
-static void
-updatenumberofdesktops(void) {
+static void updatenumberofdesktops(void) {
   unsigned long n = LENGTH(tags);
 
   XChangeProperty(dpy, root, netatom[NetNumberOfDesktops], XA_CARDINAL, 32,
                   PropModeReplace, (unsigned char *)&n, 1);
 }
 
-static void
-updatedesktopnames(void) {
+static void updatedesktopnames(void) {
   Atom utf8 = XInternAtom(dpy, "UTF8_STRING", False);
   /* icon+name per tag, NUL-separated per EWMH */
   char buf[LENGTH(tags) * 64];
@@ -6184,8 +6185,7 @@ updatedesktopnames(void) {
                   PropModeReplace, (unsigned char *)buf, off);
 }
 
-static void
-updatecurrentdesktop(void) {
+static void updatecurrentdesktop(void) {
   unsigned long d = 0;
   unsigned int i;
 
@@ -6199,8 +6199,7 @@ updatecurrentdesktop(void) {
                   PropModeReplace, (unsigned char *)&d, 1);
 }
 
-static void
-updatewmdesktop(Client *c) {
+static void updatewmdesktop(Client *c) {
   unsigned long d;
 
   if (!c)
@@ -6419,8 +6418,7 @@ void systraydock(Window w) {
   if (wintosystrayicon(w))
     return;
 
-  if (!(c = (Client *)calloc(1, sizeof(Client))))
-    die("fatal: could not malloc() %u bytes\n", sizeof(Client));
+  c = ecalloc(1, sizeof(Client));
   c->win = w;
   c->mon = selmon;
 
@@ -6597,15 +6595,14 @@ void updatesystray(int flag) {
   if (flatbar) {
     /* the struct is allocated eagerly so icon tracking never sees NULL,
        even before the first adoption (barwin missing above just defers) */
-    if (!systray && !(systray = (Systray *)calloc(1, sizeof(Systray))))
-      die("fatal: could not malloc() %u bytes\n", sizeof(Systray));
+    if (!systray)
+      systray = ecalloc(1, sizeof(Systray));
     updatesystraymerged(flag);
     return;
   }
   if (!systray) {
     /* init systray */
-    if (!(systray = (Systray *)calloc(1, sizeof(Systray))))
-      die("fatal: could not malloc() %u bytes\n", sizeof(Systray));
+    systray = ecalloc(1, sizeof(Systray));
     systray->win = XCreateSimpleWindow(dpy, root, x - sp, m->by + vp,
                              w > 2 * bar_borderpx ? w - 2 * bar_borderpx : 1,
                              bh > 2 * bar_borderpx ? bh - 2 * bar_borderpx : 1,
