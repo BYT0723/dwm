@@ -266,7 +266,7 @@ static const unsigned int pill_gap    = 6;
 /* tags pill rendering mode:
  * TagPillFull:    every tag draws its own [icon name] (tag_text), widths vary with occupancy
  * TagPillCompact: one pill with the selected tag's [icon name] on the left and
- *   a fixed row of status dots on the right (hollow = empty, filled = occupied/selected) */
+ *   a fixed row of status dots on the right (tiny dot = empty, filled = occupied/selected) */
 typedef enum { TagPillFull, TagPillCompact } TagPillMode;
 static TagPillMode tag_pill_mode = TagPillCompact;
 
@@ -274,6 +274,8 @@ static TagPillMode tag_pill_mode = TagPillCompact;
 static const unsigned int tag_dot_radius = 4;
 static const unsigned int tag_sel_dot_radius = 6;  /* selected dot, centred in the same pitch cell; clamped to keep clear of neighbours */
 static const unsigned int tag_dot_gap    = 8;
+/* TagPillCompact empty dot: tiny filled dot in SchemeTagNorm fg, 0 = draw nothing (keep spacing) */
+static const unsigned int tag_empty_dot_radius = 1;
 
 /* stacked status rows: point size of the half-height rows, derived from
    fonts[] above, so family and fallback order stay identical to the bar.

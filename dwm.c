@@ -1573,10 +1573,15 @@ static void tagurgdot_paint(int fscm, int rscm, int cx, int cy, int r) {
   drw_circle_empty(drw, cx, cy, r);
 }
 
+/* empty-dot radius, 0 means draw nothing; clamped like tagdotr */
+static int tagemptydotr(void) {
+  return MAX(0, MIN((int)tag_empty_dot_radius, bh / 2 - 1));
+}
+
 /* the Compact tags pill from x on: the selected tag's [icon name] on the left
    (the cell always reserves the widest tag/combo text; the combo label when
    several tags are selected) and a fixed row of status dots on the right
-   (hollow = empty, NORM filled = occupied, SEL filled bigger = selected,
+   (tiny dot = empty, NORM filled = occupied, SEL filled bigger = selected,
    filled + ring = urgent). Dots keep fixed geometry and each one is
    clickable like a full tag; last shortens the dot zone for the right cap
    the way drawlayout() does. Returns the new x. */
@@ -1635,10 +1640,8 @@ static int drawtagscompact(Monitor *m, int x, int occ, int urg, int first, int l
       tagurgdot_paint(SchemeTagSel, SchemeTagNorm, cx, cy, r);
     else if (occ & 1 << i)
       tabseldot_paint(SchemeTagNorm, cx, cy, r);
-    else {
-      drw_setscheme(drw, scheme[SchemeTagNorm]);
-      drw_circle_empty(drw, cx, cy, r);
-    }
+    else
+      tabseldot_paint(SchemeTagNorm, cx, cy, tagemptydotr());
     addslot(m, x0, x1 - x0, ClkTagBar, (Arg){.ui = 1 << i});
   }
   /* the pill tail is the NORM dot zone, so the right cap drawbarpill appends
