@@ -252,9 +252,29 @@ static const BarItem bar_left_portrait[] = {
 
 /* tags[] only defines the number of tags (TAGMASK depends on LENGTH(tags)); its text is not rendered. */
 static const char tag_text[]   = "{icon} {name}";  /* tag text template; placeholders: {name}, {icon}, {index} */
-static const char tag_combo_text[] = "󰕘 [{count}]";  /* TagPillCompact multi-select label in the fixed left cell; placeholder: {count} */
-static const char *tags[]      = {"", "", "󰭹", "", "", "", "", "", ""};
-static const char *tag_names[] = {" dev", " web", "chat", "util", "misc", " dl ", " vid", " mus", "game"};
+static const char tag_combo_text[] = "󰕘  [{count}]";  /* TagPillCompact multi-select label in the fixed left cell; placeholder: {count} */
+static const char *tags[]      = {
+  "",
+  "",
+  "󰭹",
+  "",
+  "",
+  "",
+  "",
+  "",
+  ""
+};
+static const char *tag_names[] = {
+  " dev",
+  " web",
+  "chat",
+  "util",
+  "misc",
+  " dl ",
+  " vid",
+  " mus",
+  "game"
+};
 
 /* pill: shared geometry for every bar pill (tags, layout, status, tabs).
    pill_radius is clamped to lpad at startup (pillr); pill_gap separates
