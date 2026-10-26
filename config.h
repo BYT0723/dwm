@@ -347,7 +347,9 @@ static const unsigned int hover_pad              = 6;    /* tooltip content padd
 static const unsigned int hover_gap              = 4;    /* gap between the preview and the title */
 static const unsigned int hover_preview_borderpx = 2;    /* px highlight border around the live preview, in colors[x][2] */
 
-/* Alt+Tab overlay switcher: hold Alt, Tab cycles, release commits.
+/* Window switcher overlay: the switcher row in keys[] below drives it —
+   the row's key cycles the highlight (Shift+key steps back), the row's
+   modifiers are the hold that commits on release.
    SwitcherList: vertical icon+title list; SwitcherStrip: Windows-style
    horizontal thumbnail cards (always thumbnails, title below). */
 typedef enum { SwitcherList, SwitcherStrip } SwitcherLayout;
@@ -422,7 +424,7 @@ static Key keys[] = {
     {MODKEY|ControlMask,           XK_space,                 togglefloating, {0}, KeyPressMask},
     {MODKEY,                       XK_Return,                zoom,           {0}, KeyPressMask},
     {MODKEY,                       XK_Tab,                   view,           {0}, KeyPressMask},
-    {SUPKEY,                       XK_Tab,                   switcher,       {0}, KeyPressMask},
+    {MODKEY,                       XK_grave,                 switcher,       {0}, KeyPressMask},
     {MODKEY,                       XK_0,                     view,           {.ui = ~0}, KeyPressMask},
     {MODKEY|ShiftMask,             XK_0,                     tag,            {.ui = ~0}, KeyPressMask},
     {MODKEY|ControlMask,           XK_0,                     toggletag,      {.ui = ~0}, KeyPressMask},

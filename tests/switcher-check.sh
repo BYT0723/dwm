@@ -1,5 +1,5 @@
 #!/bin/sh
-# Static checks for the Alt+Tab overlay window switcher.
+# Static checks for the window switcher overlay (Super+grave).
 # Run: ./tests/switcher-check.sh (also runs as part of `make test`)
 set -eu
 cd "$(dirname "$0")/.."
@@ -7,11 +7,13 @@ fail=0
 err() { printf 'switcher-check: FAIL: %s\n' "$*"; fail=1; }
 info() { printf 'switcher-check: %s\n' "$*"; }
 
-# 1. Alt+Tab is bound once, press only: the modal grab loop owns the release
-if grep -qE '\{SUPKEY, *XK_Tab, *switcher, *\{0\}, *KeyPressMask\}' config.h; then
-  info "Alt+Tab bound to switcher (press only)"
+# 1. switcher is bound once, press only: the modal grab loop owns the release.
+# (Keys are intentionally NOT named here; check 9 pins the row to the knobs.)
+n="$(grep -cE '\{[^}]*switcher, *\{0\}, *KeyPressMask\}' config.h || true)"
+if [ "$n" -eq 1 ]; then
+  info "switcher bound once (press only)"
 else
-  err "config.h must bind {SUPKEY, XK_Tab, switcher, {0}, KeyPressMask}"
+  err "config.h must bind switcher exactly once with {0}, KeyPressMask (found $n)"
 fi
 
 # 2. the action carries the event mask like every other binding
@@ -22,7 +24,7 @@ else
 fi
 
 # 3. commit path must jump tags/monitors, revive hidden clients and focus
-switcherblock="$(sed -n '/Alt+Tab switcher {{{/,/Alt+Tab switcher }}}/p' dwm.c)"
+switcherblock="$(sed -n '/Window switcher {{{/,/Window switcher }}}/p' dwm.c)"
 for sym in setcurrentmon showwin focus restack managedon; do
   if printf '%s' "$switcherblock" | grep -q "$sym"; then
     info "switcher references $sym"
@@ -45,11 +47,11 @@ else
   err "config.h must keep {MODKEY, XK_Tab, view, {0}, KeyPressMask}"
 fi
 
-# 6. the new binding is documented, or check-man-keys goes red
-if grep -q 'Mod1\\-Tab' dwm.1; then
-  info "dwm.1 documents Mod1-Tab"
+# 6. the new binding is documented (Mod4-grave entry mentions grave)
+if grep -q 'grave' dwm.1; then
+  info "dwm.1 documents Mod4-grave"
 else
-  err "dwm.1 must document Mod1-Tab"
+  err "dwm.1 must document Mod4-grave"
 fi
 
 # 7. strip keeps the thumbnail aspect ratio (letterbox, never stretch)
@@ -74,6 +76,19 @@ if grep -q "switcherdrawstrip" dwm.c; then
   info "strip layout draws thumbnail cards"
 else
   err "dwm.c must implement switcherdrawstrip"
+fi
+
+# 9. single source of truth: the modal loop reads its key/mods from the
+# keys[] row, so there is nothing to drift — fail if any side knobs exist
+if grep -q '\.func == switcher' dwm.c; then
+  info "switcher looks up its keys[] row"
+else
+  err "dwm.c must derive the switcher key/mods from keys[] (no hardcoded keys)"
+fi
+if grep -q 'switcher_hold\|switcher_cycle' config.h dwm.c; then
+  err "stale hold/cycle knobs must go: keys[] is the single source of truth"
+else
+  info "no hold/cycle knobs outside keys[]"
 fi
 
 if [ "$fail" -ne 0 ]; then

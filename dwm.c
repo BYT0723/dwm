@@ -4165,11 +4165,12 @@ void peekdesktop(const Arg *arg, unsigned int event) {
   showdesktop(NULL, KeyReleaseMask);
 }
 
-/* Alt+Tab switcher {{{ */
-/* Alt+Tab overlay switcher: press grabs the keyboard and opens a centred
+/* Window switcher {{{ */
+/* Window switcher overlay: press grabs the keyboard and opens a centred
    list of every managed client (all monitors, all tags, MRU first with
-   selmon's stack leading); Tab cycles the highlight (Shift+Tab goes back),
-   releasing either Alt commits to the highlighted client, Escape cancels.
+   selmon's stack leading); grave cycles the highlight (Shift+grave goes
+   back), releasing either Super commits to the highlighted client, Escape
+   cancels.
    The list is a snapshot taken on entry, so windows opened or closed
    mid-hold never move the highlight; the commit target is re-validated. */
 #define SWITCHER_MAX 256
@@ -4436,14 +4437,28 @@ static void switchercommit(Client *c) {
   restack(selmon);
 }
 
+/* the switcher row in keys[] is the single source of truth: its key
+   cycles the highlight, its modifiers are the hold that commits. */
+static const Key *switcherkey(void) {
+  unsigned int i;
+
+  for (i = 0; i < LENGTH(keys); i++)
+    if (keys[i].func == switcher)
+      return &keys[i];
+  return NULL;
+}
+
 void switcher(const Arg *arg, unsigned int event) {
   XEvent ev;
   KeySym keysym;
-  KeyCode altl, altr;
+  const Key *row;
   int commit = 0;
 
   (void)arg;
   if (event != KeyPressMask)
+    return;
+  row = switcherkey();
+  if (!row)
     return;
   switchercollect();
   if (switchern < 2)
@@ -4453,8 +4468,6 @@ void switcher(const Arg *arg, unsigned int event) {
     return;
   switchersel = 1;
   switcherdraw();
-  altl = XKeysymToKeycode(dpy, XK_Alt_L);
-  altr = XKeysymToKeycode(dpy, XK_Alt_R);
   for (;;) {
     XMaskEvent(dpy, KeyPressMask | KeyReleaseMask | ExposureMask |
                         SubstructureRedirectMask, &ev);
@@ -4462,8 +4475,8 @@ void switcher(const Arg *arg, unsigned int event) {
       keysym = XKeycodeToKeysym(dpy, (KeyCode)ev.xkey.keycode, 0);
       if (keysym == XK_Escape) {
         break;
-      } else if (keysym == XK_Tab || keysym == XK_ISO_Left_Tab) {
-        if ((ev.xkey.state & ShiftMask) || keysym == XK_ISO_Left_Tab)
+      } else if (keysym == row->keysym) {
+        if (ev.xkey.state & ShiftMask)
           switchersel--;
         else
           switchersel++;
@@ -4471,10 +4484,18 @@ void switcher(const Arg *arg, unsigned int event) {
         switcherdraw();
       }
     } else if (ev.type == KeyRelease) {
-      /* either Alt releases the hold; Tab/Shift releases are ignored */
-      if (ev.xkey.keycode == altl || ev.xkey.keycode == altr) {
-        commit = 1;
-        break;
+      /* the hold ends once none of the row's modifiers remain held, so
+         stray releases (Shift taps while cycling) never commit early */
+      keysym = XKeycodeToKeysym(dpy, (KeyCode)ev.xkey.keycode, 0);
+      if (IsModifierKey(keysym)) {
+        Window ro, ch;
+        int rx, ry, wx, wy;
+        unsigned int mask;
+        if (XQueryPointer(dpy, root, &ro, &ch, &rx, &ry, &wx, &wy, &mask) &&
+            !(CLEANMASK(mask) & CLEANMASK(row->mod))) {
+          commit = 1;
+          break;
+        }
       }
     } else if (ev.type == ConfigureRequest || ev.type == Expose ||
                ev.type == MapRequest || ev.type == ClientMessage) {
@@ -4486,7 +4507,7 @@ void switcher(const Arg *arg, unsigned int event) {
   if (commit && switchersel < switchern)
     switchercommit(switcherlist[switchersel]);
 }
-/* Alt+Tab switcher }}} */
+/* Window switcher }}} */
 
 void incnmaster(const Arg *arg, unsigned int event) {
   selmon->nmaster = selmon->pertag->nmasters[selmon->pertag->curtag] =
