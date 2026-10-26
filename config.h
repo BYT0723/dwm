@@ -351,7 +351,7 @@ static const unsigned int hover_preview_borderpx = 2;    /* px highlight border 
    SwitcherList: vertical icon+title list; SwitcherStrip: Windows-style
    horizontal thumbnail cards (always thumbnails, title below). */
 typedef enum { SwitcherList, SwitcherStrip } SwitcherLayout;
-static SwitcherLayout switcher_layout = SwitcherList;
+static SwitcherLayout switcher_layout = SwitcherStrip;
 static const unsigned int switcher_maxrows = 10;  /* max visible OSD rows, the list scrolls past this */
 static const unsigned int switcher_cardw = 200;   /* strip card width in px (thumbnail is 16:9 inside) */
 
