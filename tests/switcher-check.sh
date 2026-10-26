@@ -64,6 +64,18 @@ else
   err "switcherdraw must call hoverpreview(switchdrw, ...) for thumbnails"
 fi
 
+# 8. both list and strip layouts exist, one config line switches
+if grep -q "switcher_layout" config.h && grep -q "SwitcherStrip" config.h; then
+  info "switcher_layout selects list vs strip"
+else
+  err "config.h must define switcher_layout with SwitcherList/SwitcherStrip"
+fi
+if grep -q "switcherdrawstrip" dwm.c; then
+  info "strip layout draws thumbnail cards"
+else
+  err "dwm.c must implement switcherdrawstrip"
+fi
+
 if [ "$fail" -ne 0 ]; then
   exit 1
 fi

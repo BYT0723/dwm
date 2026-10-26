@@ -347,10 +347,15 @@ static const unsigned int hover_pad              = 6;    /* tooltip content padd
 static const unsigned int hover_gap              = 4;    /* gap between the preview and the title */
 static const unsigned int hover_preview_borderpx = 2;    /* px highlight border around the live preview, in colors[x][2] */
 
-/* Alt+Tab overlay switcher: hold Alt, Tab cycles, release commits */
+/* Alt+Tab overlay switcher: hold Alt, Tab cycles, release commits.
+   SwitcherList: vertical icon+title list; SwitcherStrip: Windows-style
+   horizontal thumbnail cards (always thumbnails, title below). */
+typedef enum { SwitcherList, SwitcherStrip } SwitcherLayout;
+static SwitcherLayout switcher_layout = SwitcherList;
 static const unsigned int switcher_maxrows = 10;  /* max visible OSD rows, the list scrolls past this */
 static const          int switcher_thumbnails = 0;  /* 1 = live preview per row, 0 = icon list */
 static const unsigned int switcher_thumbh = 64;   /* preview box height in px when switcher_thumbnails = 1 */
+static const unsigned int switcher_cardw = 200;   /* strip card width in px (thumbnail is 16:9 inside) */
 
 /*--- keys: key/button bindings and the status click command -----------------*/
 

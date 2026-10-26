@@ -509,6 +509,7 @@ static void switcher(const Arg *arg, unsigned int event);
 static void switchercollect(void);
 static void switchercommit(Client *c);
 static void switcherdraw(void);
+static void switcherdrawstrip(void);
 static void switcherhide(void);
 static void takesnapshot(Client *c);
 static void takepreview(void);
@@ -4221,6 +4222,10 @@ static void switcherdraw(void) {
   int lh, rh, pad, isz, rows, row, i, x, y, ry, tag, thumb;
   char titlebuf[512], tagbuf[16];
 
+  if (switcher_layout == SwitcherStrip) {
+    switcherdrawstrip();
+    return;
+  }
   if (switchern <= 0)
     return;
   lh = (int)drw->fonts->h;
@@ -4306,6 +4311,97 @@ static void switcherdraw(void) {
     tagw = drw_fontset_getwidth(drw, tagbuf);
     drw_text(switchdrw, (int)w - pad - (int)tagw, ry, tagw, (unsigned int)rh,
              0, tagbuf, 0, 0);
+  }
+  /* map before copying: draws on an unmapped window are discarded on the
+     first map, so the server processes map + copy in order, no flash */
+  XMapRaised(dpy, switchwin);
+  drw_map(switchdrw, switchwin, 0, 0, w, h);
+  XFlush(dpy);
+}
+
+/* Windows-style horizontal strip: centred thumbnail cards, one row, the
+   selection stays visible by scrolling. Always thumbnails (with
+   hoverpreview's own icon/placeholder fallback); titles below the cards. */
+static void switcherdrawstrip(void) {
+  Monitor *m = selmon;
+  XSetWindowAttributes wa = {.override_redirect = True,
+                             .background_pixel = 0,
+                             .border_pixel = 0,
+                             .colormap = cmap,
+                             .event_mask = NoEventMask};
+  Client *c;
+  unsigned int w, h;
+  int lh, pad, gap, cardw, cardh, thumbh, nvis, row, idx, cx, cy, x, y;
+  int avail, ty;
+  unsigned int tw;
+  char titlebuf[512];
+
+  if (switchern <= 0)
+    return;
+  lh = (int)drw->fonts->h;
+  pad = 12;
+  gap = 10;
+  cardw = (int)switcher_cardw;
+  if (cardw < 120)
+    cardw = 120;
+  thumbh = cardw * 9 / 16;
+  if (thumbh < 48)
+    thumbh = 48;
+  cardh = thumbh + lh + 12;
+  nvis = (m->mw - 160) / (cardw + gap);
+  if (nvis < 1)
+    nvis = 1;
+  if (nvis > switchern)
+    nvis = switchern;
+  /* keep the highlight inside the visible window */
+  if (switchersel < switcheroff)
+    switcheroff = switchersel;
+  if (switchersel >= switcheroff + nvis)
+    switcheroff = switchersel - nvis + 1;
+  if (switcheroff > switchern - nvis)
+    switcheroff = switchern - nvis;
+  if (switcheroff < 0)
+    switcheroff = 0;
+  w = (unsigned int)(nvis * (cardw + gap) - gap + pad * 2);
+  h = (unsigned int)(cardh + pad * 2);
+  x = m->mx + (m->mw - (int)w) / 2;
+  y = m->my + (m->mh - (int)h) / 2;
+  if (!switchwin) {
+    switchwin = XCreateWindow(dpy, root, x, y, w, h, 0, depth, InputOutput,
+                              visual,
+                              CWOverrideRedirect | CWBackPixel |
+                                  CWBorderPixel | CWColormap | CWEventMask,
+                              &wa);
+    XStoreName(dpy, switchwin, "dwm-switcher");
+    XChangeProperty(dpy, switchwin, netatom[NetWMWindowType], XA_ATOM, 32,
+                    PropModeReplace,
+                    (unsigned char *)&netatom[NetWMWindowTypeTooltip], 1);
+    switchdrw = drw_create(dpy, screen, switchwin, w, h, visual, depth, cmap);
+    drw_setfontset(switchdrw, fonts_set);
+  }
+  drw_resize(switchdrw, w, h);
+  XMoveResizeWindow(dpy, switchwin, x, y, w, h);
+  drw_setscheme(switchdrw, scheme[SchemeTooltip]);
+  drw_rect(switchdrw, 0, 0, w, h, 1, 1); /* solid background */
+  for (row = 0; row < nvis; row++) {
+    int scm, tx;
+    idx = switcheroff + row;
+    c = switcherlist[idx];
+    cx = pad + row * (cardw + gap);
+    cy = pad;
+    scm = (idx == switchersel) ? SchemeSel : (HIDDEN(c) ? SchemeHid : SchemeNorm);
+    drw_setscheme(switchdrw, scheme[scm]);
+    drw_rect(switchdrw, (unsigned int)cx, (unsigned int)cy,
+             (unsigned int)cardw, (unsigned int)cardh, 1, 1);
+    hoverpreview(switchdrw, c, cx + 4, cy + 4, cardw - 8, thumbh);
+    avail = cardw - 8;
+    hoverellipsize(c->name, titlebuf, sizeof titlebuf, avail);
+    tw = drw_fontset_getwidth(switchdrw, titlebuf);
+    if ((int)tw > avail)
+      tw = (unsigned int)avail;
+    tx = cx + 4 + (avail - (int)tw) / 2;
+    ty = cy + 4 + thumbh + 4;
+    drw_text(switchdrw, tx, ty, tw, (unsigned int)lh, 0, titlebuf, 0, 0);
   }
   /* map before copying: draws on an unmapped window are discarded on the
      first map, so the server processes map + copy in order, no flash */
