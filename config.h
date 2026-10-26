@@ -134,11 +134,8 @@ static const Rule rules[] = {
     // other only floating
     {"float-term",          NULL,       NULL,     0,            1,            -1,          -1},
     {"Godot_Engine",        NULL,       NULL,     0,            1,            -1,          -1},
-    {"vlc",                 NULL,       NULL,     0,            1,            -1,          -1},
-    {"mpv",                 NULL,       NULL,     0,            1,            -1,          -1},
     {"feh",                 NULL,       NULL,     0,            1,            -1,          -1},
     {"viewnior",            NULL,       NULL,     0,            1,            -1,          -1},
-    {"peek",                NULL,       NULL,     0,            1,            -1,           0},
     {"flameshot",           NULL,       NULL,     0,            1,            -1,           0},
     {"scrcpy",              NULL,       NULL,     0,            1,            -1,          -1},
     {"Yad",                 NULL,       NULL,     0,            1,            -1,          -1},
