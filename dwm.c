@@ -505,6 +505,11 @@ static void hoverfire(void);
 static void hoverhide(void);
 static void hovershow(Client *c, int tx);
 static void showtagpreview(unsigned int i);
+static void switcher(const Arg *arg, unsigned int event);
+static void switchercollect(void);
+static void switchercommit(Client *c);
+static void switcherdraw(void);
+static void switcherhide(void);
 static void takesnapshot(Client *c);
 static void takepreview(void);
 static int tagtextw(unsigned int i);
@@ -645,7 +650,7 @@ static int hoveridx = -1;     /* tag index armed for preview, -1 = none */
 static uint64_t hoverstart = 0; /* monotonic ms when the timer was armed */
 static int prevpx = 0, prevpy = 0, prevw = 0, prevh = 0; /* preview area geometry */
 static uint64_t hovernow(void);
-static void hoverpreview(Client *c, int x, int y, int w, int h);
+static void hoverpreview(Drw *d, Client *c, int x, int y, int w, int h);
 static void hoverrefresh(void);
 static Monitor *mons, *selmon;
 static Window root, wmcheckwin;
@@ -3245,7 +3250,7 @@ static void hovershow(Client *c, int tx) {
   prevpy = hover_pad + lh + hover_gap;
   prevw = pw;
   prevh = ph;
-  hoverpreview(c, prevpx, prevpy, prevw, prevh);
+  hoverpreview(tooldrw, c, prevpx, prevpy, prevw, prevh);
 
   /* map before copying: draws on an unmapped window are discarded on the
      first map, which would show an empty tooltip; the server processes
@@ -3333,27 +3338,27 @@ static void takesnapshot(Client *c) {
   c->hsph = ph;
 }
 
-/* composite a live scaled snapshot of c into the preview area (x, y, w, h);
-   hidden clients show the snapshot cached at hide time, then fall back to
-   an icon or a placeholder */
-static void hoverpreview(Client *c, int x, int y, int w, int h) {
-  if (!c || !tooldrw)
+/* composite a live scaled snapshot of c into the preview area (x, y, w, h)
+   on d; hidden clients show the snapshot cached at hide time, then fall back
+   to an icon or a placeholder */
+static void hoverpreview(Drw *d, Client *c, int x, int y, int w, int h) {
+  if (!c || !d)
     return;
 
   if (HIDDEN(c)) {
     if (c->hspic && c->hspw && c->hsph && (unsigned int)w >= c->hspw &&
         (unsigned int)h >= c->hsph) {
       /* last visible frame, cached at hide time, centered */
-      drw_pic(tooldrw, x + (w - (int)c->hspw) / 2, y + (h - (int)c->hsph) / 2,
+      drw_pic(d, x + (w - (int)c->hspw) / 2, y + (h - (int)c->hsph) / 2,
               c->hspw, c->hsph, c->hspic);
       return;
     }
     if (c->icon && w >= c->icw + 8 && h >= c->ich + 8) {
-      drw_pic(tooldrw, x + (w - c->icw) / 2, y + (h - c->ich) / 2, c->icw,
+      drw_pic(d, x + (w - c->icw) / 2, y + (h - c->ich) / 2, c->icw,
               c->ich, c->icon);
       return;
     }
-    drw_text(tooldrw, x, y + (h - drw->fonts->h) / 2, w, drw->fonts->h, 0,
+    drw_text(d, x, y + (h - drw->fonts->h) / 2, w, drw->fonts->h, 0,
              "no preview", 0, 0);
     return;
   }
@@ -3371,7 +3376,7 @@ static void hoverpreview(Client *c, int x, int y, int w, int h) {
   /* an InputOnly window has no contents to sample at all */
   if (!XGetWindowAttributes(dpy, c->win, &wa) || wa.class != InputOutput ||
       !(fmt = XRenderFindVisualFormat(dpy, wa.visual))) {
-    drw_text(tooldrw, x, y + (h - drw->fonts->h) / 2, w, drw->fonts->h, 0,
+    drw_text(d, x, y + (h - drw->fonts->h) / 2, w, drw->fonts->h, 0,
              "no preview", 0, 0);
     return;
   }
@@ -3392,16 +3397,16 @@ static void hoverpreview(Client *c, int x, int y, int w, int h) {
      the client's alpha channel straight through, so a translucent client
      (e.g. a semi-transparent terminal) would punch a hole through the
      tooltip instead of showing against it */
-  XRenderComposite(dpy, PictOpOver, pic, None, tooldrw->picture, 0, 0,
+  XRenderComposite(dpy, PictOpOver, pic, None, d->picture, 0, 0,
                    wa.width, wa.height, ix, iy, iw2, ih2);
   XRenderFreePicture(dpy, pic);
   XSync(dpy, False);
   XSetErrorHandler(xerror);
   /* highlight border in colors[x][2]; drw_rect has no border channel
      (filled=0 draws with the fg color), so draw it directly */
-  XSetForeground(dpy, tooldrw->gc, scheme[SchemeSel][ColBorder].pixel);
+  XSetForeground(dpy, d->gc, scheme[SchemeSel][ColBorder].pixel);
   for (i = 0; i < (int)hover_preview_borderpx && w - i * 2 > 0 && h - i * 2 > 0; i++)
-    XDrawRectangle(dpy, tooldrw->drawable, tooldrw->gc, x + i, y + i,
+    XDrawRectangle(dpy, d->drawable, d->gc, x + i, y + i,
                    w - 1 - i * 2, h - 1 - i * 2);
 }
 
@@ -3411,7 +3416,7 @@ static void hoverrefresh(void) {
 
   if (!c || toolwin == None)
     return;
-  hoverpreview(c, prevpx, prevpy, prevw, prevh);
+  hoverpreview(tooldrw, c, prevpx, prevpy, prevw, prevh);
   drw_map(tooldrw, toolwin, 0, 0, tooldrw->w, tooldrw->h);
 }
 
@@ -4158,6 +4163,232 @@ void peekdesktop(const Arg *arg, unsigned int event) {
   XUngrabPointer(dpy, CurrentTime);
   showdesktop(NULL, KeyReleaseMask);
 }
+
+/* Alt+Tab switcher {{{ */
+/* Alt+Tab overlay switcher: press grabs the keyboard and opens a centred
+   list of every managed client (all monitors, all tags, MRU first with
+   selmon's stack leading); Tab cycles the highlight (Shift+Tab goes back),
+   releasing either Alt commits to the highlighted client, Escape cancels.
+   The list is a snapshot taken on entry, so windows opened or closed
+   mid-hold never move the highlight; the commit target is re-validated. */
+#define SWITCHER_MAX 256
+static Window switchwin = None;
+static Drw *switchdrw = NULL;
+static Client *switcherlist[SWITCHER_MAX];
+static int switchern = 0;
+static int switchersel = 0;
+static int switcheroff = 0;
+
+static void switchercollect(void) {
+  Monitor *m;
+  Client *c;
+  int i;
+
+  switchern = 0;
+  switchersel = 0;
+  switcheroff = 0;
+  /* selmon's stack leads, so the initial highlight (index 1) is the
+     most-recently-used window next to the current one */
+  for (i = 0; i < 2; i++)
+    for (m = mons; m; m = m->next) {
+      if ((i == 0) != (m == selmon))
+        continue;
+      for (c = m->stack; c && switchern < SWITCHER_MAX; c = c->snext) {
+        if (c->desktop_hidden)
+          continue;
+        updateicon(c);
+        switcherlist[switchern++] = c;
+      }
+    }
+}
+
+static void switcherhide(void) {
+  if (switchwin != None)
+    XUnmapWindow(dpy, switchwin);
+}
+
+static void switcherdraw(void) {
+  Monitor *m = selmon;
+  XSetWindowAttributes wa = {.override_redirect = True,
+                             .background_pixel = 0,
+                             .border_pixel = 0,
+                             .colormap = cmap,
+                             .event_mask = NoEventMask};
+  Client *c;
+  Picture ic = None;
+  unsigned int iw = 0, ih = 0;
+  unsigned int w, h, tw = 0, textw, tagw;
+  int lh, rh, pad, isz, rows, row, i, x, y, ry, tag, thumb;
+  char titlebuf[512], tagbuf[16];
+
+  if (switchern <= 0)
+    return;
+  lh = (int)drw->fonts->h;
+  rh = MAX(lh + 10, (int)ICONSIZE + 10);
+  pad = 8;
+  isz = (int)ICONSIZE;
+  thumb = switcher_thumbnails ? (int)switcher_thumbh : 0;
+  if (thumb > 0)
+    rh = MAX(rh, thumb + pad * 2);
+  /* the widest title sets the width */
+  for (i = 0; i < switchern; i++) {
+    w = drw_fontset_getwidth(drw, switcherlist[i]->name);
+    if (w > tw)
+      tw = w;
+  }
+  w = tw + (unsigned int)(pad * 2 + isz + ICONSPACING + 48);
+  if (w < 280)
+    w = 280;
+  if (w > (unsigned int)(m->mw - 80))
+    w = (unsigned int)MAX(m->mw - 80, 280);
+  rows = MIN(switchern, (int)switcher_maxrows);
+  if (rows < 1)
+    rows = 1;
+  h = (unsigned int)(rows * rh + pad * 2);
+  while (rows > 1 && h > (unsigned int)MAX(m->mh - 80, rh + pad * 2)) {
+    rows--;
+    h = (unsigned int)(rows * rh + pad * 2);
+  }
+  x = m->mx + (m->mw - (int)w) / 2;
+  y = m->my + (m->mh - (int)h) / 2;
+  if (!switchwin) {
+    switchwin = XCreateWindow(dpy, root, x, y, w, h, 0, depth, InputOutput,
+                              visual,
+                              CWOverrideRedirect | CWBackPixel |
+                                  CWBorderPixel | CWColormap | CWEventMask,
+                              &wa);
+    XStoreName(dpy, switchwin, "dwm-switcher");
+    XChangeProperty(dpy, switchwin, netatom[NetWMWindowType], XA_ATOM, 32,
+                    PropModeReplace,
+                    (unsigned char *)&netatom[NetWMWindowTypeTooltip], 1);
+    switchdrw = drw_create(dpy, screen, switchwin, w, h, visual, depth, cmap);
+    drw_setfontset(switchdrw, fonts_set);
+  }
+  drw_resize(switchdrw, w, h);
+  XMoveResizeWindow(dpy, switchwin, x, y, w, h);
+  /* keep the highlight inside the visible window */
+  if (switchersel < switcheroff)
+    switcheroff = switchersel;
+  if (switchersel >= switcheroff + rows)
+    switcheroff = switchersel - rows + 1;
+  drw_setscheme(switchdrw, scheme[SchemeTooltip]);
+  drw_rect(switchdrw, 0, 0, w, h, 1, 1); /* solid background */
+  for (row = 0; row < rows; row++) {
+    int scm, tx;
+    i = switcheroff + row;
+    c = switcherlist[i];
+    ry = pad + row * rh;
+    scm = (i == switchersel) ? SchemeSel : (HIDDEN(c) ? SchemeHid : SchemeNorm);
+    drw_setscheme(switchdrw, scheme[scm]);
+    drw_rect(switchdrw, 0, (unsigned int)ry, w, (unsigned int)rh, 1, 1);
+    if (tabicon_get(c, scm, &ic, &iw, &ih) && ic != None)
+      drw_pic(switchdrw, pad + (isz - (int)iw) / 2, ry + (rh - (int)ih) / 2,
+              iw, ih, ic);
+    tx = pad + isz + ICONSPACING;
+    if (thumb > 0) {
+      int pw = c->h > 0 ? (thumb * c->w + c->h / 2) / c->h : thumb;
+      int maxpw = (int)(w / 3);
+      if (pw > maxpw)
+        pw = maxpw;
+      if (pw < 1)
+        pw = 1;
+      hoverpreview(switchdrw, c, tx, ry + pad, pw, thumb);
+      tx += pw + ICONSPACING;
+    }
+    textw = w - (unsigned int)tx - 48;
+    hoverellipsize(c->name, titlebuf, sizeof titlebuf, (int)textw);
+    drw_text(switchdrw, tx, ry, textw, (unsigned int)rh, 0, titlebuf, 0, 0);
+    for (tag = 0; tag < LENGTH(tags) && !(c->tags & 1 << tag); tag++)
+      ;
+    if (tag >= LENGTH(tags))
+      tag = 0;
+    snprintf(tagbuf, sizeof tagbuf, "%d", tag + 1);
+    tagw = drw_fontset_getwidth(drw, tagbuf);
+    drw_text(switchdrw, (int)w - pad - (int)tagw, ry, tagw, (unsigned int)rh,
+             0, tagbuf, 0, 0);
+  }
+  /* map before copying: draws on an unmapped window are discarded on the
+     first map, so the server processes map + copy in order, no flash */
+  XMapRaised(dpy, switchwin);
+  drw_map(switchdrw, switchwin, 0, 0, w, h);
+  XFlush(dpy);
+}
+
+static void switchercommit(Client *c) {
+  Monitor *m;
+  unsigned int tag;
+  Arg a;
+
+  for (m = mons; m && !managedon(c, m); m = m->next)
+    ;
+  if (!m)
+    return;
+  setcurrentmon(m);
+  if (!(c->tags & selmon->tagset[selmon->seltags])) {
+    for (tag = 0; tag < LENGTH(tags) && !(c->tags & 1 << tag); tag++)
+      ;
+    if (tag < LENGTH(tags)) {
+      a.ui = 1 << tag;
+      view(&a, KeyPressMask);
+    }
+  }
+  if (HIDDEN(c))
+    showwin(c);
+  focus(c);
+  restack(selmon);
+}
+
+void switcher(const Arg *arg, unsigned int event) {
+  XEvent ev;
+  KeySym keysym;
+  KeyCode altl, altr;
+  int commit = 0;
+
+  (void)arg;
+  if (event != KeyPressMask)
+    return;
+  switchercollect();
+  if (switchern < 2)
+    return;
+  if (XGrabKeyboard(dpy, root, False, GrabModeAsync, GrabModeAsync,
+                    CurrentTime) != GrabSuccess)
+    return;
+  switchersel = 1;
+  switcherdraw();
+  altl = XKeysymToKeycode(dpy, XK_Alt_L);
+  altr = XKeysymToKeycode(dpy, XK_Alt_R);
+  for (;;) {
+    XMaskEvent(dpy, KeyPressMask | KeyReleaseMask | ExposureMask |
+                        SubstructureRedirectMask, &ev);
+    if (ev.type == KeyPress) {
+      keysym = XKeycodeToKeysym(dpy, (KeyCode)ev.xkey.keycode, 0);
+      if (keysym == XK_Escape) {
+        break;
+      } else if (keysym == XK_Tab || keysym == XK_ISO_Left_Tab) {
+        if ((ev.xkey.state & ShiftMask) || keysym == XK_ISO_Left_Tab)
+          switchersel--;
+        else
+          switchersel++;
+        switchersel = (switchersel + switchern) % switchern;
+        switcherdraw();
+      }
+    } else if (ev.type == KeyRelease) {
+      /* either Alt releases the hold; Tab/Shift releases are ignored */
+      if (ev.xkey.keycode == altl || ev.xkey.keycode == altr) {
+        commit = 1;
+        break;
+      }
+    } else if (ev.type == ConfigureRequest || ev.type == Expose ||
+               ev.type == MapRequest || ev.type == ClientMessage) {
+      handler[ev.type](&ev);
+    }
+  }
+  XUngrabKeyboard(dpy, CurrentTime);
+  switcherhide();
+  if (commit && switchersel < switchern)
+    switchercommit(switcherlist[switchersel]);
+}
+/* Alt+Tab switcher }}} */
 
 void incnmaster(const Arg *arg, unsigned int event) {
   selmon->nmaster = selmon->pertag->nmasters[selmon->pertag->curtag] =

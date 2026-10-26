@@ -347,6 +347,11 @@ static const unsigned int hover_pad              = 6;    /* tooltip content padd
 static const unsigned int hover_gap              = 4;    /* gap between the preview and the title */
 static const unsigned int hover_preview_borderpx = 2;    /* px highlight border around the live preview, in colors[x][2] */
 
+/* Alt+Tab overlay switcher: hold Alt, Tab cycles, release commits */
+static const unsigned int switcher_maxrows = 10;  /* max visible OSD rows, the list scrolls past this */
+static const          int switcher_thumbnails = 0;  /* 1 = live preview per row, 0 = icon list */
+static const unsigned int switcher_thumbh = 64;   /* preview box height in px when switcher_thumbnails = 1 */
+
 /*--- keys: key/button bindings and the status click command -----------------*/
 
 #define MODKEY Mod4Mask
@@ -414,6 +419,7 @@ static Key keys[] = {
     {MODKEY|ControlMask,           XK_space,                 togglefloating, {0}, KeyPressMask},
     {MODKEY,                       XK_Return,                zoom,           {0}, KeyPressMask},
     {MODKEY,                       XK_Tab,                   view,           {0}, KeyPressMask},
+    {SUPKEY,                       XK_Tab,                   switcher,       {0}, KeyPressMask},
     {MODKEY,                       XK_0,                     view,           {.ui = ~0}, KeyPressMask},
     {MODKEY|ShiftMask,             XK_0,                     tag,            {.ui = ~0}, KeyPressMask},
     {MODKEY|ControlMask,           XK_0,                     toggletag,      {.ui = ~0}, KeyPressMask},
