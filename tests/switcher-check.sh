@@ -52,11 +52,11 @@ else
   err "dwm.1 must document Mod1-Tab"
 fi
 
-# 7. thumbnails are opt-in and default off
-if grep -qE 'switcher_thumbnails *= *0' config.h; then
-  info "switcher_thumbnails defaults to 0"
+# 7. strip keeps the thumbnail aspect ratio (letterbox, never stretch)
+if grep -q "keep the aspect ratio" dwm.c; then
+  info "strip letterboxes thumbnails"
 else
-  err "config.h must define switcher_thumbnails defaulting to 0"
+  err "switcherdrawstrip must letterbox thumbnails to keep the aspect ratio"
 fi
 if grep -q "hoverpreview(switchdrw" dwm.c; then
   info "thumbnail rows composite into the switcher overlay"

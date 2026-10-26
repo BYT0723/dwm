@@ -4219,7 +4219,7 @@ static void switcherdraw(void) {
   Picture ic = None;
   unsigned int iw = 0, ih = 0;
   unsigned int w, h, tw = 0, textw, tagw;
-  int lh, rh, pad, isz, rows, row, i, x, y, ry, tag, thumb;
+  int lh, rh, pad, isz, rows, row, i, x, y, ry, tag;
   char titlebuf[512], tagbuf[16];
 
   if (switcher_layout == SwitcherStrip) {
@@ -4232,9 +4232,6 @@ static void switcherdraw(void) {
   rh = MAX(lh + 10, (int)ICONSIZE + 10);
   pad = 8;
   isz = (int)ICONSIZE;
-  thumb = switcher_thumbnails ? (int)switcher_thumbh : 0;
-  if (thumb > 0)
-    rh = MAX(rh, thumb + pad * 2);
   /* the widest title sets the width */
   for (i = 0; i < switchern; i++) {
     w = drw_fontset_getwidth(drw, switcherlist[i]->name);
@@ -4290,16 +4287,6 @@ static void switcherdraw(void) {
       drw_pic(switchdrw, pad + (isz - (int)iw) / 2, ry + (rh - (int)ih) / 2,
               iw, ih, ic);
     tx = pad + isz + ICONSPACING;
-    if (thumb > 0) {
-      int pw = c->h > 0 ? (thumb * c->w + c->h / 2) / c->h : thumb;
-      int maxpw = (int)(w / 3);
-      if (pw > maxpw)
-        pw = maxpw;
-      if (pw < 1)
-        pw = 1;
-      hoverpreview(switchdrw, c, tx, ry + pad, pw, thumb);
-      tx += pw + ICONSPACING;
-    }
     textw = w - (unsigned int)tx - 48;
     hoverellipsize(c->name, titlebuf, sizeof titlebuf, (int)textw);
     drw_text(switchdrw, tx, ry, textw, (unsigned int)rh, 0, titlebuf, 0, 0);
@@ -4332,7 +4319,7 @@ static void switcherdrawstrip(void) {
   Client *c;
   unsigned int w, h;
   int lh, pad, gap, cardw, cardh, thumbh, nvis, row, idx, cx, cy, x, y;
-  int avail, ty;
+  int avail, ty, tw2, th2;
   unsigned int tw;
   char titlebuf[512];
 
@@ -4393,7 +4380,22 @@ static void switcherdrawstrip(void) {
     drw_setscheme(switchdrw, scheme[scm]);
     drw_rect(switchdrw, (unsigned int)cx, (unsigned int)cy,
              (unsigned int)cardw, (unsigned int)cardh, 1, 1);
-    hoverpreview(switchdrw, c, cx + 4, cy + 4, cardw - 8, thumbh);
+    /* keep the aspect ratio: fit the window into the thumb box and centre
+       the result (letterbox), never stretch */
+    tw2 = cardw - 8;
+    th2 = thumbh;
+    if (c->w > 0 && c->h > 0) {
+      if ((long)c->w * th2 > (long)c->h * tw2)
+        th2 = (c->h * tw2 + c->w / 2) / c->w;
+      else
+        tw2 = (c->w * th2 + c->h / 2) / c->h;
+    }
+    if (tw2 < 1)
+      tw2 = 1;
+    if (th2 < 1)
+      th2 = 1;
+    hoverpreview(switchdrw, c, cx + 4 + (cardw - 8 - tw2) / 2,
+                 cy + 4 + (thumbh - th2) / 2, tw2, th2);
     avail = cardw - 8;
     hoverellipsize(c->name, titlebuf, sizeof titlebuf, avail);
     tw = drw_fontset_getwidth(switchdrw, titlebuf);

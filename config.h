@@ -353,8 +353,6 @@ static const unsigned int hover_preview_borderpx = 2;    /* px highlight border 
 typedef enum { SwitcherList, SwitcherStrip } SwitcherLayout;
 static SwitcherLayout switcher_layout = SwitcherList;
 static const unsigned int switcher_maxrows = 10;  /* max visible OSD rows, the list scrolls past this */
-static const          int switcher_thumbnails = 0;  /* 1 = live preview per row, 0 = icon list */
-static const unsigned int switcher_thumbh = 64;   /* preview box height in px when switcher_thumbnails = 1 */
 static const unsigned int switcher_cardw = 200;   /* strip card width in px (thumbnail is 16:9 inside) */
 
 /*--- keys: key/button bindings and the status click command -----------------*/
