@@ -18,9 +18,10 @@ hover 标题栏 tab 时，已隐藏（`c->hidden == 1`）的窗口 tooltip 当�
 3. 隐藏时 frame 实际不可见（理论上不应发生）则跳过本次抓取，保留旧快照。
 4. Xvfb 隔离测试是唯一的验证手段（仓库无单元测试框架）。
 5. **隐藏预览与可见预览同尺寸**：共用 `previewscale` 算法，tooltip 与可见时等大
-  （2026-09-16 用户确认，不再使用 160x100 固定框）。尺寸输入取 frame 几何
-  （`c->w/c->h`，与 `hovershow` 同源）以保证快照与预览框精确贴合；源仍是客户端
-  窗口本身（与实时路径一致，略有标题栏高度的拉伸）。
+   （2026-09-16 用户确认，不再使用 160x100 固定框）。尺寸输入取客户端窗口自身的
+   几何（`wa.width/height`，即采样源），保证快照与预览框精确贴合。
+6. **缩放预览必须先落 1:1 pixmap**：带 transform 直接采样窗口 picture 时，服务端会
+   从 `(窗口在 frame 内的偏移) × 缩放比` 处起采，把窗口顶部裁掉（见 Deviations 3）。
 
 ## Tech Stack
 
@@ -94,3 +95,16 @@ Xvfb 行为测试，无单元框架：
    `tooldrw` 与 `drw` 共享 `fonts_set`，退出时 double-free（`drw_fontset_free`
    递归中 SIGSEGV；凡是展示过一次 tooltip 后退出必现）。修法：释放 `tooldrw`
    前先将其 `fonts` 置 NULL。建议单独成 commit。
+
+3. **缩放预览裁掉窗口顶部（2026-10-27 定位并修复）**：带 XRender transform 直接采样
+   窗口 picture 时，服务端（真实 X server / glamor）会从
+   `(窗口在父 frame 内的偏移) × 缩放比` 处开始采样，而不是 (0,0)；Xvfb 的 pixman
+   路径不复现，因此 Xvfb 测试无法守护此问题。dwm 把 client 放在 frame 内
+   `y = titleh(c)`，于是缩略图被裁掉 `titleh × 缩放比` 行的顶部内容，剩余部分拉伸
+   填满，观感即"缺失上方 1/3、比例大于 16:9"。实测 Firefox 2540x1360、卡片
+   192x103 时偏移约 344 行（25 × 13.74），正好是四分之一窗口。
+   未启用标题栏的 client（GTK CSD，`y = 0`）不受影响，这解释了"用系统 titlebar
+   有问题、用 Firefox 自带 titlebar 正常"。修法：`stageclient()` 先把窗口 1:1
+   复制进缓存 pixmap（无 transform，采样正确），再对 pixmap 做缩放；
+   `hoverpreview()` 与 `takesnapshot()` 都走这条路径，`switcherhide()`/`unmanage()`
+   负责释放缓存。

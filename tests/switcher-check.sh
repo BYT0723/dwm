@@ -91,6 +91,33 @@ else
   info "no hold/cycle knobs outside keys[]"
 fi
 
+# 10. scaled previews must sample a staged 1:1 pixmap, never the window
+# picture: with an XRender transform set, the server reads a window picture
+# from an offset region and cuts the window's top off, which showed up as
+# cropped, stretched thumbnails (Firefox with the system titlebar)
+if grep -q 'static Picture stageclient(Client \*c, int \*sw, int \*sh)' dwm.c; then
+  info "previews stage the client into a 1:1 pixmap"
+else
+  err "dwm.c must implement stageclient() for scaled previews"
+fi
+n="$(grep -c 'XRenderCreatePicture(dpy, c->win' dwm.c || true)"
+if [ "$n" -eq 1 ]; then
+  info "window picture is created only in stageclient"
+else
+  err "window picture must only be created in stageclient (found $n sites)"
+fi
+for sym in hoverpreview takesnapshot; do
+  block="$(sed -n "/^static void $sym(/,/^}/p" dwm.c)"
+  if printf '%s' "$block" | grep -q 'stageclient(c,'; then
+    info "$sym scales the staged pixmap"
+  else
+    err "$sym must call stageclient(c, ...) before scaling"
+  fi
+  if printf '%s' "$block" | grep -q 'XRenderCreatePicture(dpy, c->win'; then
+    err "$sym must not sample the window picture directly"
+  fi
+done
+
 if [ "$fail" -ne 0 ]; then
   exit 1
 fi

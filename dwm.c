@@ -219,6 +219,12 @@ struct Client {
   Pixmap hspm;   /* hidden snapshot pixmap, None when absent */
   Picture hspic; /* hidden snapshot picture, None when absent */
   unsigned int hspw, hsph; /* hidden snapshot size, fits the hidden box */
+  /* 1:1 staging copy of the client contents, which scaled previews sample
+     instead of the window picture (see stageclient) */
+  Pixmap stagepm;
+  Picture stagepic;
+  unsigned int stagew, stageh;
+  int stagedepth;
   Client *next;
   Client *snext;
   Monitor *mon;
@@ -401,6 +407,7 @@ static void focusstack(int inc, int vis);
 static void focusstackhid(const Arg *arg, unsigned int event);
 static void focusstackvis(const Arg *arg, unsigned int event);
 static void freehspic(Client *c);
+static void freestage(Client *c);
 static void freeicon(Client *c);
 static void fullscreen(const Arg *arg, unsigned int event);
 static Atom getatomprop(Client *c, Atom prop);
@@ -3108,6 +3115,8 @@ static void hoverfire(void) {
 }
 
 static void hoverhide(void) {
+  if (hoverc)
+    freestage(hoverc); /* drop the 1:1 staging copy this tooltip needed */
   hoverarm = 0;
   hoverc = NULL;
   hoveridx = -1;
@@ -3187,6 +3196,13 @@ static void previewsize(Monitor *m, int sw, int sh, int *pw, int *ph) {
   *ph = MAX(1, (int)(sh * scale));
 }
 
+/* content size actually sampled by hoverpreview/takesnapshot: c->w/h describe
+   the frame, the client window lives below the titlebar at c->w x c->h-th */
+static void clientcontentsize(Client *c, int *cw, int *ch) {
+  *cw = MAX(1, c->w);
+  *ch = MAX(1, c->h - titleh(c));
+}
+
 /* show the hover tooltip for client c, centered above/below the tab at tx */
 static void hovershow(Client *c, int tx) {
   int iw, lh, y, gx, gy, pw, ph;
@@ -3208,8 +3224,17 @@ static void hovershow(Client *c, int tx) {
   /* preview area: the same scale for visible and hidden clients, so the
      tooltip is the same size either way; a hidden client shows the snapshot
      cached at hide time. Scale by height, then by width so the preview never
-     exceeds the monitor; wide-but-short windows would otherwise overflow */
-  previewsize(m, c->w, c->h, &pw, &ph);
+     exceeds the monitor; wide-but-short windows would otherwise overflow.
+     Size from the sampled client contents, not the frame: hoverpreview
+     samples c->win (below the titlebar), so sizing from c->w/h would
+     stretch the image whenever a titlebar is shown (e.g. Firefox with
+     the system titlebar) */
+  {
+    int cw, ch;
+
+    clientcontentsize(c, &cw, &ch);
+    previewsize(m, cw, ch, &pw, &ph);
+  }
 
   /* width follows the preview; a long title is ellipsized to fit */
   tw = pw + hover_pad * 2;
@@ -3286,6 +3311,69 @@ static int snaperror(Display *d, XErrorEvent *e) {
   return 0;
 }
 
+/* free the 1:1 staging copy stageclient keeps for c */
+static void freestage(Client *c) {
+  if (c->stagepic) {
+    XRenderFreePicture(dpy, c->stagepic);
+    c->stagepic = None;
+  }
+  if (c->stagepm) {
+    XFreePixmap(dpy, c->stagepm);
+    c->stagepm = None;
+  }
+  c->stagew = c->stageh = 0;
+  c->stagedepth = 0;
+}
+
+/* Copy c's window contents into a cached 1:1 pixmap and return a picture of
+   that copy, ready to be scaled. A scaled preview must not sample the window
+   picture directly: with a transform set, the server starts sampling at
+   (window offset inside its frame) x scale instead of (0,0), so a titled
+   client loses its top - dwm keeps c->win at y = titleh(c), which cut
+   titleh x scale rows off the thumbnail (a 2540x1360 Firefox in a 192x103
+   card lost ~345 rows, a quarter of the window, and the rest was stretched
+   to fill). A client without a titlebar (GTK CSD, y = 0) was unaffected,
+   which is why the same window looked right in CSD mode. A pixmap scales
+   from (0,0) correctly on every server. The pixmap is rebuilt only when the
+   window size or depth changes; its contents are refreshed on every call.
+   Returns None when c holds nothing to sample. Callers own the error
+   handling. */
+static Picture stageclient(Client *c, int *sw, int *sh) {
+  XWindowAttributes wa;
+  XRenderPictFormat *fmt;
+  Picture winsrc;
+
+  if (!c || !XGetWindowAttributes(dpy, c->win, &wa) || wa.class != InputOutput ||
+      !(fmt = XRenderFindVisualFormat(dpy, wa.visual)))
+    return None;
+  if (!c->stagepic || c->stagew != (unsigned int)wa.width ||
+      c->stageh != (unsigned int)wa.height || c->stagedepth != wa.depth) {
+    freestage(c);
+    c->stagepm = XCreatePixmap(dpy, root, wa.width, wa.height, wa.depth);
+    if (!c->stagepm)
+      return None;
+    c->stagepic = XRenderCreatePicture(dpy, c->stagepm, fmt, 0, NULL);
+    if (!c->stagepic) {
+      XFreePixmap(dpy, c->stagepm);
+      c->stagepm = None;
+      return None;
+    }
+    c->stagew = wa.width;
+    c->stageh = wa.height;
+    c->stagedepth = wa.depth;
+  }
+  winsrc = XRenderCreatePicture(dpy, c->win, fmt, 0, NULL);
+  if (!winsrc)
+    return None;
+  /* a plain 1:1 copy: no transform here, so nothing is cropped */
+  XRenderComposite(dpy, PictOpSrc, winsrc, None, c->stagepic, 0, 0, 0, 0, 0, 0,
+                   wa.width, wa.height);
+  XRenderFreePicture(dpy, winsrc);
+  *sw = wa.width;
+  *sh = wa.height;
+  return c->stagepic;
+}
+
 /* capture c's visible contents into the hidden-snapshot cache, scaled to
    the live-tooltip size so it exactly fills its box; the frame is still
    mapped at this point (hidewin calls this before unmapping). A failed
@@ -3293,7 +3381,7 @@ static int snaperror(Display *d, XErrorEvent *e) {
 static void takesnapshot(Client *c) {
   XWindowAttributes wa, fwa;
   XRenderPictFormat *fmt;
-  int pw, ph;
+  int pw, ph, sw, sh;
   Pixmap pm;
   Picture src, dst;
   XTransform tr;
@@ -3308,26 +3396,32 @@ static void takesnapshot(Client *c) {
       !(fmt = XRenderFindVisualFormat(dpy, wa.visual)))
     return;
 
-  /* same size as the live tooltip (which is sized from the frame), so the
-     snapshot exactly fills its box; the client itself is the source, scaled
-     to fit, just like the live path */
-  previewsize(c->mon, c->w, c->h, &pw, &ph);
+  /* same size as the live tooltip, so the snapshot exactly fills its box;
+     size from the sampled client window itself (wa), not the frame, or the
+     image stretches whenever a titlebar is shown. The client itself is the
+     source, scaled to fit, just like the live path */
+  previewsize(c->mon, wa.width, wa.height, &pw, &ph);
 
   snapfail = 0;
   XSetErrorHandler(snaperror);
+  /* sample the staged 1:1 copy, not the window picture: a transformed
+     window sample cuts the top off */
+  src = stageclient(c, &sw, &sh);
+  if (!src) {
+    XSetErrorHandler(xerror);
+    return;
+  }
   pm = XCreatePixmap(dpy, root, pw, ph, wa.depth);
   dst = XRenderCreatePicture(dpy, pm, fmt, 0, NULL);
-  src = XRenderCreatePicture(dpy, c->win, fmt, 0, NULL);
   XRenderSetPictureFilter(dpy, src, FilterGood, NULL, 0);
-  scaletransform(&tr, wa.width, pw, wa.height, ph);
+  scaletransform(&tr, sw, pw, sh, ph);
   XRenderSetPictureTransform(dpy, src, &tr);
-  XRenderComposite(dpy, PictOpSrc, src, None, dst, 0, 0, wa.width, wa.height,
-                   0, 0, pw, ph);
-  XRenderFreePicture(dpy, src);
+  XRenderComposite(dpy, PictOpSrc, src, None, dst, 0, 0, sw, sh, 0, 0, pw, ph);
   XSync(dpy, False);
   if (snapfail) { /* keep the old snapshot; drop the broken attempt */
     XRenderFreePicture(dpy, dst);
     XFreePixmap(dpy, pm);
+    freestage(c);
   }
   XSetErrorHandler(xerror);
   if (snapfail)
@@ -3337,6 +3431,10 @@ static void takesnapshot(Client *c) {
   c->hspic = dst;
   c->hspw = pw;
   c->hsph = ph;
+  /* the staged copy only served this capture: a hidden client shows the
+     scaled snapshot, never a live preview, so do not keep a full-size
+     pixmap per hidden window around */
+  freestage(c);
 }
 
 /* composite a live scaled snapshot of c into the preview area (x, y, w, h)
@@ -3368,39 +3466,36 @@ static void hoverpreview(Drw *d, Client *c, int x, int y, int w, int h) {
      around the preview area sits on the background, not over the image */
   int ix = x + (int)hover_preview_borderpx, iy = y + (int)hover_preview_borderpx,
       iw2 = MAX(1, w - (int)hover_preview_borderpx * 2),
-      ih2 = MAX(1, h - (int)hover_preview_borderpx * 2), i;
-  XWindowAttributes wa;
-  XRenderPictFormat *fmt;
+      ih2 = MAX(1, h - (int)hover_preview_borderpx * 2), i, sw, sh;
   Picture pic;
   XTransform tr;
 
-  /* an InputOnly window has no contents to sample at all */
-  if (!XGetWindowAttributes(dpy, c->win, &wa) || wa.class != InputOutput ||
-      !(fmt = XRenderFindVisualFormat(dpy, wa.visual))) {
+  /* Sample the staged 1:1 copy of the client window: sampling the window
+     picture through a scale transform makes the server read from an offset
+     region and cut the window's top off. The window picture covers the whole
+     tree (XCompositeNameWindowPixmap needs the compositor to have redirected
+     that exact window, which picom may skip, and misses GTK child contents).
+     A preview is cosmetic, so swallow any error instead of letting it take
+     down the WM. */
+  XSetErrorHandler(xerrordummy);
+  pic = stageclient(c, &sw, &sh);
+  if (!pic) {
+    XSetErrorHandler(xerror);
     drw_text(d, x, y + (h - drw->fonts->h) / 2, w, drw->fonts->h, 0,
              "no preview", 0, 0);
     return;
   }
-
-  /* Sample the client window directly: XCompositeNameWindowPixmap needs the
-     compositor to have redirected that exact window (picom may skip one,
-     e.g. Firefox) and misses GTK child-window contents, while a window
-     picture covers the whole tree. A preview is cosmetic, so swallow any
-     error here instead of letting it take down the WM. */
-  XSetErrorHandler(xerrordummy);
-  pic = XRenderCreatePicture(dpy, c->win, fmt, 0, NULL);
   XRenderSetPictureFilter(dpy, pic, FilterGood, NULL, 0);
-  scaletransform(&tr, wa.width, iw2, wa.height, ih2);
+  scaletransform(&tr, sw, iw2, sh, ih2);
   XRenderSetPictureTransform(dpy, pic, &tr);
-  /* the source rect must be the full source image (wa.width x wa.height);
-     the transform maps it onto the destination rect (iw2 x ih2).
+  /* the source rect must be the full source image (sw x sh); the transform
+     maps it onto the destination rect (iw2 x ih2).
      PictOpOver blends over the black background: PictOpSrc would copy
      the client's alpha channel straight through, so a translucent client
      (e.g. a semi-transparent terminal) would punch a hole through the
      tooltip instead of showing against it */
   XRenderComposite(dpy, PictOpOver, pic, None, d->picture, 0, 0,
-                   wa.width, wa.height, ix, iy, iw2, ih2);
-  XRenderFreePicture(dpy, pic);
+                   sw, sh, ix, iy, iw2, ih2);
   XSync(dpy, False);
   XSetErrorHandler(xerror);
   /* highlight border in colors[x][2]; drw_rect has no border channel
@@ -4205,8 +4300,15 @@ static void switchercollect(void) {
 }
 
 static void switcherhide(void) {
+  int i;
+
   if (switchwin != None)
     XUnmapWindow(dpy, switchwin);
+  /* the switcher is the only place that previews a whole batch of windows at
+     once, so drop the staging copies as soon as the overlay closes instead of
+     keeping one full-size pixmap per window alive */
+  for (i = 0; i < switchern; i++)
+    freestage(switcherlist[i]);
 }
 
 static void switcherdraw(void) {
@@ -4381,15 +4483,20 @@ static void switcherdrawstrip(void) {
     drw_setscheme(switchdrw, scheme[scm]);
     drw_rect(switchdrw, (unsigned int)cx, (unsigned int)cy,
              (unsigned int)cardw, (unsigned int)cardh, 1, 1);
-    /* keep the aspect ratio: fit the window into the thumb box and centre
-       the result (letterbox), never stretch */
+    /* keep the aspect ratio: fit the sampled client contents into the thumb
+       box and centre the result (letterbox), never stretch. c->w/h describe
+       the frame; hoverpreview samples c->win below the titlebar, so use the
+       contents here or the image stretches when a titlebar is shown */
     tw2 = cardw - 8;
     th2 = thumbh;
-    if (c->w > 0 && c->h > 0) {
-      if ((long)c->w * th2 > (long)c->h * tw2)
-        th2 = (c->h * tw2 + c->w / 2) / c->w;
+    {
+      int cw, ch;
+
+      clientcontentsize(c, &cw, &ch);
+      if ((long)cw * th2 > (long)ch * tw2)
+        th2 = (ch * tw2 + cw / 2) / cw;
       else
-        tw2 = (c->w * th2 + c->h / 2) / c->h;
+        tw2 = (cw * th2 + ch / 2) / ch;
     }
     if (tw2 < 1)
       tw2 = 1;
@@ -6391,6 +6498,7 @@ void unmanage(Client *c, int destroyed) {
   detachstack(c);
   freeicon(c);
   freehspic(c);
+  freestage(c);
   if (!destroyed) {
     wc.border_width = c->oldbw;
     XGrabServer(dpy); /* avoid race conditions */
