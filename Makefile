@@ -31,6 +31,7 @@ test: tests/barparse_test
 	./tests/check-status-ids.sh
 	./tests/check-pill-radius.sh
 	./tests/show-desktop-check.sh
+	./tests/switcher-check.sh
 	./tests/check-tags-pill-peek.sh
 	./tests/check-man-keys.sh
 
