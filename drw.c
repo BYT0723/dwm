@@ -1,5 +1,6 @@
 /* See LICENSE file for copyright and license details. */
 #include <Imlib2.h>
+#include <X11/Xcursor/Xcursor.h>
 #include <X11/Xft/Xft.h>
 #include <X11/Xlib.h>
 #include <stdio.h>
@@ -854,13 +855,24 @@ void drw_font_getexts(Fnt *font, const char *text, unsigned int len,
     *h = font->h;
 }
 
-Cur *drw_cur_create(Drw *drw, int shape) {
+/* Themed cursor with core fallback: try each Xcursor name in order so the
+   grab cursors follow Xcursor.theme (e.g. Bibata); a missing theme or name
+   falls back to the legacy core shape, i.e. today's behavior. */
+Cur *drw_cur_create_named(Drw *drw, const char *names[], int shape) {
   Cur *cur;
+  int i;
 
   if (!drw || !(cur = ecalloc(1, sizeof(Cur))))
     return NULL;
 
-  cur->cursor = XCreateFontCursor(drw->dpy, shape);
+  cur->cursor = None;
+  for (i = 0; names[i]; i++) {
+    cur->cursor = XcursorLibraryLoadCursor(drw->dpy, names[i]);
+    if (cur->cursor)
+      break;
+  }
+  if (!cur->cursor)
+    cur->cursor = XCreateFontCursor(drw->dpy, shape);
 
   return cur;
 }

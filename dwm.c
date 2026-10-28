@@ -95,7 +95,7 @@
 #define XEMBED_EMBEDDED_VERSION (VERSION_MAJOR << 16) | VERSION_MINOR
 
 /* enums */
-enum { CurNormal, CurResize, CurMove, CurLast }; /* cursor */
+enum { CurNormal, CurMove, CurLast }; /* cursor */
 enum {
   SchemeNorm,
   SchemeSel,
@@ -643,6 +643,22 @@ static Atom gtkframeextents = None; /* _GTK_FRAME_EXTENTS present → GTK CSD wi
 static int restart = 0;
 static int running = 1;
 static Cur *cursor[CurLast];
+/* one themed resize cursor per EWMH direction (0=TL .. 7=L) */
+static Cur *sizecursor[8];
+static const char *sizenames[8][3] = {
+  { "nw-resize", "top_left_corner", NULL },
+  { "n-resize", "top_side", NULL },
+  { "ne-resize", "top_right_corner", NULL },
+  { "e-resize", "right_side", NULL },
+  { "se-resize", "bottom_right_corner", NULL },
+  { "s-resize", "bottom_side", NULL },
+  { "sw-resize", "bottom_left_corner", NULL },
+  { "w-resize", "left_side", NULL },
+};
+static const int sizeshapes[8] = {
+  XC_top_left_corner, XC_top_side, XC_top_right_corner, XC_right_side,
+  XC_bottom_right_corner, XC_bottom_side, XC_bottom_left_corner, XC_left_side
+};
 static Clr **scheme;
 static Display *dpy;
 static Drw *drw;
@@ -992,6 +1008,8 @@ void cleanup(void) {
 
   for (i = 0; i < CurLast; i++)
     drw_cur_free(drw, cursor[i]);
+  for (i = 0; i < 8; i++)
+    drw_cur_free(drw, sizecursor[i]);
   for (i = 0; i < LENGTH(colors) + 1; i++) {
     XftColorFree(dpy, visual, cmap, &scheme[i][ColFg]);
     XftColorFree(dpy, visual, cmap, &scheme[i][ColBg]);
@@ -1137,8 +1155,10 @@ void clientmessage(XEvent *e) {
       return;
     if (dir == 8)
       movemouse(NULL, KeyPressMask);
-    else
-      resizemouse(NULL, KeyPressMask);
+    else {
+      Arg a = {.i = (int)dir };
+      resizemouse(&a, KeyPressMask);
+    }
   } else if (cme->message_type == netatom[NetActiveWindow]) {
     if (policy_jump_on_activate) {
       if (c != selmon->sel) {
@@ -5285,7 +5305,7 @@ void resizeclient(Client *c, int x, int y, int w, int h) {
 }
 
 void resizemouse(const Arg *arg, unsigned int event) {
-  int ocx, ocy, nw, nh;
+  int ocx, ocy, ow, oh, ox, oy, dx, dy, nx, ny, nw, nh, dir, wx, wy;
   Client *c;
   Monitor *m;
   XEvent ev;
@@ -5295,13 +5315,25 @@ void resizemouse(const Arg *arg, unsigned int event) {
     return;
   if (c->isfullscreen) /* no support resizing fullscreen windows by mouse */
     return;
+  dir = arg ? arg->i : 4;
+  if (dir < 0 || dir > 7)
+    dir = 4;
   restack(selmon);
   ocx = c->x;
   ocy = c->y;
+  ow = c->w;
+  oh = c->h;
   if (XGrabPointer(dpy, root, False, MOUSEMASK, GrabModeAsync, GrabModeAsync,
-                   None, cursor[CurResize]->cursor, CurrentTime) != GrabSuccess)
+                   None, sizecursor[dir]->cursor, CurrentTime) != GrabSuccess)
     return;
-  XWarpPointer(dpy, None, c->frame, 0, 0, 0, 0, c->w + c->bw - 1, c->h + c->bw - 1);
+  /* warp to the dragged corner/edge: west = 0, east = far edge, mid = center */
+  wx = (dir == 0 || dir == 6 || dir == 7) ? 0 : (dir == 1 || dir == 5) ? ow / 2 : ow + c->bw - 1;
+  wy = (dir == 0 || dir == 1 || dir == 2) ? 0 : (dir == 7 || dir == 3) ? oh / 2 : oh + c->bw - 1;
+  XWarpPointer(dpy, None, c->frame, 0, 0, 0, 0, wx, wy);
+  if (!getrootptr(&ox, &oy)) {
+    XUngrabPointer(dpy, CurrentTime);
+    return;
+  }
   do {
     XMaskEvent(dpy, MOUSEMASK | ExposureMask | SubstructureRedirectMask, &ev);
     switch (ev.type) {
@@ -5315,8 +5347,40 @@ void resizemouse(const Arg *arg, unsigned int event) {
         continue;
       lasttime = ev.xmotion.time;
 
-      nw = MAX(ev.xmotion.x - ocx - 2 * c->bw + 1, 1);
-      nh = MAX(ev.xmotion.y - ocy - 2 * c->bw + 1, 1);
+      dx = ev.xmotion.x - ox;
+      dy = ev.xmotion.y - oy;
+      if (dir == 0 || dir == 6 || dir == 7) {
+        nw = ow - dx;
+        nx = ocx + dx;
+      } else if (dir == 2 || dir == 3 || dir == 4) {
+        nw = MAX(ow + dx, 1);
+        nx = ocx;
+      } else {
+        nw = ow;
+        nx = ocx;
+      }
+      if (dir == 0 || dir == 1 || dir == 2) {
+        nh = oh - dy;
+        ny = ocy + dy;
+      } else if (dir == 4 || dir == 5 || dir == 6) {
+        nh = MAX(oh + dy, 1);
+        ny = ocy;
+      } else {
+        nh = oh;
+        ny = ocy;
+      }
+      /* hints (min/inc/max) clamp the size inside resize(); learn the
+         applied size first and re-anchor the dragged edge so the
+         opposite edge stays fixed instead of drifting along */
+      if (dir == 0 || dir == 1 || dir == 2 || dir == 6 || dir == 7) {
+        int fx = nx, fy = ny, fw = nw, fh = nh;
+
+        applysizehints(c, &fx, &fy, &fw, &fh, 1);
+        if (dir == 0 || dir == 6 || dir == 7)
+          nx = ocx + ow - fw;
+        if (dir == 0 || dir == 1 || dir == 2)
+          ny = ocy + oh - fh;
+      }
       if (c->mon->wx + nw >= selmon->wx &&
           c->mon->wx + nw <= selmon->wx + selmon->ww &&
           c->mon->wy + nh >= selmon->wy &&
@@ -5326,11 +5390,12 @@ void resizemouse(const Arg *arg, unsigned int event) {
           togglefloatingclient(c);
       }
       if (!selmon->lt[selmon->sellt]->arrange || c->isfloating)
-        resize(c, c->x, c->y, nw, nh, 1);
+        resize(c, nx, ny, nw, nh, 1);
       break;
     }
   } while (ev.type != ButtonRelease);
-  XWarpPointer(dpy, None, c->frame, 0, 0, 0, 0, c->w + c->bw - 1, c->h + c->bw - 1);
+  /* no warp-back: the pointer stays where the user released it, so a
+     clamped edge (min/inc/max) never causes a release-time jump */
   XUngrabPointer(dpy, CurrentTime);
   while (XCheckMaskEvent(dpy, EnterWindowMask, &ev))
     ;
@@ -5842,10 +5907,16 @@ void setup(void) {
   xatom[SystrayClass] = XInternAtom(dpy, "_DWM_SYSTRAY_CLASS", False);
   motifwmhints = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
   gtkframeextents = XInternAtom(dpy, "_GTK_FRAME_EXTENTS", False);
-  /* init cursors */
-  cursor[CurNormal] = drw_cur_create(drw, XC_left_ptr);
-  cursor[CurResize] = drw_cur_create(drw, XC_sizing);
-  cursor[CurMove] = drw_cur_create(drw, XC_fleur);
+  /* init cursors (themed via libXcursor, core shape as fallback) */
+  {
+    static const char *normal[] = { "left_ptr", NULL };
+    static const char *move[] = { "move", "fleur", NULL };
+
+    cursor[CurNormal] = drw_cur_create_named(drw, normal, XC_left_ptr);
+    cursor[CurMove] = drw_cur_create_named(drw, move, XC_fleur);
+    for (i = 0; i < 8; i++)
+      sizecursor[i] = drw_cur_create_named(drw, sizenames[i], sizeshapes[i]);
+  }
   /* init appearance */
   scheme = ecalloc(LENGTH(colors) + 1, sizeof(Clr *));
   /* the extra slot is the status working scheme: status drawing mutates

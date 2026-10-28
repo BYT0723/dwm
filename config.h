@@ -502,7 +502,7 @@ static Button buttons[] = {
     // window         client
     {  ClkClientWin,  MODKEY, Button1, movemouse,      {0}},
     {  ClkClientWin,  MODKEY, Button2, togglefloating, {0}},
-    {  ClkClientWin,  MODKEY, Button3, resizemouse,    {0}},
+    {  ClkClientWin,  MODKEY, Button3, resizemouse,    {.i = 4}},
     // titlebar       (per-client titlebar, only active when title_show = 1)
     {  ClkTitleBar,   0,      Button1, movemouse,      {0}},
     {  ClkTitleBar,   0,      Button3, togglefloating, {0}},
