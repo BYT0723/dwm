@@ -265,15 +265,15 @@ static const char *tags[]      = {
   ""
 };
 static const char *tag_names[] = {
-  " dev",
-  " web",
-  "chat",
-  "util",
-  "misc",
-  " dl ",
-  " vid",
-  " mus",
-  "game"
+  " Dev",
+  " Web",
+  "Chat",
+  "Util",
+  "Misc",
+  " DL ",
+  " Vid",
+  " Mus",
+  "Game"
 };
 
 /* pill: shared geometry for every bar pill (tags, layout, status, tabs).
