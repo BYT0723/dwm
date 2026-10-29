@@ -65,6 +65,27 @@ if grep -q "hoverpreview(switchdrw" dwm.c; then
 else
   err "switcherdraw must call hoverpreview(switchdrw, ...) for thumbnails"
 fi
+stripblock="$(sed -n '/^static void switcherdrawstrip(/,/^}/p' dwm.c)"
+if printf '%s' "$stripblock" | grep -q 'tabicon_get'; then
+  info "strip title row carries the window icon"
+else
+  err "switcherdrawstrip must draw the window icon in the title row (tabicon_get)"
+fi
+if printf '%s' "$stripblock" | grep -q 'ICONSPACING'; then
+  info "strip title row spaces the icon from the title"
+else
+  err "switcherdrawstrip must space the title-row icon with ICONSPACING"
+fi
+if printf '%s' "$stripblock" | awk '/hoverellipsize\(c->name/{seen=1} /drw_pic/{if (seen) ok=1} END{exit !ok}'; then
+  info "strip icon position follows the measured title width"
+else
+  err "switcherdrawstrip must centre the icon+title group (drw_pic after measuring the title)"
+fi
+if printf '%s' "$stripblock" | grep -q -- '->class'; then
+  err "switcherdrawstrip must not show a class header (title-row icon only)"
+else
+  info "strip cards show no class header"
+fi
 
 # 8. both list and strip layouts exist, one config line switches
 if grep -q "switcher_layout" config.h && grep -q "SwitcherStrip" config.h; then

@@ -4431,7 +4431,8 @@ static void switcherdraw(void) {
 
 /* Windows-style horizontal strip: centred thumbnail cards, one row, the
    selection stays visible by scrolling. Always thumbnails (with
-   hoverpreview's own icon/placeholder fallback); titles below the cards. */
+   hoverpreview's own icon/placeholder fallback); the window icon shares
+   the title row below each card. */
 static void switcherdrawstrip(void) {
   Monitor *m = selmon;
   XSetWindowAttributes wa = {.override_redirect = True,
@@ -4440,9 +4441,10 @@ static void switcherdrawstrip(void) {
                              .colormap = cmap,
                              .event_mask = NoEventMask};
   Client *c;
-  unsigned int w, h;
+  Picture ic = None;
+  unsigned int w, h, iw = 0, ih = 0;
   int lh, pad, gap, cardw, cardh, thumbh, nvis, row, idx, cx, cy, x, y;
-  int avail, ty, tw2, th2;
+  int avail, ty, tw2, th2, isz, trow;
   unsigned int tw;
   char titlebuf[512];
 
@@ -4457,7 +4459,11 @@ static void switcherdrawstrip(void) {
   thumbh = cardw * 9 / 16;
   if (thumbh < 48)
     thumbh = 48;
-  cardh = thumbh + lh + 12;
+  /* title row: icon + title share one line; the row fits the icon box
+     so a taller icon never bleeds into the thumbnail */
+  isz = (int)ICONSIZE;
+  trow = MAX(lh, isz + 2);
+  cardh = thumbh + trow + 12;
   nvis = (m->mw - 160) / (cardw + gap);
   if (nvis < 1)
     nvis = 1;
@@ -4524,14 +4530,27 @@ static void switcherdrawstrip(void) {
       th2 = 1;
     hoverpreview(switchdrw, c, cx + 4 + (cardw - 8 - tw2) / 2,
                  cy + 4 + (thumbh - th2) / 2, tw2, th2);
-    avail = cardw - 8;
+    /* title row: the window icon left of the title, so same-titled
+       windows stay identifiable; the icon+title group is centred as
+       one block, so the gap between them stays ICONSPACING */
+    ty = cy + 4 + thumbh + 4;
+    if (tabicon_get(c, scm, &ic, &iw, &ih) && ic != None) {
+      avail = cardw - 8 - isz - ICONSPACING;
+    } else {
+      iw = 0;
+      avail = cardw - 8;
+    }
     hoverellipsize(c->name, titlebuf, sizeof titlebuf, avail);
     tw = drw_fontset_getwidth(switchdrw, titlebuf);
     if ((int)tw > avail)
       tw = (unsigned int)avail;
     tx = cx + 4 + (avail - (int)tw) / 2;
-    ty = cy + 4 + thumbh + 4;
-    drw_text(switchdrw, tx, ty, tw, (unsigned int)lh, 0, titlebuf, 0, 0);
+    if (iw) {
+      drw_pic(switchdrw, tx + (isz - (int)iw) / 2,
+              ty + (trow - (int)ih) / 2, iw, ih, ic);
+      tx += isz + ICONSPACING;
+    }
+    drw_text(switchdrw, tx, ty, tw, (unsigned int)trow, 0, titlebuf, 0, 0);
   }
   /* map before copying: draws on an unmapped window are discarded on the
      first map, so the server processes map + copy in order, no flash */
