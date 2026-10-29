@@ -1,5 +1,5 @@
 #!/bin/sh
-# Static checks for the window switcher overlay (Super+grave).
+# Static checks for the window switcher overlay (Super+Tab).
 # Run: ./tests/switcher-check.sh (also runs as part of `make test`)
 set -eu
 cd "$(dirname "$0")/.."
@@ -40,18 +40,18 @@ else
   err "dwm.c must paint on a dedicated switchwin/switchdrw, not the bar"
 fi
 
-# 5. Super+Tab keeps its old view-toggle behaviour
-if grep -qE '\{MODKEY, *XK_Tab, *view, *\{0\}, *KeyPressMask\}' config.h; then
-  info "Super+Tab still toggles to the previous tags"
+# 5. Super+grave keeps its old view-toggle behaviour
+if grep -qE '\{MODKEY, *XK_grave, *view, *\{0\}, *KeyPressMask\}' config.h; then
+  info "Super+grave still toggles to the previous tags"
 else
-  err "config.h must keep {MODKEY, XK_Tab, view, {0}, KeyPressMask}"
+  err "config.h must keep {MODKEY, XK_grave, view, {0}, KeyPressMask}"
 fi
 
-# 6. the new binding is documented (Mod4-grave entry mentions grave)
-if grep -q 'grave' dwm.1; then
-  info "dwm.1 documents Mod4-grave"
+# 6. the new binding is documented (Mod4-Tab entry mentions Tab)
+if grep -A3 'Mod4\\-Tab' dwm.1 | grep -q 'press Tab to cycle'; then
+  info "dwm.1 documents Mod4-Tab"
 else
-  err "dwm.1 must document Mod4-grave"
+  err "dwm.1 must document Mod4-Tab"
 fi
 
 # 7. strip keeps the thumbnail aspect ratio (letterbox, never stretch)
