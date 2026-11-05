@@ -2,7 +2,7 @@
 
 ## ASSUMPTIONS I'M MAKING
 1. 只做 `TagPillCompact` 左段（选中 tag `[icon name]` / 多选 `combo` 文本区），`TagPillFull` 不动（用户已确认 press/release 方案，hover 已否决）。
-2. 复用现有 `showdesktop(arg, event)` hold-peek 语义：`event == KeyPressMask` 藏，else 恢复；鼠标 press 传 `KeyPressMask`，release 传 `KeyReleaseMask`（与 `MOD+Shift+d` 同一分支，`dwm.c:4042`）。
+2. 复用 `showdesktop` 的 hold-peek 语义，但鼠标入口不再伪造按键事件：`peekdesktop` 直接调 `desktophide()` / `desktoprestore()`（与 `MOD+Shift+d` 共用同一对半程）。
 3. 左段目前无 slot（纯展示，`SPEC-tags-pill-dots.md:4`），位置空闲；圆点 `ClkTagBar + 1<<i` 语义不动。
 4. 单分支 `feat/tags-pill-showdesktop`，工作区 `~/Workspace/Worktrees/dwm-feat-showdesktop-pill`，不在 `master` 上开发。
 → 有误现在纠正，否则按此推进。
@@ -24,13 +24,13 @@
 - 目检（可选）: `./tests/dwm-smoke.sh`（需 Xvfb）
 
 ## Project Structure
-- `dwm.c` → `Clk` 枚举新增 `ClkTagLeft`；`drawtagscompact` 单选/多选两分支各注册左段 slot（`addslot(m, x0, lw, ClkTagLeft, {0})`，先于圆点注册、无重叠）；新增 `peekdesktop(arg, event)` 自包含 handler（对齐 `movemouse/resizemouse` 模式：先 `XGrabPointer`，成功才调 `showdesktop press`，`XMaskEvent` 等到 `ButtonRelease` 再调 `showdesktop release`，任意位置松开都恢复）；`buttonpress` 保持只处理 `ButtonPress`，`barwin` event_mask 不动。
+- `dwm.c` → `Clk` 枚举新增 `ClkTagLeft`；`drawtagscompact` 单选/多选两分支各注册左段 slot（`addslot(m, x0, lw, ClkTagLeft, {0})`，先于圆点注册、无重叠）；新增 `peekdesktop(arg, event)` 自包含 handler（对齐 `movemouse/resizemouse` 模式：先 `XGrabPointer`，成功才 `desktophide()`，`XMaskEvent` 等到 `ButtonRelease` 再 `desktoprestore()`，任意位置松开都恢复）；`buttonpress` 保持只处理 `ButtonPress`，`barwin` event_mask 不动。
 - `config.h` → `buttons[]` 只加一行（`{ClkTagLeft, 0, Button1, peekdesktop, {0}}`）；点击注释补 `ClkTagLeft`。不给 `Button` 加 `ev` 列，不对齐 `keys[]`。
 - `docs/specs/SPEC-tags-pill-showdesktop.md` → 本文件。
 - `tasks/plan.md` + `tasks/todo.md` → 计划与任务（Phase 2/3 再建）。
 
 ## Code Style
-沿用 AGENTS.md：函数签名单行 + 左花括号同行、2 空格、无 tab、不重排无关行。绑定动作统一签名 `(const Arg *arg, unsigned int event)`，`peekdesktop` 内部显式传 `KeyPressMask` / `KeyReleaseMask` 给 `showdesktop`（与键盘同分支，`dwm.c:4042`），grab/loop 对齐 `movemouse`（`dwm.c:4569-4605`）：
+沿用 AGENTS.md：函数签名单行 + 左花括号同行、2 空格、无 tab、不重排无关行。绑定动作统一签名 `(const Arg *arg, unsigned int event)`，`peekdesktop` 直接复用 `desktophide()` / `desktoprestore()`（与键盘入口同一对半程），grab/loop 对齐 `movemouse`（`dwm.c:4569-4605`）：
 ```c
 void peekdesktop(const Arg *arg, unsigned int event) {
   XEvent ev;
@@ -38,23 +38,24 @@ void peekdesktop(const Arg *arg, unsigned int event) {
   if (XGrabPointer(dpy, root, False, BUTTONMASK, GrabModeAsync, GrabModeAsync,
                    None, cursor[CurNormal]->cursor, CurrentTime) != GrabSuccess)
     return;
-  showdesktop(NULL, KeyPressMask);
+  if (!desktophide()) {
+    XUngrabPointer(dpy, CurrentTime);
+    return;
+  }
   do {
     XMaskEvent(dpy, BUTTONMASK | ExposureMask | SubstructureRedirectMask, &ev);
-    if (ev.type == ConfigureRequest || ev.type == Expose ||
-        ev.type == MapRequest || ev.type == ClientMessage)
-      handler[ev.type](&ev);
+    desktopevent(&ev);
   } while (ev.type != ButtonRelease);
   XUngrabPointer(dpy, CurrentTime);
-  showdesktop(NULL, KeyReleaseMask);
+  desktoprestore();
 }
 ```
-注：loop 里多转一份 `ClientMessage`（`movemouse` 没有），只为 `indesktophold` 期间 `_NET_ACTIVE_WINDOW` 仍能记入 `desktop_pending`（`dwm.c:1130`），松开后按现有逻辑回放。
+注：loop 里的 `desktopevent` 转发 `ConfigureRequest/Expose/MapRequest/ClientMessage`（`movemouse` 没有），只为 `indesktophold` 期间 `_NET_ACTIVE_WINDOW` 仍能记入 `desktop_pending`（`dwm.c:1130`），松开后按现有逻辑回放。
 
 ## Testing Strategy
 - `make clean && make` 零警告；`make test` 全绿；`git diff --check` 干净；`git diff --stat` 无无关文件。
 - X 逻辑无单元测试，以构建 + 存量测试 + 代码走读验证。
-- TDD：先加 `tests/` 静态检查（左段 slot 注册、`ClkTagLeft`、`peekdesktop` 内 `XGrabPointer` + `ButtonRelease` 循环 + press/release 成对调用、`buttons[]` 只有一行新增），RED 后再 GREEN 实现。
+- TDD：先加 `tests/` 静态检查（左段 slot 注册、`ClkTagLeft`、`peekdesktop` 内 `XGrabPointer` + `ButtonRelease` 循环 + `desktophide/desktoprestore` 成对调用、`buttons[]` 只有一行新增），RED 后再 GREEN 实现。
 - Xvfb 目检矩阵：左段按住藏/松开回；按住后拖出 bar 再松开仍恢复；左段单击（快速按松）闪一下即回；圆点点击仍切 tag；多选 combo 左段同样 peek；空视图按住无崩；`TagPillFull` 下无左段 peek（或保持现状）。
 
 ## Boundaries

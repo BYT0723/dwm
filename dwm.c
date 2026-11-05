@@ -242,8 +242,6 @@ typedef struct {
   KeySym keysym;
   void (*func)(const Arg *arg, unsigned int event);
   const Arg arg;
-  /* events that fire func, e.g. KeyPressMask | KeyReleaseMask */
-  unsigned int ev;
 } Key;
 
 typedef struct {
@@ -426,9 +424,7 @@ static void hide(const Arg *arg, unsigned int event);
 static void hideclient(Client *c);
 static void hidewin(Client *c);
 static void incnmaster(const Arg *arg, unsigned int event);
-static void keypress(XEvent *e);
-static void keyrelease(XEvent *e);
-static void keyevent(XEvent *e, unsigned int event);
+static void keyevent(XEvent *e);
 static void leavenotify(XEvent *e);
 static void killclient(const Arg *arg, unsigned int event);
 static void loadxrdb(void);
@@ -628,8 +624,7 @@ static void (*handler[LASTEvent])(XEvent *) = {
     [EnterNotify] = enternotify,
     [Expose] = expose,
     [FocusIn] = focusin,
-    [KeyPress] = keypress,
-    [KeyRelease] = keyrelease,
+    [KeyPress] = keyevent,
     [LeaveNotify] = leavenotify,
     [MappingNotify] = mappingnotify,
     [MapRequest] = maprequest,
@@ -4154,7 +4149,9 @@ void hidewin(Client *c) {
 /* Show Desktop hold-peek: press hides every visible client on selmon,
    release restores them. desktop_hidden marks exactly the clients this
    feature hid, so clients the user hid by hand stay hidden. desktop_save
-   only feeds focus restore. */
+   only feeds focus restore. The press grabs the keyboard and waits for the
+   chord to come up itself (like the switcher), so keys[] stays press-only
+   and no other binding needs release plumbing. */
 static Client *desktop_save = NULL;
 
 /* 1 if c is still managed on m; the saved focus may have been closed
@@ -4169,38 +4166,63 @@ static int managedon(Client *c, Monitor *m) {
   return i != NULL;
 }
 
-void showdesktop(const Arg *arg, unsigned int event) {
+/* auto-repeat guard for the release path: while a key is held the server
+   emits a KeyRelease paired with a KeyPress, and X may deliver that release
+   before its press reaches the queue. Ask the server whether the key is
+   still down instead of guessing from the event queue; the synthetic
+   release of a held key is not a real release. */
+static int keyrepeat(XKeyEvent *kev) {
+  char keys[32];
+
+  XQueryKeymap(dpy, keys);
+  return keys[kev->keycode / 8] & (1 << (kev->keycode % 8));
+}
+
+/* the showdesktop row in keys[] is the single source of truth: its key
+   ends the hold, its modifiers are the chord that must stay held. */
+static const Key *desktopkey(void) {
+  unsigned int i;
+
+  for (i = 0; i < LENGTH(keys); i++)
+    if (keys[i].func == showdesktop)
+      return &keys[i];
+  return NULL;
+}
+
+/* press phase: hide every visible client on selmon; 0 when there was
+   nothing to hide, so the caller can skip the hold */
+static int desktophide(void) {
+  Client *c;
+  int any = 0;
+
+  for (c = selmon->clients; c; c = c->next)
+    if (ISVISIBLE(c) && !HIDDEN(c)) {
+      any = 1;
+      break;
+    }
+  if (!any)
+    return 0;
+  /* keep the first focus and any activation already deferred meanwhile */
+  if (!indesktophold)
+    desktop_pending = NULL;
+  indesktophold = 1;
+  if (!desktop_save)
+    desktop_save = selmon->sel;
+  for (c = selmon->clients; c; c = c->next)
+    if (ISVISIBLE(c) && !HIDDEN(c)) {
+      hidewin(c);
+      c->desktop_hidden = 1;
+    }
+  focus(NULL);
+  arrange(selmon);
+  return 1;
+}
+
+/* release phase: restore only the clients this feature hid */
+static void desktoprestore(void) {
   Client *c, *save, *pend;
-  int any = 0, restored = 0;
+  int restored = 0;
 
-  (void)arg;
-  if (event == KeyPressMask) {
-    /* press */
-    for (c = selmon->clients; c; c = c->next)
-      if (ISVISIBLE(c) && !HIDDEN(c)) {
-        any = 1;
-        break;
-      }
-    if (!any)
-      return;
-    /* key repeat re-fires press while held; keep the first focus
-       and any activation already deferred meanwhile */
-    if (!indesktophold)
-      desktop_pending = NULL;
-    indesktophold = 1;
-    if (!desktop_save)
-      desktop_save = selmon->sel;
-    for (c = selmon->clients; c; c = c->next)
-      if (ISVISIBLE(c) && !HIDDEN(c)) {
-        hidewin(c);
-        c->desktop_hidden = 1;
-      }
-    focus(NULL);
-    arrange(selmon);
-    return;
-  }
-
-  /* release: restore only the clients this feature hid */
   indesktophold = 0;
   pend = desktop_pending;
   desktop_pending = NULL;
@@ -4259,8 +4281,64 @@ void showdesktop(const Arg *arg, unsigned int event) {
   }
 }
 
+/* events that cannot wait for the restore: they create or expose windows,
+   and dropping them would lose a client or leave it unpainted */
+static void desktopevent(XEvent *ev) {
+  if (ev->type == ConfigureRequest || ev->type == Expose ||
+      ev->type == MapRequest || ev->type == ClientMessage)
+    handler[ev->type](ev);
+}
+
+/* hide at press, restore when the chord comes up. The hold ends on the
+   bound key or once none of its modifiers remain held, so a stray
+   modifier release does not end it early. */
+void showdesktop(const Arg *arg, unsigned int event) {
+  XEvent ev;
+  KeySym keysym;
+  const Key *row;
+  KeyCode code;
+
+  (void)arg;
+  if (event != KeyPressMask)
+    return;
+  row = desktopkey();
+  if (!row)
+    return;
+  code = XKeysymToKeycode(dpy, row->keysym);
+  if (XGrabKeyboard(dpy, root, False, GrabModeAsync, GrabModeAsync,
+                    CurrentTime) != GrabSuccess)
+    return;
+  if (!desktophide()) {
+    XUngrabKeyboard(dpy, CurrentTime);
+    return;
+  }
+  for (;;) {
+    XMaskEvent(dpy, KeyPressMask | KeyReleaseMask | ExposureMask |
+                        SubstructureRedirectMask, &ev);
+    if (ev.type == KeyRelease) {
+      if (keyrepeat(&ev.xkey))
+        continue;
+      keysym = XKeycodeToKeysym(dpy, (KeyCode)ev.xkey.keycode, 0);
+      if (ev.xkey.keycode == code)
+        break;
+      if (IsModifierKey(keysym)) {
+        Window ro, ch;
+        int rx, ry, wx, wy;
+        unsigned int mask;
+        if (XQueryPointer(dpy, root, &ro, &ch, &rx, &ry, &wx, &wy, &mask) &&
+            !(CLEANMASK(mask) & CLEANMASK(row->mod)))
+          break;
+      }
+    } else {
+      desktopevent(&ev);
+    }
+  }
+  XUngrabKeyboard(dpy, CurrentTime);
+  desktoprestore();
+}
+
 /* Tags-pill left-segment peek: press-hold hides, release restores.
-   movemouse-style self-contained grab, so buttons[] needs no ev column
+   movemouse-style self-contained grab, so buttons[] needs no event column
    and the barwin mask stays ButtonPress-only. */
 void peekdesktop(const Arg *arg, unsigned int event) {
   XEvent ev;
@@ -4269,15 +4347,16 @@ void peekdesktop(const Arg *arg, unsigned int event) {
   if (XGrabPointer(dpy, root, False, BUTTONMASK, GrabModeAsync, GrabModeAsync,
                    None, cursor[CurNormal]->cursor, CurrentTime) != GrabSuccess)
     return;
-  showdesktop(NULL, KeyPressMask);
+  if (!desktophide()) {
+    XUngrabPointer(dpy, CurrentTime);
+    return;
+  }
   do {
     XMaskEvent(dpy, BUTTONMASK | ExposureMask | SubstructureRedirectMask, &ev);
-    if (ev.type == ConfigureRequest || ev.type == Expose ||
-        ev.type == MapRequest || ev.type == ClientMessage)
-      handler[ev.type](&ev);
+    desktopevent(&ev);
   } while (ev.type != ButtonRelease);
   XUngrabPointer(dpy, CurrentTime);
-  showdesktop(NULL, KeyReleaseMask);
+  desktoprestore();
 }
 
 /* Window switcher {{{ */
@@ -4672,71 +4751,21 @@ static int isuniquegeom(XineramaScreenInfo *unique, size_t n,
 }
 #endif /* XINERAMA */
 
-/* auto-repeat guard for the release path: X re-posts a KeyPress right
-   after the KeyRelease of a held key, and that pair is not a real release */
-static int keyrepeat(XKeyEvent *kev) {
-  XEvent nev;
-
-  if (!XPending(dpy))
-    return 0;
-  XPeekEvent(dpy, &nev);
-  return nev.type == KeyPress && nev.xkey.keycode == kev->keycode &&
-         (nev.xkey.time - kev->time) < 50;
-}
-
-/* A press of a binding that also listens for KeyRelease is a hold: it lasts
-   until a key of its chord comes up. Remember which row that press matched
-   and dispatch the release straight back to it, so the release path never
-   re-derives the chord from kev->state (a modifier let go first shrinks that
-   state, and re-matching then misses the row and the hold would stick). The
-   gesture ends on the bound key or on any of its modifiers, whichever the
-   user lets go of first; every hold binding gets this, no per-action hooks. */
-static int holdrow = -1;     /* keys[] row the active hold started */
-static KeyCode holdcode = 0; /* that row's bound keycode */
-
-/* one dispatch for both key events: press matches the modifier mask
-   exactly, an active hold releases by its recorded row. `event` is the
-   event mask bit that fired and is handed to the handler, so future events
-   just add another bit. */
-void keyevent(XEvent *e, unsigned int event) {
+/* press dispatch: the row matches the modifier mask exactly. Release
+   handling belongs to the actions that hold something open (showdesktop,
+   the switcher); they grab the device and wait for the release themselves,
+   so keys[] is press-only and needs no per-row event column. */
+void keyevent(XEvent *e) {
   unsigned int i;
   KeySym keysym;
   XKeyEvent *kev = &e->xkey;
 
-  if (event == KeyReleaseMask && keyrepeat(kev))
-    return;
   keysym = XKeycodeToKeysym(dpy, (KeyCode)kev->keycode, 0);
-  if (event == KeyReleaseMask && holdrow >= 0 &&
-      (kev->keycode == holdcode || IsModifierKey(keysym))) {
-    i = holdrow;
-    holdrow = -1;
-    keys[i].func(&(keys[i].arg), event);
-    return;
-  }
-  for (i = 0; i < LENGTH(keys); i++) {
-    if (keysym != keys[i].keysym || !(keys[i].ev & event))
-      continue;
-    if (event == KeyReleaseMask) {
-      /* fallback for a release with no recorded hold: match on the bound
-         mods still being held rather than on an exact mask. Holds never get
-         here — they release through holdrow above, so the order in which
-         the chord's keys come up does not matter. */
-      if ((CLEANMASK(kev->state) & CLEANMASK(keys[i].mod)) !=
-          CLEANMASK(keys[i].mod))
-        continue;
-    } else if (CLEANMASK(keys[i].mod) != CLEANMASK(kev->state))
-      continue;
-    if (event == KeyPressMask && (keys[i].ev & KeyReleaseMask)) {
-      holdrow = i;
-      holdcode = kev->keycode;
-    }
-    keys[i].func(&(keys[i].arg), event);
-  }
+  for (i = 0; i < LENGTH(keys); i++)
+    if (keysym == keys[i].keysym &&
+        CLEANMASK(keys[i].mod) == CLEANMASK(kev->state))
+      keys[i].func(&(keys[i].arg), KeyPressMask);
 }
-
-void keypress(XEvent *e) { keyevent(e, KeyPressMask); }
-
-void keyrelease(XEvent *e) { keyevent(e, KeyReleaseMask); }
 
 /* ask c to close (WM_DELETE_WINDOW), killing it as a fallback. Does not
    touch focus/selmon, so it is safe for background clients too. */
@@ -5971,7 +6000,7 @@ void setup(void) {
   wa.event_mask = SubstructureRedirectMask | SubstructureNotifyMask |
                   ButtonPressMask | PointerMotionMask | EnterWindowMask |
                   LeaveWindowMask | StructureNotifyMask | PropertyChangeMask |
-                  KeyPressMask | KeyReleaseMask;
+                  KeyPressMask;
   XChangeWindowAttributes(dpy, root, CWEventMask | CWCursor, &wa);
   XSelectInput(dpy, root, wa.event_mask);
   grabkeys();

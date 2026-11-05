@@ -40,11 +40,11 @@ if printf '%s' "$peekbody" | grep -q "ButtonRelease"; then
 else
   err "peekdesktop must loop until ButtonRelease"
 fi
-if printf '%s' "$peekbody" | grep -q "showdesktop(NULL, KeyPressMask)" &&
-   printf '%s' "$peekbody" | grep -q "showdesktop(NULL, KeyReleaseMask)"; then
-  info "peekdesktop pairs showdesktop press/release"
+if printf '%s' "$peekbody" | grep -q "desktophide()" &&
+   printf '%s' "$peekbody" | grep -q "desktoprestore()"; then
+  info "peekdesktop pairs desktophide/desktoprestore"
 else
-  err "peekdesktop must call showdesktop press then release"
+  err "peekdesktop must call desktophide then desktoprestore"
 fi
 
 # 5. exactly one new buttons[] row, left press only

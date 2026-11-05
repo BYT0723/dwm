@@ -9,11 +9,11 @@ info() { printf 'switcher-check: %s\n' "$*"; }
 
 # 1. switcher is bound once, press only: the modal grab loop owns the release.
 # (Keys are intentionally NOT named here; check 9 pins the row to the knobs.)
-n="$(grep -cE '\{[^}]*switcher, *\{0\}, *KeyPressMask\}' config.h || true)"
+n="$(grep -cE '\{[^}]*switcher, *\{0\}\}' config.h || true)"
 if [ "$n" -eq 1 ]; then
   info "switcher bound once (press only)"
 else
-  err "config.h must bind switcher exactly once with {0}, KeyPressMask (found $n)"
+  err "config.h must bind switcher exactly once with {0} (found $n)"
 fi
 
 # 2. the action carries the event mask like every other binding
@@ -41,10 +41,10 @@ else
 fi
 
 # 5. Super+Tab keeps its old view-toggle behaviour
-if grep -qE '\{MODKEY, *XK_Tab, *view, *\{0\}, *KeyPressMask\}' config.h; then
+if grep -qE '\{MODKEY, *XK_Tab, *view, *\{0\}\}' config.h; then
   info "Super+Tab still toggles to the previous tags"
 else
-  err "config.h must keep {MODKEY, XK_Tab, view, {0}, KeyPressMask}"
+  err "config.h must keep {MODKEY, XK_Tab, view, {0}}"
 fi
 
 # 6. the new binding is documented (Mod4-grave entry mentions grave)
