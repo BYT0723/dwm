@@ -391,7 +391,6 @@ static Key keys[] = {
     // rofi
     {MODKEY,                       XK_d,                     spawn,          LAUNCHCMD("apps"), KeyPressMask},
     {MODKEY|ControlMask,           XK_d,                     spawn,          LAUNCHCMD("powermenu"), KeyPressMask},
-    {MODKEY,                       XK_w,                     spawn,          LAUNCHCMD("windows"), KeyPressMask},
     {MODKEY|ShiftMask,             XK_w,                     spawn,          LAUNCHCMD("wallpaper"), KeyPressMask},
     // screenshot
     {MODKEY,                       XK_a,                     spawn,          LAUNCHCMD("screenshot", "pure"), KeyPressMask},
