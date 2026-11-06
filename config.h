@@ -149,7 +149,8 @@ static const Rule rules[] = {
     {"wps",                 NULL,       NULL,     0,            1,            -1,          -1},
     {"wpp",                 NULL,       NULL,     0,            1,            -1,          -1},
     {"et",                  NULL,       NULL,     0,            1,            -1,          -1},
-    {"wemeetapp",           NULL,       NULL,     0,            0,            -1,           0},
+    {"wemeetapp",           NULL,       NULL,     0,            1,            -1,           0},
+    {"albert",              NULL,       NULL,     0,            1,            -1,           0},
 };
 
 /*--- layout: master size, presets, gaps and the layout list -----------------*/
