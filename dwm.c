@@ -1250,11 +1250,11 @@ void configurerequest(XEvent *e) {
       m = c->mon;
       if (ev->value_mask & CWX) {
         c->oldx = c->x;
-        c->x = m->mx + ev->x;
+        c->x = ev->x;
       }
       if (ev->value_mask & CWY) {
         c->oldy = c->y;
-        c->y = m->my + ev->y - titleh(c);
+        c->y = ev->y - titleh(c);
       }
       if (ev->value_mask & CWWidth) {
         c->oldw = c->w;
@@ -5228,6 +5228,8 @@ void propertynotify(XEvent *e) {
       break;
     case XA_WM_NORMAL_HINTS:
       c->hintsvalid = 0;
+      if (c->isfloating && !c->isfullscreen && ISVISIBLE(c))
+        resize(c, c->x, c->y, c->w, c->h, 1);
       break;
     case XA_WM_HINTS:
       updatewmhints(c);
