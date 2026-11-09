@@ -132,7 +132,7 @@ util.c / util.h→ shared helpers
 config.h       → THE config: bar zones, pills, tabs, tags, rules, keys
 status-ids.def → single source of truth for status block ids (→ status-ids.h + contrib/status-ids.sh)
 contrib/       → generated status-ids.sh (shipped to ~/.dwm)
-tests/         → barparse_test.c, check-status-ids.sh, dwm-smoke.sh, gen-status-ids.sh
+tests/         → barparse_test.c, check-status-ids.sh, configure-request-check.sh, dwm-smoke.sh, gen-status-ids.sh
 docs/specs/    → feature specs (bar modules, tab modes, titlebar, presets, …)
 PERF.md        → measured bar hot-path optimizations (glyph cache, color cache, …)
 ```

@@ -1273,8 +1273,16 @@ void configurerequest(XEvent *e) {
       if ((ev->value_mask & (CWX | CWY)) &&
           !(ev->value_mask & (CWWidth | CWHeight)))
         configure(c);
-      if (ISVISIBLE(c))
-        resize(c, c->x, c->y, c->w, c->h, 0);
+      if (ISVISIBLE(c)) {
+        int nx = c->x, ny = c->y, nw = c->w, nh = c->h;
+
+        /* c->* already hold the request above, so resize() would compare the
+           request with itself, report "no change" and skip resizeclient(),
+           dropping the client's size request (e.g. scrcpy after a device
+           rotation).  Apply the hints and push the frame unconditionally. */
+        applysizehints(c, &nx, &ny, &nw, &nh, 0);
+        resizeclient(c, nx, ny, nw, nh);
+      }
     } else
       configure(c);
   } else if (!frameclient(ev->window)) {
@@ -5226,11 +5234,29 @@ void propertynotify(XEvent *e) {
           (c->isfloating = (wintoclient(trans)) != NULL))
         arrange(c->mon);
       break;
-    case XA_WM_NORMAL_HINTS:
+    case XA_WM_NORMAL_HINTS: {
+      float mina = c->mina, maxa = c->maxa;
+      int minw = c->minw, minh = c->minh, maxw = c->maxw, maxh = c->maxh;
+      int basew = c->basew, baseh = c->baseh;
+      int incw = c->incw, inch = c->inch;
+
       c->hintsvalid = 0;
-      if (c->isfloating && !c->isfullscreen && ISVISIBLE(c))
+      updatesizehints(c);
+      /* Aspect-locked clients (scrcpy by default) rewrite
+         WM_NORMAL_HINTS to the new orientation's ratio right before
+         resizing themselves.  Re-applying a swapped aspect to the old
+         geometry squeezes one dimension, so only honour other changes
+         (e.g. a raised minimum size) immediately; the client's own
+         ConfigureRequest follows for the aspect case. */
+      if (c->isfloating && !c->isfullscreen && ISVISIBLE(c) &&
+          ((c->mina == mina && c->maxa == maxa) ||
+           c->minw != minw || c->minh != minh ||
+           c->maxw != maxw || c->maxh != maxh ||
+           c->basew != basew || c->baseh != baseh ||
+           c->incw != incw || c->inch != inch))
         resize(c, c->x, c->y, c->w, c->h, 1);
       break;
+    }
     case XA_WM_HINTS:
       updatewmhints(c);
       drawbars();
