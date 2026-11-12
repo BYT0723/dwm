@@ -237,7 +237,7 @@ static const BarItem bar_right[]  = {
   ST(Net), ST(Weather), { BarPillBreak, 0 },
   ST(Docker), { BarPillBreak, 0 },
   ST(Date), { BarPillBreak, 0 },
-  ST(Screencast), ST(Singbox), ST(Mpd), ST(Battery)
+  ST(Screencast), ST(Dae), ST(Singbox), ST(Mpd), ST(Battery)
 };
 
 /* portrait monitors (wh > ww) use these zones instead; orientation is a config
