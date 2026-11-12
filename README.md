@@ -83,11 +83,11 @@ Runtime (full list + consumer script per package: `install.sh` Phases 2–7):
 | `sudo make install`                           | Install binary + man page (`PREFIX=/usr/local`, see `config.mk`)               |
 | `make install-ids [STATUS_IDS_DIR=...]`       | Ship generated `contrib/status-ids.sh` to `~/.dwm` (only when changed)         |
 | `make test`                                   | Unit tests: `barparse` geometry/parsing + status-ids drift check (no X needed) |
-| `make smoke`                                  | E2E bar test on a private Xvfb display (screenshot + click scan)               |
+| `make smoke`                                  | E2E bar test on a private Xvfb display (screenshot, click scan, pill graphics) |
 | `make clean` / `make dist` / `make uninstall` | Clean artifacts / build tarball / uninstall                                    |
 | `./install.sh [--all] [--cn] [--dry-run]`     | Full Arch environment bootstrap (see Quick Start)                              |
 
-`make smoke` additionally needs `Xvfb`, `xterm`, `xdotool`, `xwd` and
+`make smoke` additionally needs `Xvfb`, `xterm`, `xdotool`, `xsetroot`, `xwd` and
 ImageMagick (`convert`/`compare`). It starts dwm on a throwaway `HOME` and
 screenshots the bar, so run it on a machine where starting a headless X server
 is acceptable.

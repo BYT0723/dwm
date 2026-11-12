@@ -2408,6 +2408,11 @@ static int drawstatusseg(Monitor *m, int x, const BarItem *items, size_t k,
         } else if (text[i] == 'r') {
           int rx, ry, rw, rh;
 
+          /* graphics are content too: paint the pending pill body first, or
+             the close-time flush paints it over the rects and a graphics-only
+             block (the battery ^r/^f icon) loses its pixels. The flush is a
+             no-op once the pill's body is down. */
+          seg_flush_cap(&s);
           rx = atoi(text + ++i);
           while (text[i] && text[i] != ',')
             i++;

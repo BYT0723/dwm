@@ -36,9 +36,10 @@ test: tests/barparse_test
 	./tests/check-man-keys.sh
 
 # end-to-end bar test on a private Xvfb display; needs Xvfb, xterm, xdotool,
-# xwd and ImageMagick (convert/compare)
+# xsetroot, xwd and ImageMagick (convert/compare)
 smoke: dwm
 	./tests/dwm-smoke.sh
+	./tests/check-status-graphics-pill.sh
 
 clean:
 	rm -f dwm ${OBJ} status-ids.h contrib/status-ids.sh dwm-${VERSION}.tar.gz tests/barparse_test
