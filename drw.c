@@ -403,11 +403,14 @@ static void drw_rounded_makeimg(Drw *drw, Pixmap *pm, Picture *pic,
 /* One cached rounded-cap shape, keyed by cap radius r and height h, holding the
  * antialiased coverage masks and the solid-colour source pictures it needs.
  *
- * A single-entry cache is not enough here: the bar draws caps at two different
- * geometries (tab/pill caps at (tabr, bh) and the TabModeIcons selection dot at
- * (tabseldot, 2 * tabseldot)), so one entry would be evicted and rebuilt (at
- * AA_SAMPLES^2 subsamples per pixel) on every redraw. Keep a few shapes hot. */
-#define ROUNDED_SHAPES 3
+ * A small cache is not enough here: one bar redraw asks for four distinct
+ * geometries at once — the pill caps at (pillr, bh), the TabModeIcons
+ * selection dot at (tabseldot, 2 * tabseldot) and the tag dots at (r, 2 * r)
+ * for the normal and the selected/urgent radius. With fewer slots than live
+ * shapes, the round-robin replacement evicts one shape per request, so every
+ * redraw rebuilt all of them at AA_SAMPLES^2 subsamples per pixel. Size the
+ * cache past the bar's shape set so a redraw only hits. */
+#define ROUNDED_SHAPES 8
 
 typedef struct {
   Pixmap ampm[2], cpm, bmpm[2], bpm;

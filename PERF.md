@@ -1,5 +1,30 @@
 # Performance Log
 
+## drw_rounded: 形状缓存扩容，消除每帧重建 (2026-11-15)
+
+| Idea | Baseline → Result | Verdict | Why |
+|------|-------------------|---------|-----|
+| `ROUNDED_SHAPES` 3 → 8 | `drw_rounded_impl` self 0.53s/100% 采样 → 0.01s/1 sample；dwm CPU：status -61%、tags -49%、focus -44% | **kept** | 一次状态栏重绘同时需要 4 种 `(r,h)` 形状：pill 帽 `(pillr,bh)`、TabModeIcons 选中点 `(tabseldot,2*tabseldot)`、普通/选中标签点 `(r,2r)`。3 槽轮转缓存装不下 → 每次请求都驱逐一个，每帧把所有掩码重建一遍（`AA_SAMPLES²` = 64 子采样/像素） |
+
+### 方法
+本机 `perf` 被 `perf_event_paranoid=2` 挡住，改用 `-pg` + `ITIMER_PROF`(100Hz) 平采样拿 self time 和调用次数；时间测量用 `tests/perf-harness.sh`（Xvfb + 3 个 xterm，dwm 与 Xvfb 的 `/proc/<pid>/stat` ticks，10ms 粒度，3 次取中位）。探针：缓存未命中时打印 `(r,h)`。
+
+### Baseline（2026-11-15）
+- `-pg` status 1500 次：`drw_rounded_impl` self 0.53s（100% 采样，其余全部 0）；`rounded_shape_free` 6026 次（≈4 次/帧），`drw_rounded_makeimg` 15066 次；30 帧内打印到的形状只有 4 种：`(6,33) (6,12) (2,4) (1,2)`。
+- ticks（dwm/xvfb）：status 800 → 41/57；tags 200 → 21.5/53；focus 200 → 25/68；idle 8s → 0/0（无忙轮询）。
+
+### After
+- `-pg` status 1500 次：总采样 0.53s → 0.01s（唯一 1 个 sample 落在 `_init`），`drw_rounded_impl` 0 sample；缓存未命中总计 4 次（每个形状恰好 1 次）。
+- ticks：status 800 → 16/50；tags 200 → 11/51；focus 200 → 14/66。
+
+### 实现
+`drw.c`：`ROUNDED_SHAPES` 3 → 8；注释写明状态栏同时存活的 4 种几何，以及槽位不足时轮转会退化成每帧重建。
+
+### 备注
+- 单事件 dwm CPU：status 512µs → 200µs；tags 1075µs → 550µs；focus 1250µs → 700µs。
+- 剩余大头在 X 服务器：一次状态刷新要重绘整条状态栏（约 190 个请求）。再降需要按区域脏矩形重绘，1Hz 状态刷新下只值 ~0.3ms/s，**不做**。
+- `resizeclient()` 里的 `XSync` 只在几何真的变化时触发（250 次切 tag 仅 5 次），不是热点，**不动**。
+
 ## glyphcache: 逐字符宽度缓存扩展到任意 codepoint (2026-08-20)
 
 | Idea | Baseline → Result | Verdict | Why |
