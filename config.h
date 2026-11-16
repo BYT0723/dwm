@@ -233,7 +233,7 @@ static const BarItem bar_left[] = {
 };
 static const BarItem bar_center[] = { { BarTabs, 0 } };
 static const BarItem bar_right[]  = {
-  ST(Net), ST(Weather), { BarPillBreak, 0 },
+  ST(Net), ST(VPSBandwidth), ST(Weather), { BarPillBreak, 0 },
   ST(Docker), { BarPillBreak, 0 },
   ST(Date), { BarPillBreak, 0 },
   ST(Rss), ST(Mail), ST(Notify), ST(Proxy), ST(Mpd), ST(Screencast), ST(Battery)
