@@ -342,6 +342,7 @@ static void arrangemon(Monitor *m);
 static void attach(Client *c);
 static void attachbottom(Client *c);
 static void attachstack(Client *c);
+static void blockrestartsignals(int block);
 static void buttonpress(XEvent *e);
 static void checkotherwm(void);
 static void closeclient(Client *c);
@@ -965,6 +966,19 @@ void buttonpress(XEvent *e) {
       CLEANMASK(buttons[i].mask) == CLEANMASK(ev->state))
       buttons[i].func((click == ClkTagBar || click == ClkWinTitle) &&
       buttons[i].arg.i == 0 ? &arg : &buttons[i].arg, KeyPressMask);
+}
+
+/* SIGHUP/SIGTERM are installed in setup(); execvp() resets their disposition
+   to SIG_DFL. Keep them blocked across the exec and unblock only once the new
+   image has installed its handlers, so a signal delivered during startup
+   cannot take the default action and kill dwm before setup() runs. */
+void blockrestartsignals(int block) {
+  sigset_t set;
+
+  sigemptyset(&set);
+  sigaddset(&set, SIGHUP);
+  sigaddset(&set, SIGTERM);
+  sigprocmask(block ? SIG_BLOCK : SIG_UNBLOCK, &set, NULL);
 }
 
 void checkotherwm(void) {
@@ -5650,6 +5664,11 @@ void scan(void) {
   Window d1, d2, *wins = NULL;
   XWindowAttributes wa;
 
+  /* a hot restart can race the previous connection's tray-selection release;
+     retry once before adopting icons so they are not managed as clients */
+  if (tray_show && !systray)
+    updatesystray(0);
+
   if (XQueryTree(dpy, root, &d1, &d2, &wins, &num)) {
     for (i = 0; i < num; i++) {
       if (!XGetWindowAttributes(dpy, wins[i], &wa) || wa.override_redirect ||
@@ -6038,6 +6057,9 @@ void setup(void) {
   XSelectInput(dpy, root, wa.event_mask);
   grabkeys();
   focus(NULL);
+  /* all handlers are live and mons/selmon now exist: a queued restart
+     signal may run without racing half-initialised state */
+  blockrestartsignals(0);
 }
 
 void seturgent(Client *c, int urg) {
@@ -6370,7 +6392,7 @@ void togglebar(const Arg *arg, unsigned int event) {
       !selmon->showbar;
   updatebarpos(selmon);
   resizebarwin(selmon);
-  if (tray_show && !flatbar) {
+  if (tray_show && !flatbar && systray) {
     XWindowChanges wc;
     if (!selmon->showbar)
       wc.y = -bh;
@@ -6754,7 +6776,7 @@ void updatebars(void) {
                             CWColormap | CWEventMask,
                         &wa);
       XDefineCursor(dpy, m->barwin, cursor[CurNormal]->cursor);
-      if (tray_show && !flatbar && m == systraytomon(m))
+      if (tray_show && !flatbar && systray && m == systraytomon(m))
         XMapRaised(dpy, systray->win);
       XMapRaised(dpy, m->barwin);
       XSetClassHint(dpy, m->barwin, &ch);
@@ -7221,17 +7243,19 @@ void updatesystray(int flag) {
   XSetWindowAttributes wa;
   XWindowChanges wc;
   Client *i;
-  Monitor *m = systraytomon(NULL);
-  unsigned int x = m->mx + m->mw;
-  unsigned int w = 1, xpad = 0, ypad = 0;
-  xpad = sp;
-  ypad = vp;
-
+  Monitor *m;
+  unsigned int x, w = 1, xpad = 0, ypad = 0;
   int updatebar = flag&1;
   int refresh_icon = flag&2;
 
   if (!tray_show)
     return;
+  if (!(m = systraytomon(NULL)))
+    return;
+  x = m->mx + m->mw;
+  xpad = sp;
+  ypad = vp;
+
   if (flatbar) {
     /* the struct is allocated eagerly so icon tracking never sees NULL,
        even before the first adoption (barwin missing above just defers) */
@@ -7264,6 +7288,7 @@ void updatesystray(int flag) {
       XSync(dpy, False);
     } else {
       fprintf(stderr, "dwm: unable to obtain system tray.\n");
+      XDestroyWindow(dpy, systray->win);
       free(systray);
       systray = NULL;
       return;
@@ -7795,6 +7820,7 @@ void restorefocus(void) {
 }
 
 int main(int argc, char *argv[]) {
+  blockrestartsignals(1);
   if (argc == 2 && !strcmp("-v", argv[1]))
     die("dwm-" VERSION);
   else if (argc != 1)
@@ -7818,6 +7844,9 @@ int main(int argc, char *argv[]) {
   runautostart();
   run();
   if (restart) {
+    /* block across execvp: the new image must reach setup() before a
+       queued restart signal is allowed to run (see blockrestartsignals) */
+    blockrestartsignals(1);
     // Store the client's current monitor, tag and floating state
     Atom da = XInternAtom(dpy, "_DWM_MONITOR", False);
     Atom dta = XInternAtom(dpy, "_DWM_TAG", False);

@@ -40,6 +40,7 @@ test: tests/barparse_test
 smoke: dwm
 	./tests/dwm-smoke.sh
 	./tests/check-status-graphics-pill.sh
+	./tests/hot-restart-check.sh
 
 clean:
 	rm -f dwm ${OBJ} status-ids.h contrib/status-ids.sh dwm-${VERSION}.tar.gz tests/barparse_test
