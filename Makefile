@@ -40,6 +40,7 @@ test: tests/barparse_test
 smoke: dwm
 	./tests/dwm-smoke.sh
 	./tests/check-status-graphics-pill.sh
+	./tests/systray-monitor-check.sh
 	./tests/hot-restart-check.sh
 
 clean:

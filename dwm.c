@@ -6393,15 +6393,16 @@ void togglebar(const Arg *arg, unsigned int event) {
   updatebarpos(selmon);
   resizebarwin(selmon);
   if (tray_show && !flatbar && systray) {
+    /* the tray is a root child on its own monitor's bar row, exactly like
+       updatesystray(): root-relative y strands it off-screen whenever that
+       monitor does not start at y=0 (and moves it when another monitor's
+       bar is toggled) */
+    Monitor *tm = systraytomon(NULL);
     XWindowChanges wc;
-    if (!selmon->showbar)
-      wc.y = -bh;
-    else if (selmon->showbar) {
-      wc.y = vp;
-      if (!selmon->topbar)
-        wc.y = selmon->mh - bh + vp;
+    if (tm) {
+      wc.y = tm->by + vp;
+      XConfigureWindow(dpy, systray->win, CWY, &wc);
     }
-    XConfigureWindow(dpy, systray->win, CWY, &wc);
   }
   arrange(selmon);
 }
