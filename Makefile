@@ -41,6 +41,7 @@ smoke: dwm
 	./tests/dwm-smoke.sh
 	./tests/check-status-graphics-pill.sh
 	./tests/systray-monitor-check.sh
+	./tests/systray-guards-check.sh
 	./tests/hot-restart-check.sh
 
 clean:

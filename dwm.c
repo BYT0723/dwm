@@ -7075,11 +7075,28 @@ void systraydock(Window w) {
 
   if (!tray_show || !systray || !w)
     return;
+  /* a dock request can name the tray window itself, the root, or a window
+     this WM already manages. Reparenting/save-setting such a window makes X
+     raise BadMatch/BadAlloc, and xerror() turns an unexpected X error into a
+     fatal exit: a broken tray client must never take the WM down. */
+  if (w == traywin() || w == root) {
+    fprintf(stderr, "dwm: ignoring systray dock of the %s window\n",
+            w == root ? "root" : "tray");
+    return;
+  }
   /* prevent double-dock: if the same window is already in the systray
    * (e.g. scan() re-docked it before the client's own dock request),
    * skip to avoid duplicate entries and blank slots. */
   if (wintosystrayicon(w))
     return;
+  /* a client that maps its icon before sending the dock request is briefly
+     managed as a normal window; release it so the tray starts from a root
+     child and the save-set/reparent requests cannot fail */
+  {
+    Client *managed = wintoclient(w);
+    if (managed)
+      unmanage(managed, 0);
+  }
 
   c = ecalloc(1, sizeof(Client));
   c->win = w;
@@ -7125,7 +7142,11 @@ void systraydock(Window w) {
   }
 
   XSetClassHint(dpy, c->win, &ch);
-  XGetWindowAttributes(dpy, c->win, &wa);
+  if (!XGetWindowAttributes(dpy, c->win, &wa)) {
+    fprintf(stderr, "dwm: systray window vanished before dock\n");
+    free(c);
+    return;
+  }
   c->x = c->oldx = c->y = c->oldy = 0;
   c->w = c->oldw = wa.width;
   c->h = c->oldh = wa.height;
@@ -7135,6 +7156,9 @@ void systraydock(Window w) {
   c->tags = 1;
   updatesizehints(c);
   updatesystrayicongeom(c, wa.width, wa.height);
+  /* the window may still disappear between the attribute read and the dock;
+     a swallowed error here drops the icon, not the whole WM */
+  XSetErrorHandler(xerrordummy);
   XAddToSaveSet(dpy, c->win);
   XSelectInput(dpy, c->win,
                StructureNotifyMask | PropertyChangeMask | ResizeRedirectMask);
@@ -7145,6 +7169,7 @@ void systraydock(Window w) {
   sendevent(c->win, netatom[Xembed], StructureNotifyMask, CurrentTime,
             XEMBED_EMBEDDED_NOTIFY, 0, traywin(), XEMBED_EMBEDDED_VERSION);
   XSync(dpy, False);
+  XSetErrorHandler(xerror);
   setclientstate(c, NormalState);
 
   {
@@ -7301,21 +7326,33 @@ void updatesystray(int flag) {
        empty gap in the bar); the other gaps keep tray_spacing */
     int first = 1;
     for (w = 0, i = systray->icons; i; i = i->next) {
+      int iw = i->w > 0 ? i->w : 1;
+      int ih = i->h > 0 ? i->h : 1;
+
+      if (iw > m->ww)
+        iw = m->ww;
+      if (iw < 1)
+        iw = 1;
       wa.background_pixel = scheme[SchemeSystray][ColBg].pixel;
       XChangeWindowAttributes(dpy, i->win, CWBackPixel, &wa);
       XSetWindowBackgroundPixmap(dpy, i->win, ParentRelative);
       XMapRaised(dpy, i->win);
       w += first ? pill_gap : tray_spacing;
       first = 0;
-      i->x = w;
-      XMoveResizeWindow(dpy, i->win, i->x, i->y, i->w, i->h);
+      i->x = (int)w;
+      XMoveResizeWindow(dpy, i->win, i->x, i->y, (unsigned int)iw,
+                        (unsigned int)ih);
       if (refresh_icon)
         XClearArea(dpy, i->win, 0, 0, 0, 0, True);
-      w += i->w;
+      w += (unsigned int)iw;
       if (i->mon != m)
         i->mon = m;
     }
     w = w ? w + tray_spacing : 1;
+    /* the tray is a child of the bar row: a runaway width would make the
+       ConfigureWindow below fail with BadAlloc */
+    if (w > (unsigned int)m->ww)
+      w = (unsigned int)m->ww;
   }
   x -= w;
   XSetWindowBackground(dpy, systray->win, scheme[SchemeSystray][ColBg].pixel);
@@ -7339,17 +7376,32 @@ void updatesystray(int flag) {
 
 void updatesystrayicongeom(Client *i, int w, int h) {
   int newh = bh - tray_pad * 2;
-  if (i) {
+
+  if (!i)
+    return;
+  /* a 0x0 icon (or a vanished window's garbage) used to divide by zero, turn
+     the aspect ratio into INT_MIN and wrap the unsigned tray width; X then
+     failed ConfigureWindow with BadAlloc and the WM exited */
+  if (newh < 1)
+    newh = 1;
+  if (w < 1)
+    w = 1;
+  if (h < 1)
+    h = 1;
+  i->h = newh;
+  i->w = (int)((float)w * (float)i->h / (float)h);
+  applysizehints(i, &(i->x), &(i->y), &(i->w), &(i->h), False);
+  /* force icons into the systray dimensions if they don't want to */
+  if (i->h > newh) {
+    i->w = (int)((float)i->w * (float)newh / (float)i->h);
     i->h = newh;
-    i->w = (int)((float)w * (float)i->h / (float)h);
-    applysizehints(i, &(i->x), &(i->y), &(i->w), &(i->h), False);
-    /* force icons into the systray dimensions if they don't want to */
-    if (i->h > newh) {
-      i->w = (int)((float)i->w * (float)newh / (float)i->h);
-      i->h = newh;
-    }
-    i->y = (bh - 2 * bar_borderpx - newh) / 2;
   }
+  /* a bogus aspect must not size the icon (or the tray) past the screen */
+  if (i->w < 1)
+    i->w = 1;
+  if (i->w > sw)
+    i->w = sw;
+  i->y = (bh - 2 * bar_borderpx - newh) / 2;
 }
 
 void updatesystrayiconstate(Client *i, XPropertyEvent *ev) {
@@ -7613,6 +7665,16 @@ int xerror(Display *dpy, XErrorEvent *ee) {
       (ee->request_code == X_GrabKey && ee->error_code == BadAccess) ||
       (ee->request_code == X_CopyArea && ee->error_code == BadDrawable))
     return 0;
+  /* a vanishing/misbehaving tray icon can fail these two mid-dock; the
+     request only failed (the icon is dropped or keeps its old size), the WM
+     state is still consistent, so log it and keep running instead of taking
+     the whole session down */
+  if ((ee->request_code == X_ChangeSaveSet && ee->error_code == BadMatch) ||
+      (ee->request_code == X_ConfigureWindow && ee->error_code == BadAlloc)) {
+    fprintf(stderr, "dwm: ignored X error: request code=%d, error code=%d\n",
+            ee->request_code, ee->error_code);
+    return 0;
+  }
   fprintf(stderr, "dwm: fatal error: request code=%d, error code=%d\n",
           ee->request_code, ee->error_code);
   return xerrorxlib(dpy, ee); /* may call exit */
