@@ -272,7 +272,13 @@ typedef struct {
   unsigned int click;
   Arg arg;
 } BarSlot;
-#define BAR_SLOTS 32
+/* Click/hover table. Every drawn element needs a slot: the fixed left zone
+   (host + layout + compact tags' label + LENGTH(tags) dots = 10), its status
+   cells (3), every visible tab (TAB_CELLS = 64) and the right zone's status
+   blocks (up to MAX_STBLOCKS). 32 was below that worst case, so a busy tab
+   row exhausted the table before the right zone was drawn and its blocks
+   (weather/date/battery/...) were painted but no longer clickable. */
+#define BAR_SLOTS 128
 
 /* one drawn tab: where it sits, how wide, and which client it belongs to */
 typedef struct {
